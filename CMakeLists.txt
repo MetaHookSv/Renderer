@@ -47,11 +47,11 @@ target_include_directories(renderer_settings INTERFACE
     "${METAHOOK_SOURCE_PATH}/include/SourceSDK/tier0"
     "${METAHOOK_SOURCE_PATH}/include/SourceSDK/tier1"
     "${METAHOOK_SOURCE_PATH}/include/SourceSDK/vstdlib"
-    ${RENDERER_CAPSTONE_INCLUDE_DIRS}
+    ${CAPSTONE_INCLUDE_DIRS}
     thirdparty/glew_fork/include/GL
     thirdparty/ScopeExit/include
-    ${RENDERER_SDL3_INCLUDE_DIRS}
-    ${RENDERER_SDL2_INCLUDE_DIRS}
+    ${SDL3_INCLUDE_DIRS}
+    ${SDL2_INCLUDE_DIRS}
     thirdparty/tinyobjloader
     "${FREEIMAGE_SOURCE_PATH}/Source"
 )
