@@ -9,6 +9,7 @@
 - Renderer 公共接口由本仓库 `include/Interface/IMetaRenderer.h` 提供并安装；优先于 MetaHook 中的历史副本。
 - 构建入口是根 `CMakeLists.txt` 和 `scripts/build-Renderer-x86-{Debug,Release}.bat`。`cmake/Sources.cmake` 显式保留原工程编译清单。
 - 公共 API、SourceSDK 和 VGUI 源码来自 `METAHOOK_SOURCE_PATH`；FreeImage 来自 `FREEIMAGE_SOURCE_PATH`。不修改外部源码或第三方 submodule。
+- GLEW 可通过 `GLEW_SOURCE_PATH` 使用提供 `libglew_static` 的外部 glew-cmake 源码，空值使用固定 submodule。Capstone/SDL 的编译目录使用依赖准备函数输出的 `RENDERER_*_INCLUDE_DIRS`，不可绕过规范化结果直接使用原始 cache 输入。
 - 未指定 `METAHOOK_SOURCE_PATH` 时用 FetchContent 获取固定提交，只消费 SDK，不构建宿主或初始化其递归依赖；MetaHook 不作为本仓库 submodule。
 - SDL 构建及安装归 MetaHook 所有；本工程只读取必需的 `SDL2_INCLUDE_DIRS` 和可选的 `SDL3_INCLUDE_DIRS`，不获取 SDL 源码或引入 SDL 构建目标。
 - 依赖准备由 CMake 执行；VC-LTL 下载二进制并校验哈希，不作为 submodule。输出留在 `build/`、`install/`，不自动部署游戏。

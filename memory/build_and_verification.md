@@ -54,6 +54,14 @@ post-build 还会复制到本机游戏。独立工程使用显式源码清单和
 
 ## 复验与适用范围
 
+### 外部 GLEW 与有效 include 目录（2026-10-02）
+
+- 触发：用户要求 `GLEW_SOURCE_PATH`，并要求检查 Capstone、SDL include 参数，避免漏传后在编译阶段失败。
+- 根因：依赖准备函数已输出规范化的 `RENDERER_CAPSTONE_INCLUDE_DIRS` 和 `RENDERER_SDL2/3_INCLUDE_DIRS`，但根 CMake 使用原始 cache 参数，丢弃了默认 Capstone 目录和路径转换结果。
+- 实现：`GLEW_SOURCE_PATH` 非空时使用外部 glew-cmake，空值初始化固定 submodule；检查源码文件和 `libglew_static` target。根 CMake 校验有效 include 目录及必要头文件，并将 `RENDERER_*_INCLUDE_DIRS` 用于编译。保留 Capstone 空值使用默认依赖、SDL2 必填、SDL3 可选的规则。
+- 验证：Debug 使用默认 GLEW、空 Capstone、空 SDL3；Release 使用独立 GLEW 源码副本及相对路径的 Capstone `include`、SDL2/3。两种配置构建安装均退出 0，CTest 各 4/4 通过，外部 GLEW 工作区未修改。无效 GLEW、无效 Capstone、缺失或无效 SDL2、无效 SDL3 五组配置均按预期退出 1。
+- 适用范围：只调整依赖输入和编译目录；日志在 `build/verification/dependency-inputs-<配置>.log` 及对应错误场景日志中。未执行游戏验证；此前 FreeImage 条目中暂未修复的 Capstone 路径问题现已解决。
+
 ### GLEW 头文件来自 target（2026-10-02）
 
 - 触发：用户要求移除硬编码的 `thirdparty/glew_fork/include/GL`。

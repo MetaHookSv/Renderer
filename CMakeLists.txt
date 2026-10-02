@@ -15,6 +15,28 @@ endif()
 
 include(cmake/Dependencies.cmake)
 renderer_prepare_dependencies()
+
+# Validate the resolved directories, including defaults supplied by dependencies.
+function(renderer_require_headers dependency header)
+    set(header_found FALSE)
+    foreach(directory IN LISTS RENDERER_${dependency}_INCLUDE_DIRS)
+        if(NOT IS_DIRECTORY "${directory}")
+            message(FATAL_ERROR "${dependency}_INCLUDE_DIRS directory does not exist: ${directory}")
+        endif()
+        if(EXISTS "${directory}/${header}" AND NOT IS_DIRECTORY "${directory}/${header}")
+            set(header_found TRUE)
+        endif()
+    endforeach()
+    if(NOT header_found)
+        message(FATAL_ERROR "${dependency}_INCLUDE_DIRS must provide ${header}")
+    endif()
+endfunction()
+renderer_require_headers(CAPSTONE capstone.h)
+renderer_require_headers(SDL2 SDL2/SDL_video.h)
+if(SDL3_INCLUDE_DIRS)
+    renderer_require_headers(SDL3 SDL3/SDL.h)
+endif()
+
 include("${VC_LTL_Root}/VC-LTL helper for cmake.cmake")
 
 # Inherit the parent's VC-LTL settings rather than invoking vendor helpers twice.
@@ -22,7 +44,10 @@ set(USE_VCLTL OFF CACHE BOOL "Separate vendor VC-LTL integration" FORCE)
 set(glew-cmake_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(glew-cmake_BUILD_STATIC ON CACHE BOOL "" FORCE)
 set(ONLY_LIBS ON CACHE BOOL "" FORCE)
-add_subdirectory(thirdparty/glew_fork EXCLUDE_FROM_ALL)
+add_subdirectory("${GLEW_SOURCE_PATH}" "${CMAKE_CURRENT_BINARY_DIR}/thirdparty/GLEW" EXCLUDE_FROM_ALL)
+if(NOT TARGET libglew_static)
+    message(FATAL_ERROR "GLEW_SOURCE_PATH must provide the libglew_static CMake target.")
+endif()
 add_subdirectory("${FREEIMAGE_SOURCE_PATH}" "${CMAKE_CURRENT_BINARY_DIR}/thirdparty/FreeImage" EXCLUDE_FROM_ALL)
 if(NOT TARGET FreeImage)
     message(FATAL_ERROR "FREEIMAGE_SOURCE_PATH must provide the FreeImage CMake target.")
@@ -47,10 +72,10 @@ target_include_directories(renderer_settings INTERFACE
     "${METAHOOK_SOURCE_PATH}/include/SourceSDK/tier0"
     "${METAHOOK_SOURCE_PATH}/include/SourceSDK/tier1"
     "${METAHOOK_SOURCE_PATH}/include/SourceSDK/vstdlib"
-    ${CAPSTONE_INCLUDE_DIRS}
+    ${RENDERER_CAPSTONE_INCLUDE_DIRS}
     thirdparty/ScopeExit/include
-    ${SDL3_INCLUDE_DIRS}
-    ${SDL2_INCLUDE_DIRS}
+    ${RENDERER_SDL3_INCLUDE_DIRS}
+    ${RENDERER_SDL2_INCLUDE_DIRS}
     thirdparty/tinyobjloader
     # Tests consume dependency headers without linking the libraries.
     "$<TARGET_PROPERTY:libglew_static,INTERFACE_INCLUDE_DIRECTORIES>"

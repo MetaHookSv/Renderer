@@ -37,6 +37,11 @@ scripts\build-Renderer-x86-Release.bat "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/
 **FreeImage 源码根目录**，需要提供 `FreeImage` shared CMake target。
 已验证 `hzqst/FreeImage_clone` 的下述固定提交；原始无 CMake 支持的 FreeImage 压缩包不适用。
 
+`GLEW_SOURCE_PATH` 指向包含 `CMakeLists.txt` 和 `include/GL/glew.h` 的 **glew-cmake 源码根目录**，
+需要支持当前构建选项并提供 `libglew_static` target。未指定时使用固定的 `thirdparty/glew_fork`；
+指定后跳过该 submodule 的初始化。例如在下方命令追加 `"-DGLEW_SOURCE_PATH=D:/glew-cmake"`。
+它复用源码，GLEW 仍在 Renderer 的 build 目录内编译。
+
 ```bat
 scripts\build-Renderer-x86-Debug.bat "-DMETAHOOK_SOURCE_PATH=D:/MetaHook" "-DFREEIMAGE_SOURCE_PATH=D:/FreeImage_clone" "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/x86/Debug/include"
 scripts\build-Renderer-x86-Release.bat "-DMETAHOOK_SOURCE_PATH=D:/MetaHook" "-DFREEIMAGE_SOURCE_PATH=D:/FreeImage_clone" "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/x86/Release/include"
@@ -44,6 +49,7 @@ scripts\build-Renderer-x86-Release.bat "-DMETAHOOK_SOURCE_PATH=D:/MetaHook" "-DF
 
 首次配置也可以设置同名环境变量。`-D` 显式参数优先于已有 CMake cache；环境变量只用于 cache
 初始值。`-DMETAHOOK_SOURCE_PATH=` 切回 FetchContent 获取；`-DFREEIMAGE_SOURCE_PATH=` 切回 FreeImage submodule。
+`GLEW_SOURCE_PATH` 同样支持环境变量初始值，传 `-DGLEW_SOURCE_PATH=` 切回 GLEW submodule。
 外部源码只作为输入，构建产物仍留在 Renderer 的 build 目录；不会构建 MetaHook.exe，
 也不会初始化 MetaHook 的递归依赖。切换源码版本后建议使用新的 build 目录。
 
@@ -63,6 +69,8 @@ scripts\build-Renderer-x86-Release.bat "-DCAPSTONE_INCLUDE_DIRS=D:/MetaHook/thir
 支持直接包含 `capstone.h` 的目录，或含 `capstone/capstone.h` 的上级 include 目录；
 多个目录用分号分隔，并将整个 `-D` 参数放在引号中。指定后跳过 Renderer 自带 Capstone
 submodule 的初始化；传 `-DCAPSTONE_INCLUDE_DIRS=` 恢复默认。首次配置也支持同名环境变量。
+未传 Capstone 参数时使用默认 submodule，无需强制提供外部目录。CMake 将 Capstone、SDL 输入路径
+规范化后用于编译，并检查有效目录及必要头文件；SDL2 必填，SDL3 仅在提供时检查。
 头文件应与宿主 MetaHook 使用的 Capstone 版本一致，因为回调传递其结构体。
 Renderer 从不构建或链接 Capstone 库，`CAPSTONE_LIBRARY_DIRS` 无需传入；
 若共用调用命令传入了它，配置时会明确提示忽略该参数。
