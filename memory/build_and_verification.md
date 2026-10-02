@@ -133,6 +133,15 @@ post-build 还会复制到本机游戏。独立工程使用显式源码清单和
   `svencoop/` 完全一致，归档为 5,037,694 字节，原始 7z magic 为 `377abcaf271c`。
   MetaHook checkout 保持干净，Renderer 自带 Capstone 未初始化；验证日志和报告位于
   `build/verification/ci-workspace-727319e26125443eadd04d98ae2f2820/`。
+- 云端实测：功能提交 `06b62ebc246b5d2762fbae6471028f6b85917678` 的 LiveBuild run
+  `37026929672` 成功。日志确认 MetaHook 位于 `D:/a/Renderer/MetaHook`，四个外部路径生效，
+  CTest 4/4、11 个 gamedata 快照校验、7z 完整性检查及上传均成功。
+  artifact `11235374746` 名为 `Renderer-windows-x86.7z`，4,939,562 字节；实际下载得到
+  原始 7z magic `377abcaf271c`，没有 ZIP 外层。再次完整性检查、解压及 gamedata 校验通过；
+  73 个文件路径与本地期望集合一致，58 个运行资源与仓库内容逐字节一致。
+  云端日志为 `build/verification/ci-hosted-37026929672.log`，下载及复验产物位于
+  `build/verification/ci-runtime-download-37026929672/`。Release 共用该构建步骤；标签发布事件
+  需在实际版本标签推送时运行。
 - 适用范围：自动构建和运行包发布，不代表真实游戏或 OpenGL 视觉兼容性验证。
 
 构建命令、source path 参数、可选 CTest 开关见 [README](../README.md)。
@@ -140,5 +149,5 @@ post-build 还会复制到本机游戏。独立工程使用显式源码清单和
 测试保持 Release 断言启用；包含生产 translation unit 的测试通过 `/Gy` 和 `/OPT:REF` 移除未调用 handler。
 
 本次没有启动游戏、创建真实 OpenGL context 或验证视觉效果。默认依赖和手动外部源码均经本机构建；
-远端全新 clone 尚未验证。发布时只需初始化 Renderer 的直接依赖，
-避免为无需构建的 MetaHook 宿主下载其递归依赖。
+远端全新 checkout 已通过上述 hosted LiveBuild。CI 仅初始化 Renderer 的直接依赖和
+MetaHook 的三个头文件 submodule，无需下载宿主的其余递归依赖。
