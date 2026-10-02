@@ -27,7 +27,11 @@ post-build 还会复制到本机游戏。独立工程使用显式源码清单和
 - VC-LTL 5.3.1 从官方二进制包下载并校验 SHA-256，使用包内 helper。所有相关目标继承同一设置，关闭 vendor 工程内的重复 helper。
 - Renderer C++20、静态 CRT `/MTd`/`/MT`、Release LTCG 等与原配置对应。两种配置增加明确的 PDB 安装。
 - 源码和资源保持字节一致；旧 vcxproj、个人工程设置、旧 MSBuild 测试 runner 不迁入。
-- gamedata 属于宿主准备职责；Renderer 不重复下载数据或改变解析 API。
+- gamedata 查询/解析 API 由宿主 MetaHook 提供，Renderer 不改变该契约。Renderer 自带
+  `scripts/manifests/renderer.json`（与 MetaHook 同 schema）与同步/校验脚本：构建时
+  （`RENDERER_SYNC_GAMEDATA`，默认 ON）裁剪上游 catalog 到自身所需符号并发布到嵌套目录
+  `metahook/gamedata/renderer/`，再由宿主 launcher 的 catalog 加载器与其取并集。原始快照
+  持久缓存在 `build/x86/<config>/gamedata-sync/`，支持离线构建。
 
 ## 本次实测（2026-10-02）
 

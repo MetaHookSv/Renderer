@@ -33,7 +33,7 @@ MetaHook 提供公共 API、SourceSDK、VGUI 代码，仅消费其源码，不�
 GLEW 静态链接，FreeImage 动态链接并随插件安装。SDL/Capstone 只消费头文件。
 SDL2/SDL3 由 MetaHook 构建、安装；Renderer 的 `SDL2_INCLUDE_DIRS` 必需，
 `SDL3_INCLUDE_DIRS` 可选，均仅提供外部 include 目录，不存在 SDL submodule 或构建目标。
-VGUI2Extension 为可选运行时插件。gamedata 由宿主 MetaHook 同步并提供查询/解析接口。
+VGUI2Extension 为可选运行时插件。gamedata 的查询/解析 API 由宿主 MetaHook 提供；Renderer 自带 manifest 与同步脚本，构建时产出裁剪后的嵌套 catalog `metahook/gamedata/renderer/`，宿主加载时与自身 catalog 取并集。详见 [构建及验证](build_and_verification.md)。
 
 私有符号解析必须遵循宿主 gamedata 契约，不能通过兼容性判断恢复已删除的扫描 fallback。
 迁移不改变导出、hook 调用约定、OpenGL 行为或已有资源格式。

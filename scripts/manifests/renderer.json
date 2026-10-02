@@ -1,0 +1,428 @@
+{
+  "schemaVersion": 1,
+  "name": "renderer",
+  "indexUrl": "https://hlnd2t.github.io/GoldSrc_VibeSignatures/gamesymbols/index.json",
+  "gameVersions": [
+    "cof-5936",
+    "hl-10210",
+    "hl-3248",
+    "hl-3266",
+    "hl-3329",
+    "hl-3647",
+    "hl-4554",
+    "hl-6153",
+    "hl-8684",
+    "svencoop-10257",
+    "svencoop-8948"
+  ],
+  "symbols": {
+    "engine": {
+      "BuildGammaTable": "function",
+      "CL_FxBlend": "function",
+      "CL_IsDevOverviewMode": "function",
+      "CL_SetDevOverView": "function",
+      "ClientDLL_DrawNormalTriangles": "function",
+      "CVideoMode_Common_DrawStartupGraphic": "function",
+      "Cache_Alloc": "function",
+      "ClientDLL_DrawTransparentTriangles": "function",
+      "Draw_DecalTexture": "function",
+      "Draw_FillRGBA": "function",
+      "Draw_FillRGBABlend": "function",
+      "Draw_Frame": "function",
+      "Draw_Pic": "function",
+      "GL_BeginRendering": "function",
+      "GL_Bind": "function",
+      "GL_BuildLightmaps": "function",
+      "GL_EndRendering": "function",
+      "GL_Finish2D": "function",
+      "GL_Init": "function",
+      "GL_LoadFilterTexture": "function",
+      "GL_LoadTexture2": "function",
+      "GL_SelectTexture": "function",
+      "GL_Set2D": "function",
+      "GL_UnloadTextures": "function",
+      "Host_ClearMemory": "function",
+      "Host_IsSinglePlayerGame": "function",
+      "Hunk_AllocName": "function",
+      "Mod_LoadBrushModel": "function",
+      "Mod_LoadModel": "function",
+      "Mod_LoadSpriteModel": "function",
+      "Mod_LoadStudioModel": "function",
+      "Mod_PointInLeaf": "function",
+      "Mod_UnloadSpriteTextures": "function",
+      "PVSNode": "function",
+      "R_AnimateLight": "function",
+      "R_BeamDrawList": "function",
+      "R_CheckVariables": "function",
+      "R_CullBox": "function",
+      "R_ForceCVars": "function",
+      "R_FreeDeadParticles": "function",
+      "R_GLStudioDrawPoints": "function",
+      "R_GetSpriteFrame": "function",
+      "R_NewMap": "function",
+      "R_RenderView": "function",
+      "R_ResetLatched": "function",
+      "R_StudioDrawModel": "function",
+      "R_StudioDrawPlayer": "function",
+      "R_StudioMergeBones": "function",
+      "R_StudioRenderFinal": "function",
+      "R_StudioRenderModel": "function",
+      "R_StudioSaveBones": "function",
+      "R_StudioSetupBones": "function",
+      "R_TracerDraw": "function",
+      "S_ExtraUpdate": "function",
+      "V_FadeAlpha": "function",
+      "V_RenderView": "function",
+      "active_particles": "global",
+      "c_brush_polys": "global",
+      "cache_head": "global",
+      "cl_dlights": "global",
+      "cl_elights": "global",
+      "cl_entities": "global",
+      "cl_light_level": "global",
+      "cl_max_edicts": "global",
+      "cl_numvisedicts": "global",
+      "cl_oldtime": "global",
+      "cl_parsecount": "global",
+      "cl_sf": "global",
+      "cl_simorg": "global",
+      "cl_stats": "global",
+      "cl_time": "global",
+      "cl_viewentity": "global",
+      "cl_visedicts": "global",
+      "cl_waterlevel": "global",
+      "cl_weaponsequence": "global",
+      "cl_weaponstarttime": "global",
+      "cl_worldmodel": "global",
+      "cshift_water": "global",
+      "currententity": "global",
+      "currenttexture": "global",
+      "d_lightstylevalue": "global",
+      "detTexSupported": "global",
+      "envmap": "global",
+      "filterBrightness": "global",
+      "filterColorBlue": "global",
+      "filterColorGreen": "global",
+      "filterColorRed": "global",
+      "filterMode": "global",
+      "flFinalFogColor": "global",
+      "flFogDensity": "global",
+      "flFogEnd": "global",
+      "flFogStart": "global",
+      "frustum": "global",
+      "gDecalCache": "global",
+      "gDecalPool": "global",
+      "gDecalSurfCount": "global",
+      "gDevOverview": "global",
+      "gHostSpawnCount": "global",
+      "gProjectionMatrix": "global",
+      "gScreenToWorld": "global",
+      "gSpriteMipMap": "global",
+      "gTempEnts": "global",
+      "gWaterColor": "global",
+      "gWorldToScreen": "global",
+      "g_ForcedFaceFlags": "global",
+      "g_ScissorRect": "global",
+      "g_VertexBuffer": "global",
+      "g_bScissor": "global",
+      "g_bUserFogOn": "global",
+      "g_iVertexBufferEntriesUsed": "global",
+      "giScissorTest": "global",
+      "gl_extensions": "global",
+      "gl_filter_max": "global",
+      "gl_filter_min": "global",
+      "gltextures": "global",
+      "host_basepal": "global",
+      "lightgammatable": "global",
+      "lightmaps": "global",
+      "mod_known": "global",
+      "maxTransObjs": "global",
+      "mod_numknown": "global",
+      "modelorg": "global",
+      "movevars": "global",
+      "numTransObjs": "global",
+      "particletexture": "global",
+      "pmainwindow": "global",
+      "pstudiohdr": "global",
+      "psubmodel": "global",
+      "r_ambientlight": "global",
+      "r_blend": "global",
+      "r_bottomcolor": "global",
+      "r_colormix": "global",
+      "r_entorigin": "global",
+      "r_framecount": "global",
+      "r_oldviewleaf": "global",
+      "r_origin": "global",
+      "r_playerViewportAngles": "global",
+      "r_plightvec": "global",
+      "r_refdef": "global",
+      "r_shadelight": "global",
+      "r_topcolor": "global",
+      "r_viewleaf": "global",
+      "r_visframecount": "global",
+      "r_world_matrix": "global",
+      "r_worldentity": "global",
+      "rtable": "global",
+      "transObjects": "global",
+      "vpn": "global",
+      "vright": "global",
+      "vup": "global",
+      "scr_drawloading": "global",
+      "scr_fov_value": "global",
+      "texgammatable": "global",
+      "window_rect": "global",
+      "Sys_ShutdownGame_to_GL_Shutdown_callsite_0": "patch",
+      "CVideoMode_Common.m_ImageID": "structMember",
+      "CVideoMode_Common.m_iBaseResX": "structMember",
+      "CVideoMode_Common.m_iBaseResY": "structMember"
+    }
+  },
+  "optionalSymbols": {
+    "client": [
+      "ClientPortal_entity_offset",
+      "ClientPortal_mode_offset",
+      "ClientPortal_origin_offset",
+      "ClientPortal_angles_offset",
+      "ClientPortalSource_mode_offset"
+    ]
+  },
+  "numberedPatchSets": [
+    {
+      "module": "engine",
+      "prefix": "CL_LinkPacketEntities_to_R_ResetLatched_callsite"
+    }
+  ],
+  "conditionalGroups": [
+    {
+      "when": [
+        "cof-5936",
+        "hl-10210",
+        "hl-3248",
+        "hl-3266",
+        "hl-3329",
+        "hl-3647",
+        "hl-4554",
+        "hl-6153",
+        "hl-8684"
+      ],
+      "symbols": {
+        "D_FillRect": "function",
+        "Draw_SpriteFrameAdditive": "function",
+        "Draw_SpriteFrameGeneric": "function",
+        "Draw_SpriteFrameHoles": "function",
+        "R_LoadSkys": "function",
+        "GL_SetMode_call_qwglCreateContext": "patch",
+        "c_alias_polys": "global",
+        "numgltextures": "global",
+        "r_notexture_mip": "global"
+      }
+    },
+    {
+      "when": [
+        "cof-5936",
+        "hl-3248",
+        "hl-3266",
+        "hl-3329",
+        "hl-3647",
+        "hl-4554",
+        "hl-6153",
+        "hl-8684"
+      ],
+      "symbols": {
+        "CheckMultiTextureExtensions": "function"
+      }
+    },
+    {
+      "when": [
+        "hl-10210",
+        "svencoop-10257",
+        "svencoop-8948"
+      ],
+      "symbols": {
+        "DT_Initialize": "function"
+      }
+    },
+    {
+      "when": [
+        "cof-5936",
+        "hl-3248",
+        "hl-3266",
+        "hl-3329",
+        "hl-3647",
+        "hl-4554",
+        "hl-6153",
+        "hl-8684"
+      ],
+      "symbols": {
+        "GL_SelectPixelFormat": "function",
+        "GlowBlend": "function"
+      }
+    },
+    {
+      "when": [
+        "svencoop-10257",
+        "svencoop-8948"
+      ],
+      "symbols": {
+        "Draw_FillRGBABuf": "function",
+        "Draw_SpriteFrameAdditive_SvEngine": "function",
+        "Draw_SpriteFrameGeneric_SvEngine": "function",
+        "Draw_SpriteFrameHoles_SvEngine": "function",
+        "R_LoadSkyBox_SvEngine": "function",
+        "realloc": "function",
+        "allow_cheats": "global",
+        "c_model_polys": "global",
+        "gltextures.m_Memory.m_nAllocationCount": "global",
+        "gltextures.m_Size": "global",
+        "gmodinfo_vertical_fov": "global",
+        "peakgltextures": "global",
+        "r_missingtexture": "global"
+      }
+    },
+    {
+      "when": [
+        "hl-10210",
+        "hl-6153",
+        "hl-8684",
+        "svencoop-10257",
+        "svencoop-8948"
+      ],
+      "symbols": {
+        "s_fXMouseAspectAdjustment": "global",
+        "s_fYMouseAspectAdjustment": "global"
+      }
+    },
+    {
+      "when": [
+        "hl-10210"
+      ],
+      "symbols": {
+        "CGame_DrawStartupVideo": "function"
+      }
+    },
+    {
+      "when": [
+        "hl-10210",
+        "hl-6153",
+        "hl-8684",
+        "svencoop-10257",
+        "svencoop-8948"
+      ],
+      "symbols": {
+        "GL_SetMode": "function"
+      }
+    },
+    {
+      "when": [
+        "cof-5936",
+        "hl-3248",
+        "hl-3266",
+        "hl-3329",
+        "hl-3647",
+        "hl-4554"
+      ],
+      "symbols": {
+        "GL_SetModeLegacy": "function",
+        "texture_extension_number": "global",
+        "texture_extension_number_mov_site_GL_LoadFilterTexture": "patch",
+        "texture_extension_number_mov_site_R_InitParticleTexture": "patch"
+      }
+    },
+    {
+      "when": [
+        "hl-3248",
+        "hl-3266",
+        "hl-3329",
+        "hl-3647",
+        "hl-4554"
+      ],
+      "symbols": {
+        "texture_extension_number_mov_site_GL_BuildLightmaps": "patch",
+        "texture_extension_number_mov_site_GL_LoadTexture2": "patch",
+        "texture_extension_number_mov_site_LoadTransPic_bind": "patch",
+        "texture_extension_number_mov_site_LoadTransPic_increment": "patch",
+        "texture_extension_number_mov_site_R_Init_playertextures": "patch"
+      }
+    },
+    {
+      "when": [
+        "hl-10210",
+        "hl-6153",
+        "hl-8684"
+      ],
+      "symbols": {
+        "SDL_InitGL": "function"
+      }
+    },
+    {
+      "when": [
+        "svencoop-10257",
+        "svencoop-8948"
+      ],
+      "symbols": {
+        "client": {
+          "ClientPortalManager_RenderPortals": "function",
+          "ClientPortalManager_ResetAll": "function",
+          "UpdatePlayerPitch": "function",
+          "ClientPortalManager_GetOriginalSurfaceTexture": "function",
+          "ClientPortalManager_DrawPortalSurface": "function",
+          "ClientPortalManager_EnableClipPlane": "function",
+          "ClientPortalManager_InitShader": "function",
+          "CParticleSystem_ParticleDraw": "function",
+          "ClientPortalManager_RenderPortals_to_AngleVectors_callsite_0": "patch",
+          "g_bRenderingPortals_SCClient": "global",
+          "g_iFogColor": "global",
+          "g_iStartDist": "global",
+          "g_iEndDist": "global",
+          "ClientPortalManager.m_bShadersAvailable": "structMember",
+          "ClientPortalManager_vector_begin_offset": "scalar",
+          "ClientPortalManager_vector_end_offset": "scalar"
+        }
+      }
+    },
+    {
+      "when": [
+        "svencoop-10257"
+      ],
+      "symbols": {
+        "client": {
+          "ClientPortal_texture_id_offset": "scalar",
+          "ClientPortal_texture_width_offset": "scalar",
+          "ClientPortal_texture_height_offset": "scalar",
+          "g_ViewEntityIndex_SCClient": "global"
+        }
+      }
+    },
+    {
+      "when": [
+        "svencoop-8948"
+      ],
+      "symbols": {
+        "client": {
+          "PortalSource_texture_id_offset": "scalar",
+          "PortalSource_texture_width_offset": "scalar",
+          "PortalSource_texture_height_offset": "scalar"
+        }
+      }
+    },
+    {
+      "when": [
+        "svencoop-10257",
+        "hl-8684",
+        "hl-10210",
+        "cof-5936"
+      ],
+      "symbols": {
+        "client": {
+          "GameStudioRenderer_StudioDrawModel": "virtualFunction",
+          "GameStudioRenderer_StudioDrawPlayer": "virtualFunction",
+          "GameStudioRenderer_StudioMergeBones": "virtualFunction",
+          "GameStudioRenderer_StudioRenderFinal": "virtualFunction",
+          "GameStudioRenderer_StudioRenderModel": "virtualFunction",
+          "GameStudioRenderer_StudioSaveBones": "virtualFunction",
+          "GameStudioRenderer_StudioSetupBones": "virtualFunction"
+        }
+      }
+    }
+  ]
+}

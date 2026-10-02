@@ -104,6 +104,32 @@ install(FILES "$<TARGET_FILE:FreeImage>" DESTINATION svencoop/metahook/dlls/Free
 install(DIRECTORY assets/svencoop/renderer DESTINATION svencoop)
 install(FILES include/Interface/IMetaRenderer.h DESTINATION include/Interface)
 
+# Renderer ships its own gamedata catalog, pruned to the symbols it resolves, in
+# a nested directory the launcher's catalog loader merges (metahook/gamedata/
+# renderer). The manifest lists those symbols; the synchronizer downloads the
+# upstream catalog into a persistent cache, prunes it, and publishes the result.
+option(RENDERER_SYNC_GAMEDATA "Download and prune Renderer's gamedata catalog before building" ON)
+set(RENDERER_GAMEDATA_DIR "${CMAKE_BINARY_DIR}/assets/svencoop/metahook/gamedata/renderer" CACHE PATH "Renderer gamedata catalog directory")
+if(RENDERER_SYNC_GAMEDATA)
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    add_custom_target(RendererGameData
+        COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/scripts/sync-gamedata.py"
+            --manifest "${CMAKE_CURRENT_SOURCE_DIR}/scripts/manifests/renderer.json"
+            --target-dir "${RENDERER_GAMEDATA_DIR}" --temp-root "${CMAKE_BINARY_DIR}/gamedata-sync"
+        COMMENT "Synchronizing and validating Renderer gamedata"
+        VERBATIM
+    )
+    add_custom_target(RendererGameDataValidate
+        COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/scripts/validate-gamedata.py"
+            "${RENDERER_GAMEDATA_DIR}" --manifest "${CMAKE_CURRENT_SOURCE_DIR}/scripts/manifests/renderer.json"
+        COMMENT "Validating Renderer gamedata against the manifest"
+        VERBATIM
+    )
+    add_dependencies(RendererGameDataValidate RendererGameData)
+    add_dependencies(Renderer RendererGameDataValidate)
+endif()
+install(DIRECTORY "${RENDERER_GAMEDATA_DIR}/" DESTINATION svencoop/metahook/gamedata/renderer OPTIONAL)
+
 option(RENDERER_BUILD_TESTS "Build the existing Renderer regression tests" OFF)
 if(RENDERER_BUILD_TESTS)
     enable_testing()

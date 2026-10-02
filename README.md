@@ -91,12 +91,23 @@ svencoop/
   metahook/plugins/Renderer.dll
   metahook/plugins/Renderer.pdb
   metahook/dlls/FreeImage/FreeImage.dll   (Debug: FreeImaged.dll)
+  metahook/gamedata/renderer/            (Renderer 自己的 gamedata catalog)
   renderer/                           (shaders、textures、配置和本地化资源)
 ```
 
 不自动复制到本机游戏目录。由使用者合并到对应 mod 目录，并在 MetaHook 的
-`metahook/configs/plugins.lst` 中启用 Renderer。运行还需要宿主 MetaHook 及其有效 gamedata；
-gamedata 由 MetaHook 工程负责同步。VGUI2Extension 是可选运行时插件，不在本工程内构建。
+`metahook/configs/plugins.lst` 中启用 Renderer。运行还需要宿主 MetaHook；宿主提供
+查询/解析 API，其 catalog 与 Renderer 的嵌套 catalog 在运行时合并（同一 gameVersion
+的符号取并集）。VGUI2Extension 是可选运行时插件，不在本工程内构建。
+
+## gamedata
+
+Renderer 通过 `scripts/manifests/renderer.json`（与 MetaHook 同一 schema）声明它解析的
+引擎/客户端私有符号（含按 gameVersion 生效的条件组与 module 归属）。构建时
+`RENDERER_SYNC_GAMEDATA`（默认 `ON`）调用 `scripts/sync-gamedata.py`，把上游 catalog 裁剪为
+仅含这些符号并发布到 `metahook/gamedata/renderer/`，随后 `scripts/validate-gamedata.py`
+按 manifest 校验；原始快照持久缓存在 `build/x86/<config>/gamedata-sync/` 并支持离线构建。
+`OFF` 时只安装已有数据，不下载。该嵌套目录被宿主 launcher 的 catalog 加载器合并。
 
 ## 依赖与构建约定
 
