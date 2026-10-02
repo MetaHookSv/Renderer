@@ -54,6 +54,22 @@ post-build 还会复制到本机游戏。独立工程使用显式源码清单和
 
 ## 复验与适用范围
 
+### GLEW 头文件来自 target（2026-10-02）
+
+- 触发：用户要求移除硬编码的 `thirdparty/glew_fork/include/GL`。
+- 约束：`libglew_static` 公开的是 `include`，原 `qgl.h` 使用 `<glew.h>`，直接删除目录会导致头文件无法定位。
+- 实现：`qgl.h` 改用 `<GL/glew.h>`；`renderer_settings` 从 `libglew_static` 的 `INTERFACE_INCLUDE_DIRECTORIES` 获取目录，让测试只消费头文件，保留插件的原有链接依赖。
+- 验证：Debug / Release 脚本构建安装均退出 0，CTest 各 4/4 通过。日志位于 `build/verification/glew-target-<配置>.log`。
+- 适用范围：仅修改头文件引用及目录来源，未修改第三方源码，未执行游戏验证；迁移时源码字节一致的历史记录不再适用于本次调整后的 `qgl.h`。
+
+### FreeImage 头文件来自 target（2026-10-02）
+
+- 触发：用户要求避免在消费者中重复拼接 FreeImage 源码布局。
+- 约束：FreeImage target 已公开头文件目录；现有测试只需要其头文件，不链接 FreeImage 运行库。
+- 实现：`renderer_settings` 使用 `$<TARGET_PROPERTY:FreeImage,INTERFACE_INCLUDE_DIRECTORIES>` 获取目录，供插件和测试共用，不再拼接 `${FREEIMAGE_SOURCE_PATH}/Source`。
+- 验证：Debug / Release 构建安装退出 0，各自 CTest 4/4 通过。Release 首次因既有 Capstone 缓存指向 `include` 而找不到 `capstone.h`；显式改传 `include/capstone` 后通过，该路径处理问题未在本次修改中修复。
+- 适用范围：仅调整头文件目录来源，保留 FreeImage 构建、链接和安装方式；未执行游戏验证。
+
 ### SDL 构建归属 MetaHook（2026-10-02）
 
 - 触发：用户要求 Renderer 仅消费 SDL INCLUDE_DIRS，并确认同时在独立 MetaHook 中接入 SDL 构建和安装。

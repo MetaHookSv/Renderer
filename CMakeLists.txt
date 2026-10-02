@@ -48,12 +48,13 @@ target_include_directories(renderer_settings INTERFACE
     "${METAHOOK_SOURCE_PATH}/include/SourceSDK/tier1"
     "${METAHOOK_SOURCE_PATH}/include/SourceSDK/vstdlib"
     ${CAPSTONE_INCLUDE_DIRS}
-    thirdparty/glew_fork/include/GL
     thirdparty/ScopeExit/include
     ${SDL3_INCLUDE_DIRS}
     ${SDL2_INCLUDE_DIRS}
     thirdparty/tinyobjloader
-    "${FREEIMAGE_SOURCE_PATH}/Source"
+    # Tests consume dependency headers without linking the libraries.
+    "$<TARGET_PROPERTY:libglew_static,INTERFACE_INCLUDE_DIRECTORIES>"
+    "$<TARGET_PROPERTY:FreeImage,INTERFACE_INCLUDE_DIRECTORIES>"
 )
 target_compile_definitions(renderer_settings INTERFACE WIN32 _WINDOWS _USRDLL _MBCS
     RENDERER_EXPORTS GLEW_STATIC VGUI_USE_SURFACE2 VGUI_USE_SCHEME2 VGUI_USE_INPUT2

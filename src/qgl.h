@@ -1,6 +1,6 @@
 #pragma once
 
-#include <glew.h>
+#include <GL/glew.h>
 
 typedef float mat3x4[3][4];
 typedef float mat4[4][4];
