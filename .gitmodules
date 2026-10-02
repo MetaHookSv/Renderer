@@ -1,0 +1,15 @@
+[submodule "thirdparty/FreeImage_clone"]
+	path = thirdparty/FreeImage_clone
+	url = https://github.com/hzqst/FreeImage_clone
+[submodule "thirdparty/glew_fork"]
+	path = thirdparty/glew_fork
+	url = https://github.com/hzqst/glew-cmake
+[submodule "thirdparty/capstone_fork"]
+	path = thirdparty/capstone_fork
+	url = https://github.com/hzqst/capstone
+[submodule "thirdparty/ScopeExit"]
+	path = thirdparty/ScopeExit
+	url = https://github.com/SergiusTheBest/ScopeExit
+[submodule "thirdparty/tinyobjloader"]
+	path = thirdparty/tinyobjloader
+	url = https://github.com/hzqst/tinyobjloader
