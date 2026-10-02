@@ -114,6 +114,27 @@ post-build 还会复制到本机游戏。独立工程使用显式源码清单和
 - 验证：Debug、Release 重建及安装退出 0，各自 CTest 4/4 通过；编译器依赖记录确认读取本仓库头文件；本地及两份安装头文件与来源字节一致。MetaHook 工作区仍干净。
 - 范围：仅迁移 Renderer 公共接口的提供位置；外部消费者需加入 Renderer 的接口头文件目录，基础 `interface.h` 仍使用 MetaHook SDK。
 
+### GitHub Actions LiveBuild / Release（2026-10-02）
+
+- 触发：用户要求复用 MetaHook 的 LiveBuild / Release 约定，MetaHook 本体克隆到同级目录，
+  `METAHOOK_SOURCE_PATH`、Capstone、SDL2、SDL3 include 参数均指向该仓库。
+- 约束：Renderer 只消费宿主 SDK 和依赖头文件；发布包只包含运行时 `svencoop/`。
+  `upload-artifact` 默认 ZIP 封装会导致 7z 被套在 ZIP 中，单文件直接上传需显式 `archive: false`。
+- 实现：`main` push/PR/manual 的 LiveBuild 与 `v*` 标签 Release 共用 composite action。
+  在 workspace 同级 clone MetaHook `main`，只初始化 Capstone、sdl2-compat、SDL3，记录宿主 SHA；
+  显式传入四个外部路径，用 Release BAT 构建安装，执行已有 CTest 与 gamedata 校验。
+  清除同名旧生成归档后仅打包安装树 `svencoop/` 为 `Renderer-windows-x86.7z`，执行 `7z t`。
+- 验证方式：actionlint、实际执行 composite 各步骤、CTest、gamedata validator、7z 解压后对照
+  安装树文件集合与内容；推送后检查 hosted LiveBuild 和下载文件格式。
+- 本地实测：actionlint 退出 0；临时全新 Renderer checkout 执行 composite 全部五个步骤均退出 0。
+  MetaHook 克隆提交为 `1d23fe946e6f0f09a1a892aa2156c3b462774026`，四个外部路径生效；
+  Release 构建安装成功，CTest 4/4、安装后 11 个 gamedata 快照校验通过。
+  官方 7-Zip 26.03 创建及完整性检测成功；解压后 73 个文件的集合和 SHA-256 与安装树
+  `svencoop/` 完全一致，归档为 5,037,694 字节，原始 7z magic 为 `377abcaf271c`。
+  MetaHook checkout 保持干净，Renderer 自带 Capstone 未初始化；验证日志和报告位于
+  `build/verification/ci-workspace-727319e26125443eadd04d98ae2f2820/`。
+- 适用范围：自动构建和运行包发布，不代表真实游戏或 OpenGL 视觉兼容性验证。
+
 构建命令、source path 参数、可选 CTest 开关见 [README](../README.md)。
 源树或公共 API 更新后重新配置并执行相关构建与测试，避免把历史结果用于证明新改动。
 测试保持 Release 断言启用；包含生产 translation unit 的测试通过 `/Gy` 和 `/OPT:REF` 移除未调用 handler。

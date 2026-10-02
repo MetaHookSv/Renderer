@@ -1,0 +1,54 @@
+name: Build Windows x86 Release
+description: Build, test and package the Renderer runtime and gamedata.
+
+outputs:
+  archive-path:
+    description: Absolute path to the Windows x86 7z archive.
+    value: ${{ steps.package.outputs.archive-path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Clone MetaHook SDK and dependency headers
+      shell: pwsh
+      run: |
+        $metahookPath = Join-Path (Split-Path $env:GITHUB_WORKSPACE -Parent) 'MetaHook'
+        & git clone --depth 1 --branch main https://github.com/MetaHookSv/MetaHook $metahookPath
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        & git -C $metahookPath submodule update --init --depth 1 -- thirdparty/capstone_fork thirdparty/sdl2-compat-fork thirdparty/SDL3_fork
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        & git -C $metahookPath rev-parse HEAD
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        "METAHOOK_SOURCE_PATH=$metahookPath" >> $env:GITHUB_ENV
+        "CAPSTONE_INCLUDE_DIRS=$(Join-Path $metahookPath 'thirdparty/capstone_fork/include')" >> $env:GITHUB_ENV
+        "SDL2_INCLUDE_DIRS=$(Join-Path $metahookPath 'thirdparty/sdl2-compat-fork/include')" >> $env:GITHUB_ENV
+        "SDL3_INCLUDE_DIRS=$(Join-Path $metahookPath 'thirdparty/SDL3_fork/include')" >> $env:GITHUB_ENV
+
+    - name: Build and install
+      shell: cmd
+      run: call scripts\build-Renderer-x86-Release.bat -DRENDERER_BUILD_TESTS=ON "-DMETAHOOK_SOURCE_PATH=%METAHOOK_SOURCE_PATH%" "-DCAPSTONE_INCLUDE_DIRS=%CAPSTONE_INCLUDE_DIRS%" "-DSDL2_INCLUDE_DIRS=%SDL2_INCLUDE_DIRS%" "-DSDL3_INCLUDE_DIRS=%SDL3_INCLUDE_DIRS%"
+
+    - name: Run regression tests
+      shell: cmd
+      run: ctest --test-dir build\x86\Release -C Release --output-on-failure
+
+    - name: Validate installed gamedata
+      shell: cmd
+      run: python scripts\validate-gamedata.py install\x86\Release\svencoop\metahook\gamedata\renderer --manifest scripts\manifests\renderer.json
+
+    - name: Package runtime and gamedata
+      id: package
+      shell: pwsh
+      working-directory: install/x86/Release
+      run: |
+        $archiveDirectory = Join-Path $env:GITHUB_WORKSPACE 'build/artifacts'
+        New-Item -ItemType Directory -Path $archiveDirectory -Force | Out-Null
+        $archivePath = Join-Path $archiveDirectory 'Renderer-windows-x86.7z'
+        if (Test-Path -LiteralPath $archivePath -PathType Leaf) {
+          Remove-Item -LiteralPath $archivePath
+        }
+        & 7z a -t7z $archivePath 'svencoop'
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        & 7z t $archivePath
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        "archive-path=$archivePath" >> $env:GITHUB_OUTPUT

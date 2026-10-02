@@ -132,6 +132,29 @@ Renderer 使用 C++20、Debug `/MTd`、Release `/MT`，保留原 VGUI 宏、Rele
 `/OPT:REF`、`/OPT:ICF` 和 LargeAddressAware。两种配置都生成 Renderer PDB。
 显式编译清单位于 `cmake/Sources.cmake`；FreeImage 和 GLEW 使用各自原有 CMake 构建描述。
 
+## 自动构建
+
+- `.github/workflows/livebuild.yml`：`main` push、面向 `main` 的 PR 和手动触发运行 LiveBuild，
+  直接提供 `Renderer-windows-x86.7z` 下载。
+- `.github/workflows/msbuild.yml`：推送 `v*` 标签时构建，并创建附带同名 7z 包的 GitHub Release。
+- 两个入口复用 `.github/actions/build-windows-x86`，在 Windows Server 2022 上构建 x86 Release，
+  执行四组 CTest、校验安装后的 gamedata，并检查 7z 归档完整性。
+
+CI 将 `MetaHookSv/MetaHook` 的 `main` 克隆到 `$GITHUB_WORKSPACE` 的同级 `MetaHook/`，
+仅初始化它的 Capstone、sdl2-compat、SDL3 submodule，并记录宿主提交。构建显式传入：
+
+| 参数 | 相对于同级 `MetaHook/` 的路径 |
+| --- | --- |
+| `METAHOOK_SOURCE_PATH` | 仓库根目录 |
+| `CAPSTONE_INCLUDE_DIRS` | `thirdparty/capstone_fork/include` |
+| `SDL2_INCLUDE_DIRS` | `thirdparty/sdl2-compat-fork/include` |
+| `SDL3_INCLUDE_DIRS` | `thirdparty/SDL3_fork/include` |
+
+Renderer 的其他依赖由 CMake 按固定 submodule 提交准备。这里直接消费 SDL 源码头文件，
+不需要先构建 MetaHook。归档仅包含安装树中的 `svencoop/`：Renderer DLL/PDB、FreeImage DLL、
+Renderer 运行资源和嵌套 gamedata，不包含安装的接口头文件。LiveBuild 使用
+`actions/upload-artifact@v7` 的 `archive: false`，下载文件直接为 `.7z`。
+
 ## 回归验证
 
 四组既有测试随源码迁入，通过可选 CTest 目标运行：
