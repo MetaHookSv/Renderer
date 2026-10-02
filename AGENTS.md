@@ -21,5 +21,4 @@
 - 原有四组测试通过 `RENDERER_BUILD_TESTS=ON` 和 CTest 运行；按改动范围选择构建及行为验证，不用测试固定文档或配置文本。
 - 区分构建/模拟测试和真实游戏验证；没有证据不能声称游戏兼容性已验证。
 - 文档改动做相关内容、路径和格式核对，无需因此重编译插件。
-- 只在用户授权后提交、推送或创建 PR。提交格式为 `<type>(scope): <summary>`，附加 `Co-Authored-By: Codex <codex@openai.com>`。
 - 项目级 skills 若存在，位于 `.claude/skills`，按任务相关性加载。
