@@ -17,6 +17,7 @@ MetaRenderer 是 MetaHookSv 的图形渲染插件，用现代 OpenGL 渲染管�
 | GoldSrc_new    (8684 ~)     | √    |
 | SvEngine       (8832 ~)     | √    |
 | GoldSrc_HL25   (>= 9884)    | √    |
+| GoldSrc_CoF    (5936)       | √    |
 
 ## 快速开始
 

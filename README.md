@@ -19,6 +19,7 @@ model celshade and more.
 | GoldSrc_new    (8684 ~)     | √    |
 | SvEngine       (8832 ~)     | √    |
 | GoldSrc_HL25   (>= 9884)    | √    |
+| GoldSrc_CoF    (5936)       | √    |
 
 ## Quick start
 
