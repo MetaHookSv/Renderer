@@ -33,80 +33,40 @@ and `build/x86/Release`. This project provides plain Debug and Release, no AVX2 
 
 ## Specifying source paths manually
 
-`METAHOOK_SOURCE_PATH` points to the **MetaHook repository root** containing
-`include/metahook.h`, `include/SourceSDK/` and `include/vgui_controls/`.
+MetaHook, FreeImage and GLEW are downloaded automatically at fixed versions. To reuse
+local sources, pass any of these optional parameters:
 
-When unset, `FetchContent_Declare` / `FetchContent_MakeAvailable` fetches the MetaHook
-source, placed by default under the current build directory in `_deps/renderer_metahook-src/`.
+| Parameter | Local source directory |
+| --- | --- |
+| `METAHOOK_SOURCE_PATH` | MetaHook repository root with `include/metahook.h` and the HLSDK, SourceSDK and VGUI sources |
+| `FREEIMAGE_SOURCE_PATH` | FreeImage_clone root with `CMakeLists.txt` and `Source/FreeImage.h` |
+| `GLEW_SOURCE_PATH` | glew-cmake root with `CMakeLists.txt` and `include/GL/glew.h`, providing `libglew_static` |
 
-With a valid explicit path, MetaHook's FetchContent fetch is skipped entirely.
+Build MetaHook for the desired configuration first, then set the required
+`SDL2_INCLUDE_DIRS` to its installed `include` directory containing `SDL2/SDL_video.h`.
+Renderer only uses SDL headers; MetaHook handles its build and installation.
 
-`FREEIMAGE_SOURCE_PATH` points to the **FreeImage source root** containing `CMakeLists.txt`
-and `Source/FreeImage.h`.
-
-`GLEW_SOURCE_PATH` points to the **glew source root** containing `CMakeLists.txt`,
-must support the current build options and provide a `libglew_static` target.
-
-When unset, both are fetched at a pinned commit via FetchContent, placed by default under
-the current build directory in `_deps/renderer_freeimage-src/` and `_deps/renderer_glew-src/`.
-With a valid explicit path, the download is skipped entirely.
+For example, using local sources for a Release build:
 
 ```bat
-scripts\build-Renderer-x86-Debug.bat "-DMETAHOOK_SOURCE_PATH=D:/MetaHook" "-DFREEIMAGE_SOURCE_PATH=D:/FreeImage_clone" "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/x86/Debug/include"
-scripts\build-Renderer-x86-Release.bat "-DMETAHOOK_SOURCE_PATH=D:/MetaHook" "-DFREEIMAGE_SOURCE_PATH=D:/FreeImage_clone" "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/x86/Release/include"
+scripts\build-Renderer-x86-Release.bat ^
+  "-DMETAHOOK_SOURCE_PATH=D:/MetaHook" ^
+  "-DFREEIMAGE_SOURCE_PATH=D:/FreeImage_clone" ^
+  "-DGLEW_SOURCE_PATH=D:/glew-cmake" ^
+  "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/x86/Release/include"
 ```
 
-The same names can be set as environment variables on first configure. Explicit `-D`
-arguments take precedence over an existing CMake cache; environment variables only seed
-the cache. `-DMETAHOOK_SOURCE_PATH=`, `-DFREEIMAGE_SOURCE_PATH=` and `-DGLEW_SOURCE_PATH=`
-all switch back to the FetchContent fetch; for offline builds pass a local source path
-explicitly or reuse an already-populated build directory. External sources are inputs only —
-build output stays in Renderer's build directory.
+Optional header paths:
 
-SDL2 and SDL3 are built and installed by the MetaHook project. Run the matching MetaHook
-build script first, then pass the `include` directory of its install tree (which must
-contain `SDL2/SDL_video.h`) via `SDL2_INCLUDE_DIRS`.
+- `CAPSTONE_INCLUDE_DIRS`: a directory containing `capstone.h` or `capstone/capstone.h`.
+  Headers must match the host MetaHook's Capstone version. By default, Renderer uses
+  MetaHook's copy or downloads a fixed version if unavailable. No Capstone library path is needed.
+- `SDL3_INCLUDE_DIRS`: a directory containing `SDL3/SDL.h`; normally unnecessary.
 
-This parameter is required; Renderer does not download, build, link or install SDL, and
-no longer keeps an SDL submodule.
-
-`SDL3_INCLUDE_DIRS` is optional and, when set, should point to an include directory
-containing `SDL3/SDL.h`, for example
-`-DSDL3_INCLUDE_DIRS=D:/MetaHook/install/x86/Release/include`.
-
-Renderer does not currently use SDL3 headers directly.
-
-Both parameters accept semicolon-separated directory lists and same-named environment
-variables on first configure; invalid paths fail at configure time.
-
-Capstone only needs its headers and can reuse MetaHook's existing source or install tree:
-
-```bat
-scripts\build-Renderer-x86-Release.bat "-DCAPSTONE_INCLUDE_DIRS=D:/MetaHook/thirdparty/capstone_fork/include" "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/x86/Release/include"
-```
-
-A directory containing `capstone.h` directly, or a parent include directory containing
-`capstone/capstone.h`, is accepted; separate multiple directories with semicolons and
-quote the whole `-D` argument. The same-named environment variable is honored on first
-configure.
-
-When no Capstone parameter is given, no external directory is required: the host MetaHook
-tree's `thirdparty/capstone_fork/include/capstone` is preferred, matching the Capstone the
-host loads at runtime. When the host was fetched by FetchContent its submodules are not
-initialized and that directory is empty, so the pinned commit is fetched instead.
-`-DCAPSTONE_INCLUDE_DIRS=` restores this default order. CMake normalizes the Capstone and SDL input paths
-for compilation and checks the effective directories and required headers; SDL2 is
-mandatory and SDL3 is checked only when provided. Headers should match the Capstone
-version used by the host MetaHook, since callbacks pass its structures. Renderer never
-builds or links the Capstone library, so `CAPSTONE_LIBRARY_DIRS` need not be passed; if a
-shared invocation passes it, configure explicitly reports that it is ignored.
-
-Calling CMake directly:
-
-```bat
-cmake -S . -B build/x86/Release -G "Visual Studio 17 2022" -A Win32 -DCMAKE_INSTALL_PREFIX=install/x86/Release -DMETAHOOK_SOURCE_PATH=D:/MetaHook -DFREEIMAGE_SOURCE_PATH=D:/FreeImage_clone -DSDL2_INCLUDE_DIRS=D:/MetaHook/install/x86/Release/include
-cmake --build build/x86/Release --config Release --target install --parallel
-```
+All paths above also accept same-named environment variables on first configure.
+Use `-DNAME=value` to change a cached value; `-DNAME=` restores automatic fetching for
+the source paths or default lookup for Capstone. Header paths accept semicolon-separated
+directory lists; quote the entire `-D` argument.
 
 ## gamedata
 
@@ -127,35 +87,17 @@ directory is merged by the host launcher's catalog loader.
 
 ## Dependencies and build conventions
 
-| Dependency | Fetched by | Pinned commit | Purpose |
-| --- | --- | --- | --- |
-| MetaHookSv/MetaHook | FetchContent | `4d23b6fecd79dc949aabc2e145480cd1328d4a35` | Public API, HLSDK/SourceSDK and VGUI sources |
-| hzqst/FreeImage_clone | FetchContent | `c68700b9fe699dbbf99f88a611065f101cba1a41` | FreeImage DLL and its built-in image format library |
-| hzqst/glew-cmake | FetchContent | `56ed32d4a929f993f0e6b7f905af9be4d38fda04` | GLEW static library |
-| hzqst/capstone | host first / FetchContent | `e81e390f621ee59d14f70e16fe065dd00f78ee71` | Disassembly data type headers |
-| SergiusTheBest/ScopeExit | submodule | `bd345da594a4675d04de663d93d00cb81b6678b2` | ScopeExit headers |
-| hzqst/tinyobjloader | submodule | `cab4ad7254cbf7eaaafdb73d272f99e92f166df8` | OBJ reading source |
-
-MetaHook, FreeImage and GLEW are fetched by FetchContent, and Capstone prefers the host's
-own copy with a FetchContent fallback; none of them is a submodule of this repository, and
-their URLs and SHAs are recorded in `cmake/Dependencies.cmake`. The remaining submodules
-(ScopeExit, tinyobjloader) keep the source repository's URLs and SHAs; URLs are in
-`.gitmodules`.
-No `git submodule update --recursive` is needed; Renderer initializes only the
-dependencies it uses directly.
-Capstone and SDL are not linked as libraries into Renderer; the host interface and
-existing runtime loading logic are unchanged.
-
-VC-LTL comes from the official `Chuyu-Team/VC-LTL5` v5.3.1 `VC-LTL-Binary.7z`, SHA-256:
-`7a18799ed3aa84a225610a5447a56bc534c5c98ccb8dec05caba0e3f633431ad`.
-
-The cache lives in `thirdparty/cache/`; `RENDERER_DEPENDENCY_CACHE_DIR` can set the cache
-directory for the first configure. The bundled helper is applied uniformly to Renderer,
-GLEW, FreeImage and their static dependencies.
-
-Renderer uses C++20, Debug `/MTd` and Release `/MT`, keeping the original VGUI macros,
-Release LTCG, `/OPT:REF`, `/OPT:ICF` and LargeAddressAware. Both configurations emit a
-Renderer PDB. The explicit compilation list is in `cmake/Sources.cmake`.
+- CMake prepares the dependencies automatically; no manual recursive submodule update is needed.
+  Dependency versions are recorded in [cmake/Dependencies.cmake](../../cmake/Dependencies.cmake)
+  and the repository's submodule revisions.
+- VC-LTL 5.3.1 is downloaded and verified automatically. Its cache defaults to
+  `thirdparty/cache/`; set `-DRENDERER_DEPENDENCY_CACHE_DIR=<path>` on first configure to change it.
+- For offline builds, prepare all dependencies and the gamedata cache with an online build first.
+  Local source paths alone do not cover every download.
+- External source directories are left unchanged. Build output stays under `build/`,
+  and the default install location is `install/x86/<configuration>/`.
+  Both Debug and Release include a Renderer PDB for debugging; deployment to the game is manual
+  (see [Installation](installation.md)).
 
 ## Regression tests
 

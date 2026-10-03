@@ -30,69 +30,37 @@ scripts\build-Renderer-x86-Release.bat "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/
 
 ## 手动指定源码路径
 
-`METAHOOK_SOURCE_PATH` 指向包含 `include/metahook.h`、`include/SourceSDK/` 和
-`include/vgui_controls/` 的 **MetaHook 仓库根目录**。
+MetaHook、FreeImage 和 GLEW 默认自动下载固定版本。需要复用本地源码时，可按需传入以下可选参数：
 
-未指定时，使用 `FetchContent_Declare` / `FetchContent_MakeAvailable` 获取MetaHook源码，默认放在当前 build 目录的
-`_deps/renderer_metahook-src/`。
+| 参数 | 本地源码目录 |
+| --- | --- |
+| `METAHOOK_SOURCE_PATH` | MetaHook 仓库根目录，包含 `include/metahook.h` 及 HLSDK、SourceSDK、VGUI 源码 |
+| `FREEIMAGE_SOURCE_PATH` | FreeImage_clone 根目录，包含 `CMakeLists.txt` 和 `Source/FreeImage.h` |
+| `GLEW_SOURCE_PATH` | glew-cmake 根目录，包含 `CMakeLists.txt` 和 `include/GL/glew.h`，提供 `libglew_static` |
 
-显式指定有效路径后，完全跳过 MetaHook 的 FetchContent 获取。
+先构建对应配置的 MetaHook，再将必填的 `SDL2_INCLUDE_DIRS` 设为其安装目录下的 `include`
+目录，其中应包含 `SDL2/SDL_video.h`。Renderer 仅使用 SDL 头文件，SDL 的构建和安装由 MetaHook 负责。
 
-`FREEIMAGE_SOURCE_PATH` 指向包含 `CMakeLists.txt` 和 `Source/FreeImage.h` 的**FreeImage 源码根目录**。
-
-`GLEW_SOURCE_PATH` 指向包含 `CMakeLists.txt` 的**glew 源码根目录**，
-
-需要支持当前构建选项并提供 `libglew_static` target。
-
-两者未指定时同样通过 FetchContent 获取固定提交，源码默认放在当前 build 目录的
-`_deps/renderer_freeimage-src/` 和 `_deps/renderer_glew-src/`；显式指定有效路径后完全跳过下载。
+例如，使用本地源码构建 Release：
 
 ```bat
-scripts\build-Renderer-x86-Debug.bat "-DMETAHOOK_SOURCE_PATH=D:/MetaHook" "-DFREEIMAGE_SOURCE_PATH=D:/FreeImage_clone" "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/x86/Debug/include"
-scripts\build-Renderer-x86-Release.bat "-DMETAHOOK_SOURCE_PATH=D:/MetaHook" "-DFREEIMAGE_SOURCE_PATH=D:/FreeImage_clone" "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/x86/Release/include"
+scripts\build-Renderer-x86-Release.bat ^
+  "-DMETAHOOK_SOURCE_PATH=D:/MetaHook" ^
+  "-DFREEIMAGE_SOURCE_PATH=D:/FreeImage_clone" ^
+  "-DGLEW_SOURCE_PATH=D:/glew-cmake" ^
+  "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/x86/Release/include"
 ```
 
-首次配置也可以设置同名环境变量。`-D` 显式参数优先于已有 CMake cache；环境变量只用于 cache
-初始值。`-DMETAHOOK_SOURCE_PATH=`、`-DFREEIMAGE_SOURCE_PATH=`、`-DGLEW_SOURCE_PATH=` 都切回 FetchContent 获取；
-离线场景可显式指定本地源码路径，或复用已预热的 build 目录。外部源码只作为输入，构建产物仍留在 Renderer 的 build 目录；
+可选头文件路径：
 
-SDL2、SDL3 的构建和安装由 MetaHook 工程负责。先运行对应配置的 MetaHook build 脚本，
-再通过 `SDL2_INCLUDE_DIRS` 传入其安装树的 `include` 目录（必须包含 `SDL2/SDL_video.h`）。
+- `CAPSTONE_INCLUDE_DIRS`：包含 `capstone.h` 或 `capstone/capstone.h` 的目录。
+  头文件版本必须与宿主 MetaHook 使用的 Capstone 一致。默认使用 MetaHook 自带的副本，
+  缺失时自动下载固定版本，无需指定 Capstone 库路径。
+- `SDL3_INCLUDE_DIRS`：包含 `SDL3/SDL.h` 的目录，通常无需设置。
 
-该参数必需；Renderer 不下载、构建、链接或安装 SDL，也不再保存 SDL submodule。
-
-`SDL3_INCLUDE_DIRS` 可选，若设置应指向包含 `SDL3/SDL.h` 的 include 目录，例如
-`-DSDL3_INCLUDE_DIRS=D:/MetaHook/install/x86/Release/include`。
-
-当前 Renderer 没有直接使用 SDL3 头文件。
-
-两个参数都支持分号分隔的目录列表和首次配置的同名环境变量；无效路径在配置阶段报错。
-
-Capstone 只需要头文件，可复用 MetaHook 已有的源码或安装目录：
-
-```bat
-scripts\build-Renderer-x86-Release.bat "-DCAPSTONE_INCLUDE_DIRS=D:/MetaHook/thirdparty/capstone_fork/include" "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/x86/Release/include"
-```
-
-支持直接包含 `capstone.h` 的目录，或含 `capstone/capstone.h` 的上级 include 目录；
-多个目录用分号分隔，并将整个 `-D` 参数放在引号中。首次配置也支持同名环境变量。
-
-未传 Capstone 参数时无需提供外部目录：优先使用宿主 MetaHook 树中的
-`thirdparty/capstone_fork/include/capstone`，与宿主运行时加载的 Capstone 对齐；
-宿主由 FetchContent 获取、其上未初始化时该目录为空，此时回退到 FetchContent
-获取固定提交。传 `-DCAPSTONE_INCLUDE_DIRS=` 恢复该默认顺序。CMake 将 Capstone、SDL 输入路径
-
-规范化后用于编译，并检查有效目录及必要头文件；SDL2 必填，SDL3 仅在提供时检查。
-头文件应与宿主 MetaHook 使用的 Capstone 版本一致，因为回调传递其结构体。
-Renderer 从不构建或链接 Capstone 库，`CAPSTONE_LIBRARY_DIRS` 无需传入；
-若共用调用命令传入了它，配置时会明确提示忽略该参数。
-
-直接调用 CMake：
-
-```bat
-cmake -S . -B build/x86/Release -G "Visual Studio 17 2022" -A Win32 -DCMAKE_INSTALL_PREFIX=install/x86/Release -DMETAHOOK_SOURCE_PATH=D:/MetaHook -DFREEIMAGE_SOURCE_PATH=D:/FreeImage_clone -DSDL2_INCLUDE_DIRS=D:/MetaHook/install/x86/Release/include
-cmake --build build/x86/Release --config Release --target install --parallel
-```
+以上路径也可在首次配置时通过同名环境变量设置。修改已缓存的值请使用 `-D参数名=值`；
+将源码路径或 Capstone 参数设为空值（`-D参数名=`）可恢复自动获取或默认查找。
+头文件路径支持分号分隔的多个目录，请将整个 `-D` 参数放在引号中。
 
 ## gamedata
 
@@ -106,29 +74,13 @@ Renderer 通过 `scripts/manifests/renderer.json`（与 MetaHook 同一 schema�
 
 ## 依赖与构建约定
 
-| 依赖 | 获取方式 | 固定提交 | 用途 |
-| --- | --- | --- | --- |
-| MetaHookSv/MetaHook | FetchContent | `4d23b6fecd79dc949aabc2e145480cd1328d4a35` | 公共 API、HLSDK/SourceSDK 与 VGUI 源码 |
-| hzqst/FreeImage_clone | FetchContent | `c68700b9fe699dbbf99f88a611065f101cba1a41` | FreeImage DLL 及内置图像格式库 |
-| hzqst/glew-cmake | FetchContent | `56ed32d4a929f993f0e6b7f905af9be4d38fda04` | GLEW 静态库 |
-| hzqst/capstone | 宿主优先 / FetchContent | `e81e390f621ee59d14f70e16fe065dd00f78ee71` | 反汇编数据类型头文件 |
-| SergiusTheBest/ScopeExit | submodule | `bd345da594a4675d04de663d93d00cb81b6678b2` | ScopeExit 头文件 |
-| hzqst/tinyobjloader | submodule | `cab4ad7254cbf7eaaafdb73d272f99e92f166df8` | OBJ 读取源码 |
-
-MetaHook、FreeImage、GLEW 通过 FetchContent 获取，Capstone 优先取宿主副本、缺失时回退 FetchContent，
-均不作为本仓库 submodule，URL 与 SHA 记录在 `cmake/Dependencies.cmake`；
-剩余 submodule（ScopeExit、tinyobjloader）沿用源仓库的 URL 和 SHA，URL 见 `.gitmodules`。
-无需 `git submodule update --recursive`。
-Capstone、SDL 不作为库链接到 Renderer，宿主接口和已有运行时加载逻辑保持原样。
-
-VC-LTL 来自官方 `Chuyu-Team/VC-LTL5` v5.3.1 的 `VC-LTL-Binary.7z`，SHA-256：`7a18799ed3aa84a225610a5447a56bc534c5c98ccb8dec05caba0e3f633431ad`。
-
-缓存位于 `thirdparty/cache/`；可通过 `RENDERER_DEPENDENCY_CACHE_DIR` 设置首次配置的缓存目录。
-使用包内 helper，统一应用于 Renderer、GLEW、FreeImage 及其静态依赖。
-
-Renderer 使用 C++20、Debug `/MTd`、Release `/MT`，保留原 VGUI 宏、Release LTCG、
-`/OPT:REF`、`/OPT:ICF` 和 LargeAddressAware。两种配置都生成 Renderer PDB。
-显式编译清单位于 `cmake/Sources.cmake`
+- CMake 自动准备依赖，无需手动递归更新 submodule。依赖版本见
+  [cmake/Dependencies.cmake](../../cmake/Dependencies.cmake) 及仓库记录的 submodule 提交。
+- VC-LTL 5.3.1 自动下载并校验，默认缓存于 `thirdparty/cache/`；
+  首次配置时可用 `-DRENDERER_DEPENDENCY_CACHE_DIR=<路径>` 更改缓存目录。
+- 离线构建前，先联网构建一次以准备全部依赖和 gamedata 缓存；仅指定本地源码路径不足以覆盖所有下载。
+- 外部源码目录保持不变，构建产物位于 `build/`，默认安装目录为 `install/x86/<配置>/`。
+  Debug 和 Release 均包含用于调试的 Renderer PDB；部署到游戏需手动操作，见[安装说明](installation.md)。
 
 ## 回归验证
 
