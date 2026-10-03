@@ -38,6 +38,7 @@ permalink: renderer/build-and-verification
 | --- | --- | --- |
 | `METAHOOK_SOURCE_PATH` | 可选 | FetchContent 固定提交 `4d23b6fe…`，`SOURCE_SUBDIR include` 只取 SDK 头与源码，不构建宿主、不初始化其子模块 |
 | `VGUI2EXTENSION_SOURCE_PATH` | 可选 | FetchContent 固定提交 `cd7ef6e3…`，只取公共接口头 |
+| `UTILTHREADTASK_SOURCE_PATH` | 可选 | FetchContent 固定提交 `8d36bef6…`，只取公共接口头 `include/Interface/IUtilThreadTask.h` |
 | `FREEIMAGE_SOURCE_PATH` | 可选 | FetchContent 固定提交 `c68700b9…` |
 | `GLEW_SOURCE_PATH` | 可选 | FetchContent 固定提交 `56ed32d4…` |
 | `CAPSTONE_INCLUDE_DIRS` | 可选 | 优先宿主 `thirdparty/capstone_fork/include/capstone`；该目录不存在时 FetchContent 固定提交 `e81e390f…` |
@@ -79,8 +80,9 @@ permalink: renderer/build-and-verification
 ## CI
 
 - 共用 composite action `.github/actions/build-windows-x86`：在 workspace 同级克隆宿主 MetaHook 与其
-  VGUI2Extension（均为 `main`），初始化宿主的 `capstone_fork` / `sdl2-compat-fork` / `SDL3_fork` 三个
-  子模块，导出 `METAHOOK_SOURCE_PATH`、`VGUI2EXTENSION_SOURCE_PATH`、`SDL2_INCLUDE_DIRS`、
+  VGUI2Extension、UtilThreadTask（均为 `main`），初始化宿主的 `capstone_fork` / `sdl2-compat-fork` /
+  `SDL3_fork` 三个子模块，导出 `METAHOOK_SOURCE_PATH`、`VGUI2EXTENSION_SOURCE_PATH`、
+  `UTILTHREADTASK_SOURCE_PATH`、`SDL2_INCLUDE_DIRS`、
   `SDL3_INCLUDE_DIRS`；以 Release 脚本加 `-DRENDERER_BUILD_TESTS=ON` 构建安装；运行 CTest；校验安装后的
   gamedata；把安装树的 `svencoop/` 打包为 `Renderer-windows-x86.7z` 并做 `7z t` 完整性检查。
 - `livebuild.yml`：`main` 的 push / PR / 手动触发 → 上传构建产物。
@@ -99,5 +101,8 @@ permalink: renderer/build-and-verification
 | 生成工程 | 不含 SDL、宿主或其他第三方构建目标 |
 | CI | 本机执行 composite 全部步骤退出 0；`main` 上的 hosted LiveBuild 成功，产物 7z 解压后与本地安装树逐文件一致 |
 
-**未验证**：真实游戏运行、OpenGL context 创建与视觉兼容性；SDL 只验证了无窗口加载。源码或公共 API 更新后
+**未验证**：真实游戏运行、OpenGL context 创建与视觉兼容性；SDL 只验证了无窗口加载。源码或公共接口更新后
 必须重新配置并重跑相关构建与测试，不要把历史结果用于证明新改动。
+
+增补 `UTILTHREADTASK_SOURCE_PATH`（2026-10-03，Release 单配置）：显式路径配置·编译·安装退出 0，CTest 4/4；
+无效显式路径在配置期 FATAL；空值 FetchContent 拉取固定提交 `8d36bef6…` 成功。Debug 未本次复测。

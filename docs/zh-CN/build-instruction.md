@@ -13,7 +13,7 @@ Renderer 自身的公共接口位于 `include/Interface/IMetaRenderer.h`
 - Windows、Visual Studio 2022 的 C++ 桌面开发工具和 Windows SDK
 - CMake 3.21+
 - Git
-- 首次配置需要网络：CMake 通过 FetchContent 获取 MetaHook、VGUI2Extension、FreeImage 和 GLEW（宿主未自带 Capstone 时也包括 Capstone），初始化其他所需 submodule，并下载、校验和解压 VC-LTL 5.3.1
+- 首次配置需要网络：CMake 通过 FetchContent 获取 MetaHook、VGUI2Extension、UtilThreadTask、FreeImage 和 GLEW（宿主未自带 Capstone 时也包括 Capstone），初始化其他所需 submodule，并下载、校验和解压 VC-LTL 5.3.1
 - 与目标配置对应的 MetaHook 构建，用于提供 `SDL2_INCLUDE_DIRS` 目录（见下文）
 
 ## 构建
@@ -30,17 +30,19 @@ scripts\build-Renderer-x86-Release.bat "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/
 
 ## 手动指定源码路径
 
-MetaHook、VGUI2Extension、FreeImage 和 GLEW 默认自动下载固定版本。需要复用本地源码时，可按需传入以下可选参数：
+MetaHook、VGUI2Extension、UtilThreadTask、FreeImage 和 GLEW 默认自动下载固定版本。需要复用本地源码时，可按需传入以下可选参数：
 
 | 参数 | 本地源码目录 |
 | --- | --- |
 | `METAHOOK_SOURCE_PATH` | MetaHook 仓库根目录，包含 `include/metahook.h` 及 HLSDK、SourceSDK、VGUI 源码 |
 | `VGUI2EXTENSION_SOURCE_PATH` | VGUI2Extension 仓库根目录，包含 `include/Interface/IVGUI2Extension.h`、`IDpiManager.h` 及 `include/Interface/VGUI` 下的 Input、Scheme、Surface 扩展接口 |
+| `UTILTHREADTASK_SOURCE_PATH` | UtilThreadTask 仓库根目录，包含 `include/Interface/IUtilThreadTask.h` |
 | `FREEIMAGE_SOURCE_PATH` | FreeImage_clone 根目录，包含 `CMakeLists.txt` 和 `Source/FreeImage.h` |
 | `GLEW_SOURCE_PATH` | glew-cmake 根目录，包含 `CMakeLists.txt` 和 `include/GL/glew.h`，提供 `libglew_static` |
 
 Renderer 编译时需要 VGUI2Extension 的公共头文件，其接口目录优先于 MetaHook 的同名目录。
-本工程仅消费这些头文件；`VGUI2Extension.dll` 仍是可选的运行时插件。
+本工程仅消费这些头文件；`VGUI2Extension.dll` 仍是可选的运行时插件。UtilThreadTask 同理：
+Renderer 只需要 `IUtilThreadTask.h`，另行安装的 `UtilThreadTask.dll` 在运行时加载。
 
 先构建对应配置的 MetaHook，再将必填的 `SDL2_INCLUDE_DIRS` 设为其安装目录下的 `include`
 目录，其中应包含 `SDL2/SDL_video.h`。Renderer 仅使用 SDL 头文件，SDL 的构建和安装由 MetaHook 负责。
@@ -51,6 +53,7 @@ Renderer 编译时需要 VGUI2Extension 的公共头文件，其接口目录优�
 scripts\build-Renderer-x86-Release.bat ^
   "-DMETAHOOK_SOURCE_PATH=D:/MetaHook" ^
   "-DVGUI2EXTENSION_SOURCE_PATH=D:/VGUI2Extension" ^
+  "-DUTILTHREADTASK_SOURCE_PATH=D:/UtilThreadTask" ^
   "-DFREEIMAGE_SOURCE_PATH=D:/FreeImage_clone" ^
   "-DGLEW_SOURCE_PATH=D:/glew-cmake" ^
   "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/x86/Release/include"
@@ -89,5 +92,6 @@ ctest --test-dir build/x86/Release -C Release --output-on-failure
 ## CI
 
 LiveBuild 和 Release 共用 `.github/actions/build-windows-x86/action.yml`，在 Renderer
-同级目录克隆 MetaHook 和 VGUI2Extension 的 `main` 分支，记录各自的提交 SHA，并显式传入
-`METAHOOK_SOURCE_PATH` 和 `VGUI2EXTENSION_SOURCE_PATH`。本地未指定源码路径时仍使用固定提交。
+同级目录克隆 MetaHook、VGUI2Extension 和 UtilThreadTask 的 `main` 分支，记录各自的提交 SHA，
+并显式传入 `METAHOOK_SOURCE_PATH`、`VGUI2EXTENSION_SOURCE_PATH` 和 `UTILTHREADTASK_SOURCE_PATH`。
+本地未指定源码路径时仍使用固定提交。

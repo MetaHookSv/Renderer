@@ -60,6 +60,7 @@ target_include_directories(renderer_settings INTERFACE
     include/Interface
     "${VGUI2EXTENSION_SOURCE_PATH}/include/Interface"
     "${VGUI2EXTENSION_SOURCE_PATH}/include/Interface/VGUI"
+    "${UTILTHREADTASK_SOURCE_PATH}/include/Interface"
     "${METAHOOK_SOURCE_PATH}/include"
     "${METAHOOK_SOURCE_PATH}/include/Interface"
     "${METAHOOK_SOURCE_PATH}/include/Interface/VGUI"

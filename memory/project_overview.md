@@ -36,6 +36,9 @@ SDL2/SDL3 由 MetaHook 构建、安装；Renderer 的 `SDL2_INCLUDE_DIRS` 必需
 VGUI2Extension 的公共接口头文件由独立仓库提供：`VGUI2EXTENSION_SOURCE_PATH` 指向仓库根目录，
 空值通过 FetchContent 获取固定提交。仅消费 `include/Interface` 和 `include/Interface/VGUI`，
 优先于 MetaHook 的历史副本，不构建 VGUI2Extension；运行时插件仍可选。
+UtilThreadTask 同样由独立仓库提供公共接口头：`UTILTHREADTASK_SOURCE_PATH` 指向仓库根目录，
+空值 FetchContent 固定提交，仅消费 `include/Interface/IUtilThreadTask.h`（不再从 MetaHook 取），
+不构建其 DLL；`UtilThreadTask.dll` 由宿主安装并在运行时加载。
 gamedata 的查询/解析 API 由宿主 MetaHook 提供；Renderer 自带 manifest 与同步脚本，构建时产出裁剪后的嵌套 catalog `metahook/gamedata/renderer/`，宿主加载时与自身 catalog 取并集。详见 [构建及验证](build_and_verification.md)。
 
 私有符号解析必须遵循宿主 gamedata 契约，不能通过兼容性判断恢复已删除的扫描 fallback。

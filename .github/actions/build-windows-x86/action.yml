@@ -9,7 +9,7 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Clone MetaHook and VGUI2Extension SDK headers
+    - name: Clone MetaHook, VGUI2Extension and UtilThreadTask SDK headers
       shell: pwsh
       run: |
         $metahookPath = Join-Path (Split-Path $env:GITHUB_WORKSPACE -Parent) 'MetaHook'
@@ -25,14 +25,20 @@ runs:
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         & git -C $vgui2extensionPath rev-parse HEAD
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        $utilthreadtaskPath = Join-Path (Split-Path $env:GITHUB_WORKSPACE -Parent) 'UtilThreadTask'
+        & git clone --depth 1 --branch main https://github.com/MetaHookSv/UtilThreadTask $utilthreadtaskPath
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        & git -C $utilthreadtaskPath rev-parse HEAD
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         "METAHOOK_SOURCE_PATH=$metahookPath" >> $env:GITHUB_ENV
         "VGUI2EXTENSION_SOURCE_PATH=$vgui2extensionPath" >> $env:GITHUB_ENV
+        "UTILTHREADTASK_SOURCE_PATH=$utilthreadtaskPath" >> $env:GITHUB_ENV
         "SDL2_INCLUDE_DIRS=$(Join-Path $metahookPath 'thirdparty/sdl2-compat-fork/include')" >> $env:GITHUB_ENV
         "SDL3_INCLUDE_DIRS=$(Join-Path $metahookPath 'thirdparty/SDL3_fork/include')" >> $env:GITHUB_ENV
 
     - name: Build and install
       shell: cmd
-      run: call scripts\build-Renderer-x86-Release.bat -DRENDERER_BUILD_TESTS=ON "-DMETAHOOK_SOURCE_PATH=%METAHOOK_SOURCE_PATH%" "-DVGUI2EXTENSION_SOURCE_PATH=%VGUI2EXTENSION_SOURCE_PATH%" "-DSDL2_INCLUDE_DIRS=%SDL2_INCLUDE_DIRS%" "-DSDL3_INCLUDE_DIRS=%SDL3_INCLUDE_DIRS%"
+      run: call scripts\build-Renderer-x86-Release.bat -DRENDERER_BUILD_TESTS=ON "-DMETAHOOK_SOURCE_PATH=%METAHOOK_SOURCE_PATH%" "-DVGUI2EXTENSION_SOURCE_PATH=%VGUI2EXTENSION_SOURCE_PATH%" "-DUTILTHREADTASK_SOURCE_PATH=%UTILTHREADTASK_SOURCE_PATH%" "-DSDL2_INCLUDE_DIRS=%SDL2_INCLUDE_DIRS%" "-DSDL3_INCLUDE_DIRS=%SDL3_INCLUDE_DIRS%"
 
     - name: Run regression tests
       shell: cmd
