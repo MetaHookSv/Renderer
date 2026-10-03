@@ -79,7 +79,7 @@ target_include_directories(renderer_settings INTERFACE
     ${RENDERER_SCOPEEXIT_INCLUDE_DIRS}
     ${RENDERER_SDL3_INCLUDE_DIRS}
     ${RENDERER_SDL2_INCLUDE_DIRS}
-    thirdparty/tinyobjloader
+    ${RENDERER_TINYOBJLOADER_INCLUDE_DIRS}
     # Tests consume dependency headers without linking the libraries.
     "$<TARGET_PROPERTY:libglew_static,INTERFACE_INCLUDE_DIRECTORIES>"
     "$<TARGET_PROPERTY:FreeImage,INTERFACE_INCLUDE_DIRECTORIES>"

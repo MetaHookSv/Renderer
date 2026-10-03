@@ -104,7 +104,7 @@ set(RENDERER_SOURCES
     "${METAHOOK_SOURCE_PATH}/include/vgui_controls/vgui_controls.cpp"
     "${METAHOOK_SOURCE_PATH}/include/vgui_controls/WizardPanel.cpp"
     "${METAHOOK_SOURCE_PATH}/include/vgui_controls/WizardSubPanel.cpp"
-    "${PROJECT_SOURCE_DIR}/thirdparty/tinyobjloader/tiny_obj_loader.cc"
+    "${TINYOBJLOADER_SOURCE_PATH}/tiny_obj_loader.cc"
     "${PROJECT_SOURCE_DIR}/src/BaseUI.cpp"
     "${PROJECT_SOURCE_DIR}/src/CounterStrike.cpp"
     "${PROJECT_SOURCE_DIR}/src/EngineSurfaceHook.cpp"

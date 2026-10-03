@@ -5,21 +5,11 @@ set(VGUI2EXTENSION_SOURCE_PATH "$ENV{VGUI2EXTENSION_SOURCE_PATH}" CACHE PATH "VG
 set(UTILTHREADTASK_SOURCE_PATH "$ENV{UTILTHREADTASK_SOURCE_PATH}" CACHE PATH "UtilThreadTask source tree providing its public interface header; empty fetches the pinned commit")
 set(FREEIMAGE_SOURCE_PATH "$ENV{FREEIMAGE_SOURCE_PATH}" CACHE PATH "FreeImage source tree with CMakeLists.txt and Source/FreeImage.h; empty fetches the pinned commit")
 set(GLEW_SOURCE_PATH "$ENV{GLEW_SOURCE_PATH}" CACHE PATH "glew-cmake source tree providing libglew_static; empty fetches the pinned commit")
-set(SCOPEEXIT_SOURCE_PATH "$ENV{SCOPEEXIT_SOURCE_PATH}" CACHE PATH "ScopeExit source tree; empty uses the bundled submodule")
+set(SCOPEEXIT_SOURCE_PATH "$ENV{SCOPEEXIT_SOURCE_PATH}" CACHE PATH "ScopeExit source tree; empty fetches the pinned commit")
+set(TINYOBJLOADER_SOURCE_PATH "$ENV{TINYOBJLOADER_SOURCE_PATH}" CACHE PATH "tinyobjloader source tree; empty fetches the pinned commit")
 set(CAPSTONE_INCLUDE_DIRS "$ENV{CAPSTONE_INCLUDE_DIRS}" CACHE STRING "External Capstone include directories; empty prefers MetaHook's own capstone fork and otherwise fetches the pinned commit")
 set(SDL2_INCLUDE_DIRS "$ENV{SDL2_INCLUDE_DIRS}" CACHE STRING "External include directories containing SDL2/SDL_video.h (required)")
 set(SDL3_INCLUDE_DIRS "$ENV{SDL3_INCLUDE_DIRS}" CACHE STRING "External include directories containing SDL3/SDL.h (optional)")
-
-function(renderer_init_submodule name)
-    if(NOT EXISTS "${PROJECT_SOURCE_DIR}/thirdparty/${name}/.git")
-        find_package(Git REQUIRED)
-        execute_process(COMMAND "${GIT_EXECUTABLE}" -C "${PROJECT_SOURCE_DIR}"
-            submodule update --init -- "thirdparty/${name}" RESULT_VARIABLE result)
-        if(NOT result EQUAL 0)
-            message(FATAL_ERROR "Cannot initialize thirdparty/${name}: ${result}")
-        endif()
-    endif()
-endfunction()
 
 # Download a pinned dependency into the build tree. Only the source is
 # populated: the caller keeps its add_subdirectory() call so subprojects are
@@ -200,18 +190,30 @@ function(renderer_prepare_dependencies)
     endif()
     set(GLEW_SOURCE_PATH "${glew_source}" PARENT_SCOPE)
     message(STATUS "GLEW_SOURCE_PATH: ${glew_source}")
-    # ScopeExit may come from a shared external tree (SCOPEEXIT_SOURCE_PATH).
+    # ScopeExit: shared external tree, otherwise fetch the pinned commit.
     if(SCOPEEXIT_SOURCE_PATH)
         get_filename_component(scopeexit_source "${SCOPEEXIT_SOURCE_PATH}" ABSOLUTE BASE_DIR "${PROJECT_SOURCE_DIR}")
-        renderer_validate_source(SCOPEEXIT_SOURCE_PATH "${scopeexit_source}" include/ScopeExit/ScopeExit.h)
     else()
-        set(scopeexit_source "${PROJECT_SOURCE_DIR}/thirdparty/ScopeExit")
+        renderer_fetch_source(renderer_scopeexit
+            "https://github.com/SergiusTheBest/ScopeExit"
+            "bd345da594a4675d04de663d93d00cb81b6678b2" scopeexit_source)
     endif()
+    renderer_validate_source(SCOPEEXIT_SOURCE_PATH "${scopeexit_source}" include/ScopeExit/ScopeExit.h)
     set(RENDERER_SCOPEEXIT_INCLUDE_DIRS "${scopeexit_source}/include" PARENT_SCOPE)
     set(SCOPEEXIT_SOURCE_PATH "${scopeexit_source}" PARENT_SCOPE)
-    foreach(module tinyobjloader)
-        renderer_init_submodule(${module})
-    endforeach()
+    message(STATUS "SCOPEEXIT_SOURCE_PATH: ${scopeexit_source}")
+    # tinyobjloader: shared external tree, otherwise fetch the pinned commit.
+    if(TINYOBJLOADER_SOURCE_PATH)
+        get_filename_component(tinyobjloader_source "${TINYOBJLOADER_SOURCE_PATH}" ABSOLUTE BASE_DIR "${PROJECT_SOURCE_DIR}")
+    else()
+        renderer_fetch_source(renderer_tinyobjloader
+            "https://github.com/hzqst/tinyobjloader"
+            "cab4ad7254cbf7eaaafdb73d272f99e92f166df8" tinyobjloader_source)
+    endif()
+    renderer_validate_source(TINYOBJLOADER_SOURCE_PATH "${tinyobjloader_source}" tiny_obj_loader.cc tiny_obj_loader.h)
+    set(RENDERER_TINYOBJLOADER_INCLUDE_DIRS "${tinyobjloader_source}" PARENT_SCOPE)
+    set(TINYOBJLOADER_SOURCE_PATH "${tinyobjloader_source}" PARENT_SCOPE)
+    message(STATUS "TINYOBJLOADER_SOURCE_PATH: ${tinyobjloader_source}")
     include("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/VCLTL.cmake")
     renderer_prepare_vcltl()
 endfunction()
