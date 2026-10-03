@@ -1,24 +1,56 @@
 # AGENTS.md
 
-## 项目上下文
+This file provides guidance and important rules working with code in this repository.
 
-- 本工程是从 MetaHookSv 迁出的 Renderer 插件，优先读 `memory/project_overview.md`，构建细节读 `memory/build_and_verification.md`，渲染架构读 `memory/Renderer.md`，再定位具体源码。
-- 笔记为 Git 跟踪的 YAML frontmatter Markdown，permalink 使用 `renderer/` 前缀。
-- 仅在 Basic Memory 项目路径绑定到本仓库 `memory/` 时使用对应 MCP 工具；现有 `metahooksv` 项目属于源仓库，不用于写入本仓库。未注册匹配项目时直接读写本地 notes。
-- 源码在 `src/`，运行资源在 `assets/svencoop/renderer/`，原有测试在 `src/tests/`。
-- Renderer 公共接口由本仓库 `include/Interface/IMetaRenderer.h` 提供并安装；优先于 MetaHook 中的历史副本。
-- 构建入口是根 `CMakeLists.txt` 和 `scripts/build-Renderer-x86-{Debug,Release}.bat`。`cmake/Sources.cmake` 显式保留原工程编译清单。
-- 公共 API、SourceSDK 和 VGUI 源码来自 `METAHOOK_SOURCE_PATH`；`VGUI2EXTENSION_SOURCE_PATH` 提供 `include/Interface` 及其 `VGUI` 子目录的扩展公共接口，优先于 MetaHook 的历史副本；`FREEIMAGE_SOURCE_PATH`、`GLEW_SOURCE_PATH` 分别指向外部 FreeImage、glew-cmake 源码树。外部源码和第三方 submodule 均为只读输入。
-- 四个 `*_SOURCE_PATH` 空值时都用 FetchContent 获取固定提交，只下载源码、不接管 `add_subdirectory` 时机。`VGUI2EXTENSION_SOURCE_PATH` 仅消费接口头文件，不构建插件或初始化其依赖；运行时插件仍可选。`GLEW_SOURCE_PATH` 需提供 `libglew_static` target，`FREEIMAGE_SOURCE_PATH` 需包含 `Source/FreeImage.h`。Capstone 未显式指定时优先取宿主 MetaHook 树的 `thirdparty/capstone_fork/include/capstone`，宿主无该副本才 FetchContent 固定提交。Capstone/SDL 的编译目录使用依赖准备函数输出的 `RENDERER_*_INCLUDE_DIRS`，不可绕过规范化结果直接使用原始 cache 输入。
-- 未指定 `METAHOOK_SOURCE_PATH` 时用 FetchContent 获取固定提交，只消费 SDK，不构建宿主或初始化其递归依赖；MetaHook、VGUI2Extension、GLEW、FreeImage、Capstone 均不作为本仓库 submodule。
-- SDL 构建及安装归 MetaHook 所有；本工程只读取必需的 `SDL2_INCLUDE_DIRS` 和可选的 `SDL3_INCLUDE_DIRS`，不获取 SDL 源码或引入 SDL 构建目标。
-- 依赖准备由 CMake 执行；VC-LTL 下载二进制并校验哈希，不作为 submodule。输出留在 `build/`、`install/`，不自动部署游戏。
+## When coding / building plan
 
-## 修改与验证
+- Use a progressive disclosure approach for agent coding in this repository: start from high-level information in the Basic Memory knowledge base first, and only locate/read specific files or symbols when necessary, instead of expanding a large amount of context at once.
 
-- 保持 MetaHook API、插件导出、调用约定和原有渲染行为；沿用具体文件的命名、缩进和注释风格。
-- 引擎和客户端私有符号由宿主的 `ResolveGameSymbol`/gamedata 契约提供。对已由 gamedata 提供的符号，不引入扫描 fallback。
-- 原有四组测试通过 `RENDERER_BUILD_TESTS=ON` 和 CTest 运行；按改动范围选择构建及行为验证，不用测试固定文档或配置文本。
-- 区分构建/模拟测试和真实游戏验证；没有证据不能声称游戏兼容性已验证。
-- 文档改动做相关内容、路径和格式核对，无需因此重编译插件。
-- 项目级 skills 若存在，位于 `.claude/skills`，按任务相关性加载。
+#### Basic Memory knowledge base (project-scoped, `memory/`)
+
+- Notes live in `memory/` (markdown with YAML frontmatter: `title`/`type`/`permalink`), tracked in git.
+- This repository contains the standalone Renderer plugin, extracted from MetaHookSv `Plugins/Renderer` and `Build/svencoop/renderer`. Its notes were migrated from MetaHookSv and adapted to the CMake workspace; see `memory/project_overview.md` for scope and provenance.
+- Basic Memory is registered as MCP server `basic-memory`, pinned to the `renderer` project (project-level `.mcp.json`, mirrored by `.codex/config.toml`). The `metahooksv` project belongs to the source repository.
+- Prefer Basic Memory MCP tools (`search_notes` / `read_note` / `write_note` / `edit_note`) only when their project resolves to this repository's `memory/` directory. Verify the project binding before writing; when no matching project is available, read and edit the local markdown files directly.
+- Notes use the `renderer/` permalink prefix to distinguish them from the source repository.
+- Historical records are not current evidence: `Renderer.md` retains verification logs and `Plugins/Renderer/` paths from the source repository, while current source paths are `src/<file>`. Each entry in `build_and_verification.md` states its own applicability; do not extend an old result to a new change.
+
+#### High-level information in this repository (read corresponding notes first)
+
+- Project overview, dependency boundaries and entry points: `project_overview`
+- Rendering architecture and historical experience: `Renderer`
+- Build commands, dependency pinning, gamedata sync, verification status: `build_and_verification`
+- Engine-private symbol inventory: `privatevars/renderer-privatevars.md`
+- Coding conventions: `CodeStyles`
+
+#### When notes are insufficient: source entry points (query and read on demand)
+
+- Build: `CMakeLists.txt`, `cmake/Sources.cmake` (explicit compile list), `cmake/Dependencies.cmake` (source-path resolution and FetchContent fallback), `cmake/VCLTL.cmake`, `scripts/build-Renderer-x86-{Debug,Release}.bat`
+- Plugin sources: `src/`; lifecycle entry `src/plugins.cpp`, hooks `src/exportfuncs.cpp` and `src/gl_hooks.cpp`, internal state `src/gl_local.h`, main render loop `src/gl_rmain.cpp`
+- Public API / interface: `include/Interface/IMetaRenderer.h`, provided and installed by this repository and taking precedence over MetaHook's historical copy
+- Runtime assets: `assets/svencoop/renderer/` (shaders, textures, configuration, localization), installed alongside the DLL
+- gamedata: `scripts/manifests/renderer.json` (same schema as MetaHook), `scripts/sync-gamedata.py`, `scripts/validate-gamedata.py`; the build-time sync prunes the upstream catalog into the nested `metahook/gamedata/renderer/` directory, which the host launcher merges
+- Tests: the four existing suites under `src/tests/`, run by CTest with `RENDERER_BUILD_TESTS=ON`
+- Docs: `README.md` / `README.zh-CN.md`, prose pages under `docs/en/` and `docs/zh-CN/`
+- External sources, all read-only inputs: `METAHOOK_SOURCE_PATH` (public API, SourceSDK, VGUI), `VGUI2EXTENSION_SOURCE_PATH` (public interface headers only; the plugin is not built here), `FREEIMAGE_SOURCE_PATH`, `GLEW_SOURCE_PATH`. `SDL2_INCLUDE_DIRS` and `CAPSTONE_INCLUDE_DIRS` resolve with host-first defaults, `SDL3_INCLUDE_DIRS` is optional. Empty paths fall back to fixed-commit FetchContent; only `thirdparty/ScopeExit` and `thirdparty/tinyobjloader` are submodules.
+- Build output: `build/x86/<configuration>/`; install output: `install/x86/<configuration>/`. Neither is tracked, and nothing is deployed to the game automatically.
+
+#### Progressive disclosure key points
+
+- Read notes first, then locate a single file/symbol; do not read the whole repository at once.
+- Prefer correctly scoped Basic Memory MCP tools for knowledge retrieval; otherwise use the local notes before reading source.
+- Prefer Context7 for external dependency/library usage (query on demand).
+
+## Repository rules
+
+- Preserve the MetaHook API, plugin exports, calling conventions and original rendering behavior. Match the naming, indentation and comment style of the files you touch.
+- Resolve engine and client private symbols through the host `ResolveGameSymbol`/gamedata contract. Do not add scan fallbacks for symbols gamedata already provides.
+- Consume the `RENDERER_*_INCLUDE_DIRS` paths produced by the dependency preparation functions; do not bypass the normalized results by using the raw cache inputs.
+- When gamedata usage changes, update `scripts/manifests/renderer.json` in the same change.
+- Do not modify external sources or third-party sources. SDL building and packaging belong to MetaHook; this repository only reads the include directories.
+- Regression tests keep assertions enabled even in Release (`/UNDEBUG`); documentation and configuration text are not assertion targets.
+- Verification distinguishes build/simulated tests from a real game run. Claims about game or OpenGL visual compatibility must not be made without evidence. Documentation changes need content, path and format checks, not a plugin rebuild.
+
+## Explore SKILLs
+
+- Project-level skills, when present, live in `.claude/skills` no matter what harness tool is being used.
