@@ -1,7 +1,7 @@
 ---
 title: renderer-privatevars
 type: reference
-permalink: renderer/privatevars/renderer-privatevars
+permalink: renderer/renderer-privatevars
 tags:
 - renderer
 - private-vars
