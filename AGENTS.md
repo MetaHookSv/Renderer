@@ -8,9 +8,9 @@
 - 源码在 `src/`，运行资源在 `assets/svencoop/renderer/`，原有测试在 `src/tests/`。
 - Renderer 公共接口由本仓库 `include/Interface/IMetaRenderer.h` 提供并安装；优先于 MetaHook 中的历史副本。
 - 构建入口是根 `CMakeLists.txt` 和 `scripts/build-Renderer-x86-{Debug,Release}.bat`。`cmake/Sources.cmake` 显式保留原工程编译清单。
-- 公共 API、SourceSDK 和 VGUI 源码来自 `METAHOOK_SOURCE_PATH`；`FREEIMAGE_SOURCE_PATH`、`GLEW_SOURCE_PATH` 分别指向外部 FreeImage、glew-cmake 源码树。外部源码和第三方 submodule 均为只读输入。
-- 三个 `*_SOURCE_PATH` 空值时都用 FetchContent 获取固定提交，只下载源码、不接管 `add_subdirectory` 时机。`GLEW_SOURCE_PATH` 需提供 `libglew_static` target，`FREEIMAGE_SOURCE_PATH` 需包含 `Source/FreeImage.h`。Capstone 未显式指定时优先取宿主 MetaHook 树的 `thirdparty/capstone_fork/include/capstone`，宿主无该副本才 FetchContent 固定提交。Capstone/SDL 的编译目录使用依赖准备函数输出的 `RENDERER_*_INCLUDE_DIRS`，不可绕过规范化结果直接使用原始 cache 输入。
-- 未指定 `METAHOOK_SOURCE_PATH` 时用 FetchContent 获取固定提交，只消费 SDK，不构建宿主或初始化其递归依赖；MetaHook、GLEW、FreeImage、Capstone 均不作为本仓库 submodule。
+- 公共 API、SourceSDK 和 VGUI 源码来自 `METAHOOK_SOURCE_PATH`；`VGUI2EXTENSION_SOURCE_PATH` 提供 `include/Interface` 及其 `VGUI` 子目录的扩展公共接口，优先于 MetaHook 的历史副本；`FREEIMAGE_SOURCE_PATH`、`GLEW_SOURCE_PATH` 分别指向外部 FreeImage、glew-cmake 源码树。外部源码和第三方 submodule 均为只读输入。
+- 四个 `*_SOURCE_PATH` 空值时都用 FetchContent 获取固定提交，只下载源码、不接管 `add_subdirectory` 时机。`VGUI2EXTENSION_SOURCE_PATH` 仅消费接口头文件，不构建插件或初始化其依赖；运行时插件仍可选。`GLEW_SOURCE_PATH` 需提供 `libglew_static` target，`FREEIMAGE_SOURCE_PATH` 需包含 `Source/FreeImage.h`。Capstone 未显式指定时优先取宿主 MetaHook 树的 `thirdparty/capstone_fork/include/capstone`，宿主无该副本才 FetchContent 固定提交。Capstone/SDL 的编译目录使用依赖准备函数输出的 `RENDERER_*_INCLUDE_DIRS`，不可绕过规范化结果直接使用原始 cache 输入。
+- 未指定 `METAHOOK_SOURCE_PATH` 时用 FetchContent 获取固定提交，只消费 SDK，不构建宿主或初始化其递归依赖；MetaHook、VGUI2Extension、GLEW、FreeImage、Capstone 均不作为本仓库 submodule。
 - SDL 构建及安装归 MetaHook 所有；本工程只读取必需的 `SDL2_INCLUDE_DIRS` 和可选的 `SDL3_INCLUDE_DIRS`，不获取 SDL 源码或引入 SDL 构建目标。
 - 依赖准备由 CMake 执行；VC-LTL 下载二进制并校验哈希，不作为 submodule。输出留在 `build/`、`install/`，不自动部署游戏。
 

@@ -21,7 +21,8 @@ post-build 还会复制到本机游戏。独立工程使用显式源码清单和
 - `cmake/Sources.cmake` 保留原 139 个编译单元：Renderer、HLSDK、SourceSDK、VGUI、tinyobjloader。
 - `METAHOOK_SOURCE_PATH` 仅提供公共源码，既不构建宿主，也不递归初始化它的依赖。
 - `FREEIMAGE_SOURCE_PATH` 接入原有 FreeImage CMake shared target，在本工程 build 树内构建其内置图像格式库。
-- MetaHook、FreeImage、GLEW 默认使用 FetchContent 获取固定提交，显式 `*_SOURCE_PATH` 跳过对应获取；Capstone、ScopeExit、tinyobjloader 仍使用固定 submodule。外部源码不被写入。
+- MetaHook、VGUI2Extension、FreeImage、GLEW 默认使用 FetchContent 获取固定提交，显式 `*_SOURCE_PATH` 跳过对应获取；Capstone 的当前来源见下方宿主优先条目，ScopeExit、tinyobjloader 仍使用固定 submodule。外部源码不被写入。
+- VGUI2Extension 仅提供编译期公共接口头文件，接口目录优先于 MetaHook 的历史副本；Renderer 不构建该插件，运行时插件仍可选。
 - GLEW 构建静态库；SDL 和 Capstone 只使用头文件。
 - SDL2/SDL3 源码和构建归 MetaHook 所有；本工程通过必需的 `SDL2_INCLUDE_DIRS` 和可选的 `SDL3_INCLUDE_DIRS` 消费外部头文件，不初始化或构建 SDL。
 - VC-LTL 5.3.1 从官方二进制包下载并校验 SHA-256，使用包内 helper。所有相关目标继承同一设置，关闭 vendor 工程内的重复 helper。
@@ -57,6 +58,18 @@ post-build 还会复制到本机游戏。独立工程使用显式源码清单和
 本机日志与 PE 报告位于被忽略的 `build/verification/`。
 
 ## 复验与适用范围
+
+### VGUI2Extension 接口改用独立仓库（2026-10-03）
+
+- 触发：用户从 `D:/MetaHook/include/Interface` 删除 `IVGUI2Extension.h`，并确认 Renderer 应接入独立 VGUI2Extension 仓库。
+- 根因 / 约束：Renderer 的 `VGUI2ExtensionImport.h`、`BaseUI.cpp`、`GameUI.cpp` 直接包含该头文件，原构建只提供 MetaHook 的接口目录，隐含依赖宿主历史副本。编译期接口必须可用；`VGUI2Extension_Init` 在 DLL 未加载时直接返回，所以运行时插件保持可选。
+- 实现：新增 `VGUI2EXTENSION_SOURCE_PATH` cache 参数与首次配置同名环境变量，指向仓库根目录。显式路径相对本工程根目录规范化，并在下载前检查 `IVGUI2Extension.h`、`IDpiManager.h`、`IInput2.h`、`IScheme2.h`、`ISurface2.h`；无效路径明确报错。空值复用 `renderer_fetch_source()` 获取 `MetaHookSv/VGUI2Extension@cd7ef6e3b7fb51d3c98e6d7dadec02dd1fa08c4f`，只下载源码。`renderer_settings` 将其 `include/Interface`、`include/Interface/VGUI` 排在 MetaHook 路径之前，插件与已有测试共用。
+- CI：共用 composite action 在 Renderer 同级目录克隆 MetaHook、VGUI2Extension 的 `main`，分别记录 SHA，写入环境变量，并显式向 Release BAT 传入新参数。本地默认获取仍使用固定提交。英文、中文构建说明与项目依赖约定同步更新。
+- 验证：Release 传入相对路径 `../VGUI2Extension`，解析为 `D:/VGUI2Extension`，在宿主缺失 `IVGUI2Extension.h` 的条件下配置、编译、安装退出 0，CTest 4/4。Debug 新参数设为空值，实际下载 HEAD 为固定 SHA，配置、编译、安装退出 0，CTest 4/4。编译器 `CL.read.1.tlog` 确认接口来自各自 VGUI2Extension 树，未读取 MetaHook 的同名扩展接口。
+- 错误路径：首次配置通过环境变量指定不存在的目录，以及显式指定仅含 `IVGUI2Extension.h` 的残缺目录，两例均在配置阶段返回 1，分别提示缺少 `IVGUI2Extension.h`、`IDpiManager.h`。
+- CI 本地验证：actionlint 退出 0；PyYAML 解析 composite action 并在独立临时目录执行实际克隆步骤，退出 0，MetaHook HEAD 为 `ace5d9f7d2567fa6fd00f2b8cf2a35d47fd80066`，VGUI2Extension HEAD 为上述固定 SHA，四项环境变量均写入。日志在 `build/verification/vgui2extension-*.log`，临时 CI 目录为 `build/verification/ci-vgui2extension-412d11002542466fa418c4a26c340ebd/`。
+- 接口核对：DPI、Scheme、Surface 头文件与本地 MetaHook 历史副本哈希一致；Input 头文件在末尾追加 `CancelIMEComposition`，既有方法顺序未变。Renderer 本次未修改运行代码或接口调用。
+- 适用范围：本地构建及模拟回归验证。未执行本次改动的云端 workflow 或真实游戏验证；外部 MetaHook、VGUI2Extension 源码工作区保持原状。
 
 ### Capstone 头文件改为宿主优先（2026-10-03）
 

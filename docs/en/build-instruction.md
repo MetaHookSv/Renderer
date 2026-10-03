@@ -15,7 +15,7 @@ Renderer's own public interface lives in `include/Interface/IMetaRenderer.h`.
 - Windows with Visual Studio 2022 C++ desktop workload and the Windows SDK
 - CMake 3.21+
 - Git
-- Network access on first configure: CMake fetches MetaHook, FreeImage and GLEW via FetchContent (Capstone too when the host does not provide it), initializes the other required submodules, and downloads, verifies and extracts VC-LTL 5.3.1
+- Network access on first configure: CMake fetches MetaHook, VGUI2Extension, FreeImage and GLEW via FetchContent (Capstone too when the host does not provide it), initializes the other required submodules, and downloads, verifies and extracts VC-LTL 5.3.1
 - A MetaHook build for the target configuration, providing the `SDL2_INCLUDE_DIRS` directory (see below)
 
 ## Build
@@ -33,14 +33,19 @@ and `build/x86/Release`. This project provides plain Debug and Release, no AVX2 
 
 ## Specifying source paths manually
 
-MetaHook, FreeImage and GLEW are downloaded automatically at fixed versions. To reuse
+MetaHook, VGUI2Extension, FreeImage and GLEW are downloaded automatically at fixed versions. To reuse
 local sources, pass any of these optional parameters:
 
 | Parameter | Local source directory |
 | --- | --- |
 | `METAHOOK_SOURCE_PATH` | MetaHook repository root with `include/metahook.h` and the HLSDK, SourceSDK and VGUI sources |
+| `VGUI2EXTENSION_SOURCE_PATH` | VGUI2Extension repository root with `include/Interface/IVGUI2Extension.h`, `IDpiManager.h` and the Input, Scheme and Surface extension interfaces under `include/Interface/VGUI` |
 | `FREEIMAGE_SOURCE_PATH` | FreeImage_clone root with `CMakeLists.txt` and `Source/FreeImage.h` |
 | `GLEW_SOURCE_PATH` | glew-cmake root with `CMakeLists.txt` and `include/GL/glew.h`, providing `libglew_static` |
+
+Renderer needs VGUI2Extension's public headers at build time. Its interface directories
+take precedence over MetaHook's matching directories. Renderer only consumes these
+headers; `VGUI2Extension.dll` remains an optional runtime plugin.
 
 Build MetaHook for the desired configuration first, then set the required
 `SDL2_INCLUDE_DIRS` to its installed `include` directory containing `SDL2/SDL_video.h`.
@@ -51,6 +56,7 @@ For example, using local sources for a Release build:
 ```bat
 scripts\build-Renderer-x86-Release.bat ^
   "-DMETAHOOK_SOURCE_PATH=D:/MetaHook" ^
+  "-DVGUI2EXTENSION_SOURCE_PATH=D:/VGUI2Extension" ^
   "-DFREEIMAGE_SOURCE_PATH=D:/FreeImage_clone" ^
   "-DGLEW_SOURCE_PATH=D:/glew-cmake" ^
   "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/x86/Release/include"
@@ -94,3 +100,10 @@ CTest target:
 scripts\build-Renderer-x86-Release.bat -DRENDERER_BUILD_TESTS=ON "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/x86/Release/include"
 ctest --test-dir build/x86/Release -C Release --output-on-failure
 ```
+
+## CI
+
+LiveBuild and Release share `.github/actions/build-windows-x86/action.yml`. It clones
+the `main` branches of MetaHook and VGUI2Extension beside Renderer, records both commit
+SHAs, and passes `METAHOOK_SOURCE_PATH` and `VGUI2EXTENSION_SOURCE_PATH` explicitly.
+Local builds without source paths continue to use pinned commits.

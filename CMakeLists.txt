@@ -58,6 +58,8 @@ target_compile_features(renderer_settings INTERFACE cxx_std_20)
 target_include_directories(renderer_settings INTERFACE
     src
     include/Interface
+    "${VGUI2EXTENSION_SOURCE_PATH}/include/Interface"
+    "${VGUI2EXTENSION_SOURCE_PATH}/include/Interface/VGUI"
     "${METAHOOK_SOURCE_PATH}/include"
     "${METAHOOK_SOURCE_PATH}/include/Interface"
     "${METAHOOK_SOURCE_PATH}/include/Interface/VGUI"
