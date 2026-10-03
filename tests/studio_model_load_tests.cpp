@@ -1,5 +1,5 @@
 // Exercise the production load hook with engine and RenderData callbacks stubbed.
-#include "../gl_model.cpp"
+#include "../src/gl_model.cpp"
 #include <cstdio>
 
 private_funcs_t gPrivateFuncs{};

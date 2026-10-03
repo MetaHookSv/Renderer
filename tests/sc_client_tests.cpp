@@ -1,5 +1,5 @@
 // Exercise the client hooks with real object memory and no GL context.
-#include "../gl_local.h"
+#include "../src/gl_local.h"
 #include <cassert>
 #include <cstdio>
 #include <stdexcept>
@@ -12,7 +12,7 @@ static void TestViewport(GLint x, GLint y, GLsizei width, GLsizei height);
 #define glCopyTexSubImage2D TestCopy
 #define glGetIntegerv TestGetInteger
 #define glViewport TestViewport
-#include "../gl_scclient.cpp"
+#include "../src/gl_scclient.cpp"
 #undef glClear
 #undef glCopyTexSubImage2D
 #undef glGetIntegerv

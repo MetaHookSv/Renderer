@@ -1,10 +1,10 @@
 // Exercise the production allocator and Renderer frame lifecycle without a GPU.
-#include "../gl_local.h"
+#include "../src/gl_local.h"
 static void TestFinish() { assert(false); }
 static GLenum TestGetError() { assert(false); return GL_NO_ERROR; }
 #define glFinish TestFinish
 #define glGetError TestGetError
-#include "../gl_ringbuffer.cpp"
+#include "../src/gl_ringbuffer.cpp"
 #undef glFinish
 #undef glGetError
 #include <cassert>

@@ -136,7 +136,7 @@ option(RENDERER_BUILD_TESTS "Build the existing Renderer regression tests" OFF)
 if(RENDERER_BUILD_TESTS)
     enable_testing()
     foreach(test studio_model_validation_tests studio_model_load_tests ringbuffer_tests sc_client_tests)
-        add_executable(${test} "src/tests/${test}.cpp")
+        add_executable(${test} "tests/${test}.cpp")
         target_link_libraries(${test} PRIVATE renderer_settings)
         # These tests include production translation units and discard unused handlers.
         # Assertions must remain enabled in Release as in the original test runner.

@@ -1,7 +1,7 @@
 #include <cassert>
 #include <cstdio>
 
-#include "../studio_model_validation.h"
+#include "../src/studio_model_validation.h"
 
 int main()
 {

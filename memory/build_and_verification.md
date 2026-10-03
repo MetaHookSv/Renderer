@@ -71,7 +71,7 @@ permalink: renderer/build-and-verification
 
 ## 测试
 
-- 四个套件位于 `src/tests/`：`studio_model_validation_tests`、`studio_model_load_tests`、`ringbuffer_tests`、
+- 四个套件位于 `tests/`：`studio_model_validation_tests`、`studio_model_load_tests`、`ringbuffer_tests`、
   `sc_client_tests`。
 - 仅在 `RENDERER_BUILD_TESTS=ON` 时构建并注册到 CTest。测试包含生产 translation unit，因此 Release 下
   保持断言（`/UNDEBUG`），并用 `/Gy` + `/OPT:REF` 丢弃未被调用的 handler。
