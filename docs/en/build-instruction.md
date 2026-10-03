@@ -21,8 +21,8 @@ Renderer's own public interface lives in `include/Interface/IMetaRenderer.h`.
 ## Build
 
 ```bat
-scripts\build-Renderer-x86-Debug.bat "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/x86/Debug/include"
-scripts\build-Renderer-x86-Release.bat "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/x86/Release/include"
+scripts\build-Renderer-x86-Debug.bat "-DSDL2_INCLUDE_DIRS=<path-to-MetaHook>/install/x86/Debug/include"
+scripts\build-Renderer-x86-Release.bat "-DSDL2_INCLUDE_DIRS=<path-to-MetaHook>/install/x86/Release/include"
 ```
 
 Both entry points use `Visual Studio 17 2022 -A Win32` and perform configure, build and
@@ -84,20 +84,6 @@ supports offline builds.
 
 With `OFF`, only existing data is installed and nothing is downloaded. This nested
 directory is merged by the host launcher's catalog loader.
-
-## Dependencies and build conventions
-
-- CMake prepares the dependencies automatically; no manual recursive submodule update is needed.
-  Dependency versions are recorded in [cmake/Dependencies.cmake](../../cmake/Dependencies.cmake)
-  and the repository's submodule revisions.
-- VC-LTL 5.3.1 is downloaded and verified automatically. Its cache defaults to
-  `thirdparty/cache/`; set `-DRENDERER_DEPENDENCY_CACHE_DIR=<path>` on first configure to change it.
-- For offline builds, prepare all dependencies and the gamedata cache with an online build first.
-  Local source paths alone do not cover every download.
-- External source directories are left unchanged. Build output stays under `build/`,
-  and the default install location is `install/x86/<configuration>/`.
-  Both Debug and Release include a Renderer PDB for debugging; deployment to the game is manual
-  (see [Installation](installation.md)).
 
 ## Regression tests
 

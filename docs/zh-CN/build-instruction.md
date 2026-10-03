@@ -72,16 +72,6 @@ Renderer 通过 `scripts/manifests/renderer.json`（与 MetaHook 同一 schema�
 
 `OFF` 时只安装已有数据，不下载。该嵌套目录被宿主 launcher 的 catalog 加载器合并。
 
-## 依赖与构建约定
-
-- CMake 自动准备依赖，无需手动递归更新 submodule。依赖版本见
-  [cmake/Dependencies.cmake](../../cmake/Dependencies.cmake) 及仓库记录的 submodule 提交。
-- VC-LTL 5.3.1 自动下载并校验，默认缓存于 `thirdparty/cache/`；
-  首次配置时可用 `-DRENDERER_DEPENDENCY_CACHE_DIR=<路径>` 更改缓存目录。
-- 离线构建前，先联网构建一次以准备全部依赖和 gamedata 缓存；仅指定本地源码路径不足以覆盖所有下载。
-- 外部源码目录保持不变，构建产物位于 `build/`，默认安装目录为 `install/x86/<配置>/`。
-  Debug 和 Release 均包含用于调试的 Renderer PDB；部署到游戏需手动操作，见[安装说明](installation.md)。
-
 ## 回归验证
 
 四组既有测试随源码迁入，通过可选 CTest 目标运行：
