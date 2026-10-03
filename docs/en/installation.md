@@ -16,3 +16,5 @@ svencoop/
 Merge the contents under the `svencoop/` folder into the mod directory, for example
 `valve/` or `cstrike/`, and enable `Renderer.dll` in MetaHook's
 `metahook/configs/plugins.lst`.
+
+Then you can launch the game through MetaHook. i.e. `MetaHook.exe -game <mod>`.

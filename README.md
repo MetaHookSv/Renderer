@@ -30,9 +30,9 @@ MetaHook's `metahook/configs/plugins.lst`. Don't forget to launch game from Meta
 
 ## Documentation
 
-- [Build instruction: build, dependency and CI details](docs/en/build-instruction.md)
-- [Installation: install layout and enabling the plugin](docs/en/installation.md)
-- [Features: compatibility, GPU requirements, features and console variables](docs/en/features.md)
+- [Build instruction](docs/en/build-instruction.md)
+- [Installation](docs/en/installation.md)
+- [Features](docs/en/features.md)
 
 ## License
 

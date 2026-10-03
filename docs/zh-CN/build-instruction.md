@@ -90,7 +90,3 @@ Renderer 通过 `scripts/manifests/renderer.json`（与 MetaHook 同一 schema�
 scripts\build-Renderer-x86-Release.bat -DRENDERER_BUILD_TESTS=ON "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/x86/Release/include"
 ctest --test-dir build/x86/Release -C Release --output-on-failure
 ```
-
-## 许可证
-
-许可证见 [LICENSE](../../LICENSE)；各依赖保留自己的许可证。主工程不携带预编译第三方产物。

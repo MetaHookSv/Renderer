@@ -108,8 +108,3 @@ CTest target:
 scripts\build-Renderer-x86-Release.bat -DRENDERER_BUILD_TESTS=ON "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/x86/Release/include"
 ctest --test-dir build/x86/Release -C Release --output-on-failure
 ```
-
-## License
-
-See [LICENSE](../../LICENSE); each dependency keeps its own license. The main project
-ships no prebuilt third-party artifacts.

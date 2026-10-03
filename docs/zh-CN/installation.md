@@ -14,3 +14,5 @@ svencoop/
 ```
 
 将`svencoop/`文件夹下的内容合并到 mod 目录，比如`valve/`, `cstrike/`，并在 MetaHook 的 `metahook/configs/plugins.lst` 中启用 `Renderer.dll`。
+
+然后你就可以从MetaHook启动游戏了。比如： `MetaHook.exe -game <mod>`。

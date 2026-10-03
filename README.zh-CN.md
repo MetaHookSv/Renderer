@@ -28,9 +28,9 @@ MetaRenderer 是 MetaHookSv 的图形渲染插件，用现代 OpenGL 渲染管�
 
 ## 文档
 
-- [构建说明：构建、依赖与 CI 细节](docs/zh-CN/build-instruction.md)
-- [安装说明：安装目录布局与启用插件](docs/zh-CN/installation.md)
-- [功能说明：兼容性、GPU 需求、特性与控制台参数](docs/zh-CN/features.md)
+- [构建说明](docs/zh-CN/build-instruction.md)
+- [安装说明](docs/zh-CN/installation.md)
+- [功能说明](docs/zh-CN/features.md)
 
 ## 许可证
 
