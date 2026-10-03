@@ -47,4 +47,5 @@ gamedata 的查询/解析 API 由宿主 MetaHook 提供；Renderer 自带 manife
 - [构建及验证](build_and_verification.md)
 - [使用和依赖说明](../README.md)
 
-Basic Memory 尚未注册到本仓库；源项目 `metahooksv` 只用于查阅来源，不是写入目标。
+Basic Memory 已注册为本仓库的 `renderer` 项目（项目级 `.mcp.json`，`.codex/config.toml` 为同一绑定）；
+仅在项目解析到本仓库 `memory/` 时写入，源项目 `metahooksv` 只用于查阅来源，不是写入目标。
