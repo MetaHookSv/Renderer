@@ -76,7 +76,7 @@ target_include_directories(renderer_settings INTERFACE
     "${METAHOOK_SOURCE_PATH}/include/SourceSDK/tier1"
     "${METAHOOK_SOURCE_PATH}/include/SourceSDK/vstdlib"
     ${RENDERER_CAPSTONE_INCLUDE_DIRS}
-    thirdparty/ScopeExit/include
+    ${RENDERER_SCOPEEXIT_INCLUDE_DIRS}
     ${RENDERER_SDL3_INCLUDE_DIRS}
     ${RENDERER_SDL2_INCLUDE_DIRS}
     thirdparty/tinyobjloader
