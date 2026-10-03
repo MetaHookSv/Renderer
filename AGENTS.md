@@ -20,7 +20,7 @@ This file provides guidance and important rules working with code in this reposi
 - Project overview, dependency boundaries and entry points: `project_overview`
 - Rendering architecture and historical experience: `Renderer`
 - Build commands, dependency pinning, gamedata sync, verification status: `build_and_verification`
-- Engine-private symbol inventory: `privatevars/renderer-privatevars.md`
+- Engine-private symbol inventory: `PrivateSymbols.md`
 - Coding conventions: `CodeStyles`
 
 #### When notes are insufficient: source entry points (query and read on demand)
