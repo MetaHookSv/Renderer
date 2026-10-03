@@ -15,18 +15,18 @@ runs:
         $metahookPath = Join-Path (Split-Path $env:GITHUB_WORKSPACE -Parent) 'MetaHook'
         & git clone --depth 1 --branch main https://github.com/MetaHookSv/MetaHook $metahookPath
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        # capstone_fork feeds Renderer's default Capstone header resolution; SDL forks feed the SDL include dirs below.
         & git -C $metahookPath submodule update --init --depth 1 -- thirdparty/capstone_fork thirdparty/sdl2-compat-fork thirdparty/SDL3_fork
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         & git -C $metahookPath rev-parse HEAD
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         "METAHOOK_SOURCE_PATH=$metahookPath" >> $env:GITHUB_ENV
-        "CAPSTONE_INCLUDE_DIRS=$(Join-Path $metahookPath 'thirdparty/capstone_fork/include')" >> $env:GITHUB_ENV
         "SDL2_INCLUDE_DIRS=$(Join-Path $metahookPath 'thirdparty/sdl2-compat-fork/include')" >> $env:GITHUB_ENV
         "SDL3_INCLUDE_DIRS=$(Join-Path $metahookPath 'thirdparty/SDL3_fork/include')" >> $env:GITHUB_ENV
 
     - name: Build and install
       shell: cmd
-      run: call scripts\build-Renderer-x86-Release.bat -DRENDERER_BUILD_TESTS=ON "-DMETAHOOK_SOURCE_PATH=%METAHOOK_SOURCE_PATH%" "-DCAPSTONE_INCLUDE_DIRS=%CAPSTONE_INCLUDE_DIRS%" "-DSDL2_INCLUDE_DIRS=%SDL2_INCLUDE_DIRS%" "-DSDL3_INCLUDE_DIRS=%SDL3_INCLUDE_DIRS%"
+      run: call scripts\build-Renderer-x86-Release.bat -DRENDERER_BUILD_TESTS=ON "-DMETAHOOK_SOURCE_PATH=%METAHOOK_SOURCE_PATH%" "-DSDL2_INCLUDE_DIRS=%SDL2_INCLUDE_DIRS%" "-DSDL3_INCLUDE_DIRS=%SDL3_INCLUDE_DIRS%"
 
     - name: Run regression tests
       shell: cmd

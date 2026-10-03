@@ -14,7 +14,7 @@ Renderer's own public interface lives in `include/Interface/IMetaRenderer.h`.
 - Windows with Visual Studio 2022 C++ desktop workload and the Windows SDK
 - CMake 3.21+
 - Git
-- Network access on first configure: CMake fetches MetaHook via FetchContent, initializes the other required submodules, and downloads, verifies and extracts VC-LTL 5.3.1
+- Network access on first configure: CMake fetches MetaHook, FreeImage and GLEW via FetchContent (Capstone too when the host does not provide it), initializes the other required submodules, and downloads, verifies and extracts VC-LTL 5.3.1
 - A MetaHook build for the target configuration, providing the `SDL2_INCLUDE_DIRS` directory (see below)
 
 ## Build
@@ -40,10 +40,15 @@ source, placed by default under the current build directory in `_deps/renderer_m
 
 With a valid explicit path, MetaHook's FetchContent fetch is skipped entirely.
 
-`FREEIMAGE_SOURCE_PATH` points to the **FreeImage source root** containing `CMakeLists.txt`.
+`FREEIMAGE_SOURCE_PATH` points to the **FreeImage source root** containing `CMakeLists.txt`
+and `Source/FreeImage.h`.
 
 `GLEW_SOURCE_PATH` points to the **glew source root** containing `CMakeLists.txt`,
 must support the current build options and provide a `libglew_static` target.
+
+When unset, both are fetched at a pinned commit via FetchContent, placed by default under
+the current build directory in `_deps/renderer_freeimage-src/` and `_deps/renderer_glew-src/`.
+With a valid explicit path, the download is skipped entirely.
 
 ```bat
 scripts\build-Renderer-x86-Debug.bat "-DMETAHOOK_SOURCE_PATH=D:/MetaHook" "-DFREEIMAGE_SOURCE_PATH=D:/FreeImage_clone" "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/x86/Debug/include"
@@ -52,10 +57,10 @@ scripts\build-Renderer-x86-Release.bat "-DMETAHOOK_SOURCE_PATH=D:/MetaHook" "-DF
 
 The same names can be set as environment variables on first configure. Explicit `-D`
 arguments take precedence over an existing CMake cache; environment variables only seed
-the cache. `-DMETAHOOK_SOURCE_PATH=` switches back to FetchContent;
-`-DFREEIMAGE_SOURCE_PATH=` switches back to the FreeImage submodule; `-DGLEW_SOURCE_PATH=`
-switches back to the GLEW submodule. External sources are inputs only — build output stays
-in Renderer's build directory.
+the cache. `-DMETAHOOK_SOURCE_PATH=`, `-DFREEIMAGE_SOURCE_PATH=` and `-DGLEW_SOURCE_PATH=`
+all switch back to the FetchContent fetch; for offline builds pass a local source path
+explicitly or reuse an already-populated build directory. External sources are inputs only —
+build output stays in Renderer's build directory.
 
 SDL2 and SDL3 are built and installed by the MetaHook project. Run the matching MetaHook
 build script first, then pass the `include` directory of its install tree (which must
@@ -81,12 +86,14 @@ scripts\build-Renderer-x86-Release.bat "-DCAPSTONE_INCLUDE_DIRS=D:/MetaHook/thir
 
 A directory containing `capstone.h` directly, or a parent include directory containing
 `capstone/capstone.h`, is accepted; separate multiple directories with semicolons and
-quote the whole `-D` argument. Setting it skips initialization of Renderer's own Capstone
-submodule; `-DCAPSTONE_INCLUDE_DIRS=` restores the default. The same-named environment
-variable is honored on first configure.
+quote the whole `-D` argument. The same-named environment variable is honored on first
+configure.
 
-When no Capstone parameter is given, the default submodule is used and no external
-directory is required. CMake normalizes the Capstone and SDL input paths
+When no Capstone parameter is given, no external directory is required: the host MetaHook
+tree's `thirdparty/capstone_fork/include/capstone` is preferred, matching the Capstone the
+host loads at runtime. When the host was fetched by FetchContent its submodules are not
+initialized and that directory is empty, so the pinned commit is fetched instead.
+`-DCAPSTONE_INCLUDE_DIRS=` restores this default order. CMake normalizes the Capstone and SDL input paths
 for compilation and checks the effective directories and required headers; SDL2 is
 mandatory and SDL3 is checked only when provided. Headers should match the Capstone
 version used by the host MetaHook, since callbacks pass its structures. Renderer never
@@ -135,16 +142,20 @@ directory is merged by the host launcher's catalog loader.
 
 ## Dependencies and build conventions
 
-| Submodule | Pinned commit | Purpose |
-| --- | --- | --- |
-| hzqst/FreeImage_clone | `c68700b9fe699dbbf99f88a611065f101cba1a41` | FreeImage DLL and its built-in image format library |
-| hzqst/glew-cmake | `56ed32d4a929f993f0e6b7f905af9be4d38fda04` | GLEW static library |
-| hzqst/capstone | `e81e390f621ee59d14f70e16fe065dd00f78ee71` | Disassembly data type headers |
-| SergiusTheBest/ScopeExit | `bd345da594a4675d04de663d93d00cb81b6678b2` | ScopeExit headers |
-| hzqst/tinyobjloader | `cab4ad7254cbf7eaaafdb73d272f99e92f166df8` | OBJ reading source |
+| Dependency | Fetched by | Pinned commit | Purpose |
+| --- | --- | --- | --- |
+| MetaHookSv/MetaHook | FetchContent | `4d23b6fecd79dc949aabc2e145480cd1328d4a35` | Public API, HLSDK/SourceSDK and VGUI sources |
+| hzqst/FreeImage_clone | FetchContent | `c68700b9fe699dbbf99f88a611065f101cba1a41` | FreeImage DLL and its built-in image format library |
+| hzqst/glew-cmake | FetchContent | `56ed32d4a929f993f0e6b7f905af9be4d38fda04` | GLEW static library |
+| hzqst/capstone | host first / FetchContent | `e81e390f621ee59d14f70e16fe065dd00f78ee71` | Disassembly data type headers |
+| SergiusTheBest/ScopeExit | submodule | `bd345da594a4675d04de663d93d00cb81b6678b2` | ScopeExit headers |
+| hzqst/tinyobjloader | submodule | `cab4ad7254cbf7eaaafdb73d272f99e92f166df8` | OBJ reading source |
 
-Above submodules keep the source repository's URLs and SHAs; URLs are in `.gitmodules`.
-MetaHook uses FetchContent and has been removed from the submodule list.
+MetaHook, FreeImage and GLEW are fetched by FetchContent, and Capstone prefers the host's
+own copy with a FetchContent fallback; none of them is a submodule of this repository, and
+their URLs and SHAs are recorded in `cmake/Dependencies.cmake`. The remaining submodules
+(ScopeExit, tinyobjloader) keep the source repository's URLs and SHAs; URLs are in
+`.gitmodules`.
 No `git submodule update --recursive` is needed; Renderer initializes only the
 dependencies it uses directly.
 Capstone and SDL are not linked as libraries into Renderer; the host interface and

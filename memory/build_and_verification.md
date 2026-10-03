@@ -21,7 +21,7 @@ post-build 还会复制到本机游戏。独立工程使用显式源码清单和
 - `cmake/Sources.cmake` 保留原 139 个编译单元：Renderer、HLSDK、SourceSDK、VGUI、tinyobjloader。
 - `METAHOOK_SOURCE_PATH` 仅提供公共源码，既不构建宿主，也不递归初始化它的依赖。
 - `FREEIMAGE_SOURCE_PATH` 接入原有 FreeImage CMake shared target，在本工程 build 树内构建其内置图像格式库。
-- MetaHook 默认使用 FetchContent 获取固定提交，显式 `METAHOOK_SOURCE_PATH` 跳过获取；其他源码依赖使用固定 submodule，支持的显式路径覆盖会跳过对应初始化。外部源码不被写入。
+- MetaHook、FreeImage、GLEW 默认使用 FetchContent 获取固定提交，显式 `*_SOURCE_PATH` 跳过对应获取；Capstone、ScopeExit、tinyobjloader 仍使用固定 submodule。外部源码不被写入。
 - GLEW 构建静态库；SDL 和 Capstone 只使用头文件。
 - SDL2/SDL3 源码和构建归 MetaHook 所有；本工程通过必需的 `SDL2_INCLUDE_DIRS` 和可选的 `SDL3_INCLUDE_DIRS` 消费外部头文件，不初始化或构建 SDL。
 - VC-LTL 5.3.1 从官方二进制包下载并校验 SHA-256，使用包内 helper。所有相关目标继承同一设置，关闭 vendor 工程内的重复 helper。
@@ -57,6 +57,23 @@ post-build 还会复制到本机游戏。独立工程使用显式源码清单和
 本机日志与 PE 报告位于被忽略的 `build/verification/`。
 
 ## 复验与适用范围
+
+### Capstone 头文件改为宿主优先（2026-10-03）
+
+- 触发：用户提出 Capstone 必定存在于 MetaHook 的 `thirdparty/capstone_fork`，能否直接作为 `CAPSTONE_INCLUDE_DIRS` 来源。
+- 约束：「必定存在」只在宿主为完整克隆且已初始化子模块时成立。默认路径下 MetaHook 由 FetchContent 获取，`GIT_SUBMODULES ""` 使其 `thirdparty/capstone_fork` 为空目录（实测），故不能作为唯一来源。两处仓库同为 `hzqst/capstone`，且 MetaHook 在 FetchContent pin `4d23b6fe` 处的 gitlink 与原 Renderer pin 同为 `e81e390f`；但 CI 克隆的是 MetaHook `main`（浮动），版本没有契约，所以只能作为优先项。
+- 实现：`CAPSTONE_INCLUDE_DIRS` 显式值时优先；否则先用 `${METAHOOK_SOURCE_PATH}/thirdparty/capstone_fork/include/capstone`（存在 `capstone.h` 时），缺失则 `renderer_fetch_source(renderer_capstone, hzqst/capstone, e81e390f)`。删除 `thirdparty/capstone_fork` 的 gitlink、`.gitmodules` 条目、本地目录和 `.git/config` 段；仓库仅剩 ScopeExit、tinyobjloader 两个 submodule。
+- 验证：宿主优先（Release + `-DMETAHOOK_SOURCE_PATH=D:/MetaHook`）解析为 `D:/MetaHook/thirdparty/capstone_fork/include/capstone`，配置/编译/安装退出 0，CTest 4/4；兜底（Debug，无 MetaHook 路径）解析为 `_deps/renderer_capstone-src/include/capstone`，同样退出 0、CTest 4/4；显式 `-DCAPSTONE_INCLUDE_DIRS=<另一目录>` 覆盖宿主路径；无效目录返回 1。日志在 `build/verification/{capstone-host-release,capstone-fetch-debug,cap-precedence,neg-capstone}.log`。
+- 适用范围：仅改变头文件来源与依赖获取方式，未执行游戏验证。宿主副本仅在宿主已初始化其子模块时可用。CI 同步删去 `CAPSTONE_INCLUDE_DIRS` 的显式传参（`.github/actions/build-windows-x86/action.yml`），改由宿主优先分支解析，`capstone_fork` 的子模块初始化保留；CI 本身未在本机执行，待下次 push 覆盖。
+
+### GLEW / FreeImage 改用 FetchContent（2026-10-03）
+
+- 触发：用户要求 `GLEW_SOURCE_PATH`、`FREEIMAGE_SOURCE_PATH` 为空时也回退到 FetchContent，与 MetaHook 模式一致。
+- 约束：`FetchContent_MakeAvailable` 会在依赖准备阶段（根 `CMakeLists.txt:17`）就 `add_subdirectory`，早于 VC-LTL helper 的 include（`:40`）和 GLEW 的三个选项强制（`:44-46`），并会激活 FreeImage 子工程自身的 install 规则；因此只能下载源码，不能接管加入时机。单参数 `FetchContent_Populate` 已由 CMP0169（CMake 3.30）废弃，故采用完整参数形式（官方文档明确仍完全支持）。
+- 实现：`cmake/Dependencies.cmake` 新增 `renderer_fetch_source()`，固定提交 `hzqst/glew-cmake@56ed32d4…`、`hzqst/FreeImage_clone@c68700b9…`，下载到 `build/x86/<配置>/_deps/renderer_{glew,freeimage}-src`，`GIT_SUBMODULES ""` 不初始化嵌套依赖；根 CMakeLists 的 `add_subdirectory` 与 target 校验不变。移除 `.gitmodules` 两条目、两个 gitlink、本地目录及 `.git/config` 段；ScopeExit、tinyobjloader 仍为 submodule（Capstone 的归属见上方同日条目）。
+- 验证：Debug 走 FetchContent（联网）配置、编译、安装退出 0，CTest 4/4，安装产物 `FreeImaged.dll`；Release 以相对路径显式指向 Debug 下载的源码副本，退出 0，CTest 4/4，产物 `FreeImage.dll`，两棵下载树的文件哈希前后一致。无效 GLEW、无效 FreeImage 两例在配置阶段返回 1。日志在 `build/verification/fetch-debug.log`、`explicit-path-release.log`、`neg-{glew,freeimage}.log`。
+- 适用范围：仅改变依赖获取方式，未执行游戏验证。首次配置需联网获取 GLEW 和 FreeImage，离线需显式传 `*_SOURCE_PATH` 或复用已预热的 build 目录。CI 未传这两个路径，将在下次 push 时首次走 FetchContent 分支，本机未验证 CI。
+- 取代：上方「原因与构建边界」中「其他源码依赖使用固定 submodule」的表述，以及 2026-10-02 实测表中 GLEW/FreeImage 的 submodule 记录，均为本次改动前的历史状态。
 
 ### 外部 GLEW 与有效 include 目录（2026-10-02）
 

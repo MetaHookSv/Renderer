@@ -1,9 +1,9 @@
 set(RENDERER_DEPENDENCY_CACHE_DIR "${PROJECT_SOURCE_DIR}/thirdparty/cache" CACHE PATH "Downloaded dependency cache")
 set(VC_LTL_Root "${RENDERER_DEPENDENCY_CACHE_DIR}/VC-LTL-5.3.1" CACHE PATH "VC-LTL binary package root")
 set(METAHOOK_SOURCE_PATH "$ENV{METAHOOK_SOURCE_PATH}" CACHE PATH "MetaHook source tree; empty fetches the pinned SDK")
-set(FREEIMAGE_SOURCE_PATH "$ENV{FREEIMAGE_SOURCE_PATH}" CACHE PATH "FreeImage source tree with CMakeLists.txt and Source/FreeImage.h")
-set(GLEW_SOURCE_PATH "$ENV{GLEW_SOURCE_PATH}" CACHE PATH "glew-cmake source tree providing libglew_static; empty uses the pinned submodule")
-set(CAPSTONE_INCLUDE_DIRS "$ENV{CAPSTONE_INCLUDE_DIRS}" CACHE STRING "External Capstone include directories; empty uses the pinned submodule")
+set(FREEIMAGE_SOURCE_PATH "$ENV{FREEIMAGE_SOURCE_PATH}" CACHE PATH "FreeImage source tree with CMakeLists.txt and Source/FreeImage.h; empty fetches the pinned commit")
+set(GLEW_SOURCE_PATH "$ENV{GLEW_SOURCE_PATH}" CACHE PATH "glew-cmake source tree providing libglew_static; empty fetches the pinned commit")
+set(CAPSTONE_INCLUDE_DIRS "$ENV{CAPSTONE_INCLUDE_DIRS}" CACHE STRING "External Capstone include directories; empty prefers MetaHook's own capstone fork and otherwise fetches the pinned commit")
 set(SDL2_INCLUDE_DIRS "$ENV{SDL2_INCLUDE_DIRS}" CACHE STRING "External include directories containing SDL2/SDL_video.h (required)")
 set(SDL3_INCLUDE_DIRS "$ENV{SDL3_INCLUDE_DIRS}" CACHE STRING "External include directories containing SDL3/SDL.h (optional)")
 
@@ -16,6 +16,21 @@ function(renderer_init_submodule name)
             message(FATAL_ERROR "Cannot initialize thirdparty/${name}: ${result}")
         endif()
     endif()
+endfunction()
+
+# Download a pinned dependency into the build tree. Only the source is
+# populated: the caller keeps its add_subdirectory() call so subprojects are
+# configured at the same point and with the same options as an explicit path.
+function(renderer_fetch_source name url tag out_var)
+    include(FetchContent)
+    FetchContent_Populate(${name}
+        GIT_REPOSITORY "${url}"
+        GIT_TAG "${tag}"
+        GIT_SUBMODULES ""
+        GIT_SUBMODULES_RECURSE FALSE
+        SOURCE_DIR "${CMAKE_BINARY_DIR}/_deps/${name}-src")
+    string(TOLOWER "${name}" name_lower)
+    set(${out_var} "${${name_lower}_SOURCE_DIR}" PARENT_SCOPE)
 endfunction()
 
 function(renderer_prepare_dependencies)
@@ -94,28 +109,41 @@ function(renderer_prepare_dependencies)
     if(FREEIMAGE_SOURCE_PATH)
         get_filename_component(source "${FREEIMAGE_SOURCE_PATH}" ABSOLUTE BASE_DIR "${PROJECT_SOURCE_DIR}")
     else()
-        renderer_init_submodule(FreeImage_clone)
-        set(source "${PROJECT_SOURCE_DIR}/thirdparty/FreeImage_clone")
+        renderer_fetch_source(renderer_freeimage
+            "https://github.com/hzqst/FreeImage_clone"
+            "c68700b9fe699dbbf99f88a611065f101cba1a41" source)
     endif()
     if(NOT EXISTS "${source}/CMakeLists.txt" OR NOT EXISTS "${source}/Source/FreeImage.h")
-        message(FATAL_ERROR "FREEIMAGE_SOURCE_PATH must contain CMakeLists.txt and Source/FreeImage.h: ${source}")
+        message(FATAL_ERROR "FreeImage source tree (FREEIMAGE_SOURCE_PATH or FetchContent) must contain CMakeLists.txt and Source/FreeImage.h: ${source}")
     endif()
     set(FREEIMAGE_SOURCE_PATH "${source}" PARENT_SCOPE)
     message(STATUS "FREEIMAGE_SOURCE_PATH: ${source}")
     if(NOT CAPSTONE_INCLUDE_DIRS)
-        renderer_init_submodule(capstone_fork)
-        set(capstone_includes "${PROJECT_SOURCE_DIR}/thirdparty/capstone_fork/include/capstone")
+        # Prefer the host's own Capstone checkout: these headers describe types
+        # crossing the MetaHook API boundary and must match the instance the host
+        # loads at runtime. A host fetched without submodules leaves
+        # thirdparty/capstone_fork empty, so fall back to the pinned commit.
+        set(host_capstone "${metahook_source}/thirdparty/capstone_fork/include/capstone")
+        if(EXISTS "${host_capstone}/capstone.h")
+            set(capstone_includes "${host_capstone}")
+        else()
+            renderer_fetch_source(renderer_capstone
+                "https://github.com/hzqst/capstone"
+                "e81e390f621ee59d14f70e16fe065dd00f78ee71" capstone_source)
+            set(capstone_includes "${capstone_source}/include/capstone")
+        endif()
     endif()
     set(RENDERER_CAPSTONE_INCLUDE_DIRS "${capstone_includes}" PARENT_SCOPE)
     message(STATUS "Capstone headers: ${capstone_includes}")
     if(GLEW_SOURCE_PATH)
         get_filename_component(glew_source "${GLEW_SOURCE_PATH}" ABSOLUTE BASE_DIR "${PROJECT_SOURCE_DIR}")
     else()
-        renderer_init_submodule(glew_fork)
-        set(glew_source "${PROJECT_SOURCE_DIR}/thirdparty/glew_fork")
+        renderer_fetch_source(renderer_glew
+            "https://github.com/hzqst/glew-cmake"
+            "56ed32d4a929f993f0e6b7f905af9be4d38fda04" glew_source)
     endif()
     if(NOT EXISTS "${glew_source}/CMakeLists.txt" OR NOT EXISTS "${glew_source}/include/GL/glew.h")
-        message(FATAL_ERROR "GLEW_SOURCE_PATH must contain CMakeLists.txt and include/GL/glew.h: ${glew_source}")
+        message(FATAL_ERROR "GLEW source tree (GLEW_SOURCE_PATH or FetchContent) must contain CMakeLists.txt and include/GL/glew.h: ${glew_source}")
     endif()
     set(GLEW_SOURCE_PATH "${glew_source}" PARENT_SCOPE)
     message(STATUS "GLEW_SOURCE_PATH: ${glew_source}")

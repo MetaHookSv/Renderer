@@ -13,7 +13,7 @@ Renderer 自身的公共接口位于 `include/Interface/IMetaRenderer.h`
 - Windows、Visual Studio 2022 的 C++ 桌面开发工具和 Windows SDK
 - CMake 3.21+
 - Git
-- 首次配置需要网络：CMake 通过 FetchContent 获取 MetaHook、初始化其他所需 submodule，并下载、校验和解压 VC-LTL 5.3.1
+- 首次配置需要网络：CMake 通过 FetchContent 获取 MetaHook、FreeImage 和 GLEW（宿主未自带 Capstone 时也包括 Capstone），初始化其他所需 submodule，并下载、校验和解压 VC-LTL 5.3.1
 - 与目标配置对应的 MetaHook 构建，用于提供 `SDL2_INCLUDE_DIRS` 目录（见下文）
 
 ## 构建
@@ -38,11 +38,14 @@ scripts\build-Renderer-x86-Release.bat "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/
 
 显式指定有效路径后，完全跳过 MetaHook 的 FetchContent 获取。
 
-`FREEIMAGE_SOURCE_PATH` 指向包含 `CMakeLists.txt` 的**FreeImage 源码根目录**
+`FREEIMAGE_SOURCE_PATH` 指向包含 `CMakeLists.txt` 和 `Source/FreeImage.h` 的**FreeImage 源码根目录**。
 
 `GLEW_SOURCE_PATH` 指向包含 `CMakeLists.txt` 的**glew 源码根目录**，
 
 需要支持当前构建选项并提供 `libglew_static` target。
+
+两者未指定时同样通过 FetchContent 获取固定提交，源码默认放在当前 build 目录的
+`_deps/renderer_freeimage-src/` 和 `_deps/renderer_glew-src/`；显式指定有效路径后完全跳过下载。
 
 ```bat
 scripts\build-Renderer-x86-Debug.bat "-DMETAHOOK_SOURCE_PATH=D:/MetaHook" "-DFREEIMAGE_SOURCE_PATH=D:/FreeImage_clone" "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/x86/Debug/include"
@@ -50,8 +53,8 @@ scripts\build-Renderer-x86-Release.bat "-DMETAHOOK_SOURCE_PATH=D:/MetaHook" "-DF
 ```
 
 首次配置也可以设置同名环境变量。`-D` 显式参数优先于已有 CMake cache；环境变量只用于 cache
-初始值。`-DMETAHOOK_SOURCE_PATH=` 切回 FetchContent 获取；`-DFREEIMAGE_SOURCE_PATH=` 切回 FreeImage submodule；
-`-DGLEW_SOURCE_PATH=` 切回 GLEW submodule。外部源码只作为输入，构建产物仍留在 Renderer 的 build 目录；
+初始值。`-DMETAHOOK_SOURCE_PATH=`、`-DFREEIMAGE_SOURCE_PATH=`、`-DGLEW_SOURCE_PATH=` 都切回 FetchContent 获取；
+离线场景可显式指定本地源码路径，或复用已预热的 build 目录。外部源码只作为输入，构建产物仍留在 Renderer 的 build 目录；
 
 SDL2、SDL3 的构建和安装由 MetaHook 工程负责。先运行对应配置的 MetaHook build 脚本，
 再通过 `SDL2_INCLUDE_DIRS` 传入其安装树的 `include` 目录（必须包含 `SDL2/SDL_video.h`）。
@@ -72,11 +75,12 @@ scripts\build-Renderer-x86-Release.bat "-DCAPSTONE_INCLUDE_DIRS=D:/MetaHook/thir
 ```
 
 支持直接包含 `capstone.h` 的目录，或含 `capstone/capstone.h` 的上级 include 目录；
-多个目录用分号分隔，并将整个 `-D` 参数放在引号中。指定后跳过 Renderer 自带 Capstone
+多个目录用分号分隔，并将整个 `-D` 参数放在引号中。首次配置也支持同名环境变量。
 
-submodule 的初始化；传 `-DCAPSTONE_INCLUDE_DIRS=` 恢复默认。首次配置也支持同名环境变量。
-
-未传 Capstone 参数时使用默认 submodule，无需强制提供外部目录。CMake 将 Capstone、SDL 输入路径
+未传 Capstone 参数时无需提供外部目录：优先使用宿主 MetaHook 树中的
+`thirdparty/capstone_fork/include/capstone`，与宿主运行时加载的 Capstone 对齐；
+宿主由 FetchContent 获取、其上未初始化时该目录为空，此时回退到 FetchContent
+获取固定提交。传 `-DCAPSTONE_INCLUDE_DIRS=` 恢复该默认顺序。CMake 将 Capstone、SDL 输入路径
 
 规范化后用于编译，并检查有效目录及必要头文件；SDL2 必填，SDL3 仅在提供时检查。
 头文件应与宿主 MetaHook 使用的 Capstone 版本一致，因为回调传递其结构体。
@@ -118,16 +122,19 @@ Renderer 通过 `scripts/manifests/renderer.json`（与 MetaHook 同一 schema�
 
 ## 依赖与构建约定
 
-| Submodule | 固定提交 | 用途 |
-| --- | --- | --- |
-| hzqst/FreeImage_clone | `c68700b9fe699dbbf99f88a611065f101cba1a41` | FreeImage DLL 及内置图像格式库 |
-| hzqst/glew-cmake | `56ed32d4a929f993f0e6b7f905af9be4d38fda04` | GLEW 静态库 |
-| hzqst/capstone | `e81e390f621ee59d14f70e16fe065dd00f78ee71` | 反汇编数据类型头文件 |
-| SergiusTheBest/ScopeExit | `bd345da594a4675d04de663d93d00cb81b6678b2` | ScopeExit 头文件 |
-| hzqst/tinyobjloader | `cab4ad7254cbf7eaaafdb73d272f99e92f166df8` | OBJ 读取源码 |
+| 依赖 | 获取方式 | 固定提交 | 用途 |
+| --- | --- | --- | --- |
+| MetaHookSv/MetaHook | FetchContent | `4d23b6fecd79dc949aabc2e145480cd1328d4a35` | 公共 API、HLSDK/SourceSDK 与 VGUI 源码 |
+| hzqst/FreeImage_clone | FetchContent | `c68700b9fe699dbbf99f88a611065f101cba1a41` | FreeImage DLL 及内置图像格式库 |
+| hzqst/glew-cmake | FetchContent | `56ed32d4a929f993f0e6b7f905af9be4d38fda04` | GLEW 静态库 |
+| hzqst/capstone | 宿主优先 / FetchContent | `e81e390f621ee59d14f70e16fe065dd00f78ee71` | 反汇编数据类型头文件 |
+| SergiusTheBest/ScopeExit | submodule | `bd345da594a4675d04de663d93d00cb81b6678b2` | ScopeExit 头文件 |
+| hzqst/tinyobjloader | submodule | `cab4ad7254cbf7eaaafdb73d272f99e92f166df8` | OBJ 读取源码 |
 
-以上 submodule 沿用源仓库的 URL 和 SHA；URL 见 `.gitmodules`。MetaHook 使用 FetchContent，已从 submodule 列表移除。
-无需 `git submodule update --recursive`；Renderer 仅初始化自己直接使用的依赖。
+MetaHook、FreeImage、GLEW 通过 FetchContent 获取，Capstone 优先取宿主副本、缺失时回退 FetchContent，
+均不作为本仓库 submodule，URL 与 SHA 记录在 `cmake/Dependencies.cmake`；
+剩余 submodule（ScopeExit、tinyobjloader）沿用源仓库的 URL 和 SHA，URL 见 `.gitmodules`。
+无需 `git submodule update --recursive`。
 Capstone、SDL 不作为库链接到 Renderer，宿主接口和已有运行时加载逻辑保持原样。
 
 VC-LTL 来自官方 `Chuyu-Team/VC-LTL5` v5.3.1 的 `VC-LTL-Binary.7z`，SHA-256：`7a18799ed3aa84a225610a5447a56bc534c5c98ccb8dec05caba0e3f633431ad`。
