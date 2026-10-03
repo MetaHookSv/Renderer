@@ -1,8 +1,8 @@
-[返回 README](../../README.md) | [English](../en/getting-started.md)
+[返回 README](../../README.md) | [English](../en/build-instruction.md)
 
-# 快速开始
+# 构建说明
 
-本页涵盖 Renderer 插件的构建、安装与依赖细节。引擎/GPU 兼容性、功能特性和控制台参数见[功能说明](features.md)。
+本页涵盖 Renderer 插件的构建、依赖与 CI 细节。安装目录布局与启用插件见[安装说明](installation.md)；引擎/GPU 兼容性、功能特性和控制台参数见[功能说明](features.md)。
 
 Renderer 是 MetaHook Renderer （内部名称MetaRenderer） 插件的 Windows x86 CMake 工程。
 
@@ -93,22 +93,6 @@ Renderer 从不构建或链接 Capstone 库，`CAPSTONE_LIBRARY_DIRS` 无需传�
 cmake -S . -B build/x86/Release -G "Visual Studio 17 2022" -A Win32 -DCMAKE_INSTALL_PREFIX=install/x86/Release -DMETAHOOK_SOURCE_PATH=D:/MetaHook -DFREEIMAGE_SOURCE_PATH=D:/FreeImage_clone -DSDL2_INCLUDE_DIRS=D:/MetaHook/install/x86/Release/include
 cmake --build build/x86/Release --config Release --target install --parallel
 ```
-
-## 安装与运行
-
-`install/x86/<Debug|Release>/`：
-
-```text
-svencoop/
-  metahook/plugins/Renderer.dll
-  metahook/plugins/Renderer.pdb
-  metahook/dlls/FreeImage/FreeImage.dll   (Debug: FreeImaged.dll)
-  metahook/gamedata/renderer/            (Renderer 自己的 gamedata catalog)
-  renderer/                           (shaders、textures、配置和本地化资源)
-```
-
-不自动复制到本机游戏目录。由使用者合并到对应 mod 目录，并在 MetaHook 的
-`metahook/configs/plugins.lst` 中启用 Renderer。
 
 ## gamedata
 

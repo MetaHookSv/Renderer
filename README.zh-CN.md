@@ -26,11 +26,12 @@ MetaRenderer 是 MetaHookSv 的图形渲染插件，用现代 OpenGL 渲染管�
 将解压出的 `svencoop/` 合并到对应 mod 目录，在 MetaHook 的
 `metahook/configs/plugins.lst` 中启用 Renderer。运行还需要宿主 MetaHook。
 
-构建、安装、依赖与 CI 细节见[快速开始文档](docs/zh-CN/getting-started.md)。
+构建、依赖与 CI 细节见[构建说明文档](docs/zh-CN/build-instruction.md)，安装目录布局见[安装说明](docs/zh-CN/installation.md)。
 
 ## 文档
 
-- [快速开始：构建、安装与依赖](docs/zh-CN/getting-started.md)
+- [构建说明：构建、依赖与 CI 细节](docs/zh-CN/build-instruction.md)
+- [安装说明：安装目录布局与启用插件](docs/zh-CN/installation.md)
 - [功能说明：兼容性、GPU 需求、特性与控制台参数](docs/zh-CN/features.md)
 
 ## 许可证

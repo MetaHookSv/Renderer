@@ -1,9 +1,10 @@
-[Back to README](../../README.md) | [中文](../zh-CN/getting-started.md)
+[Back to README](../../README.md) | [中文](../zh-CN/build-instruction.md)
 
-# Getting started
+# Build instruction
 
-This page covers the build, install and dependency details of the Renderer plugin.
-For engine/GPU compatibility, features and console variables, see [Features](features.md).
+This page covers the build, dependency and CI details of the Renderer plugin.
+For the install layout and enabling the plugin, see [Installation](installation.md);
+for engine/GPU compatibility, features and console variables, see [Features](features.md).
 
 Renderer is the Windows x86 CMake project for the MetaHook Renderer (internal name MetaRenderer) plugin.
 
@@ -106,22 +107,6 @@ Calling CMake directly:
 cmake -S . -B build/x86/Release -G "Visual Studio 17 2022" -A Win32 -DCMAKE_INSTALL_PREFIX=install/x86/Release -DMETAHOOK_SOURCE_PATH=D:/MetaHook -DFREEIMAGE_SOURCE_PATH=D:/FreeImage_clone -DSDL2_INCLUDE_DIRS=D:/MetaHook/install/x86/Release/include
 cmake --build build/x86/Release --config Release --target install --parallel
 ```
-
-## Install and run
-
-`install/x86/<Debug|Release>/`:
-
-```text
-svencoop/
-  metahook/plugins/Renderer.dll
-  metahook/plugins/Renderer.pdb
-  metahook/dlls/FreeImage/FreeImage.dll   (Debug: FreeImaged.dll)
-  metahook/gamedata/renderer/            (Renderer's own gamedata catalog)
-  renderer/                           (shaders, textures, config and localization resources)
-```
-
-Nothing is copied into the local game directory automatically. Merge it into the target
-mod directory and enable Renderer in MetaHook's `metahook/configs/plugins.lst`.
 
 ## gamedata
 
