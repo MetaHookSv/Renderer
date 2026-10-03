@@ -26,10 +26,7 @@ Download `Renderer-windows-x86.7z` from
 [GitHub Releases](https://github.com/MetaHookSv/Renderer/releases) (built on `v*` tag pushes).
 
 Merge the extracted `svencoop/` into the target mod directory and enable Renderer in
-MetaHook's `metahook/configs/plugins.lst`. Running also requires the host MetaHook.
-
-See [Build instruction](docs/en/build-instruction.md) for build, dependency and CI
-details, and [Installation](docs/en/installation.md) for the install layout.
+MetaHook's `metahook/configs/plugins.lst`. Don't forget to launch game from MetaHook.
 
 ## Documentation
 
