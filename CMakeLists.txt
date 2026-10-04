@@ -44,11 +44,16 @@ set(USE_VCLTL OFF CACHE BOOL "Separate vendor VC-LTL integration" FORCE)
 set(glew-cmake_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(glew-cmake_BUILD_STATIC ON CACHE BOOL "" FORCE)
 set(ONLY_LIBS ON CACHE BOOL "" FORCE)
-add_subdirectory("${GLEW_SOURCE_PATH}" "${CMAKE_CURRENT_BINARY_DIR}/thirdparty/GLEW" EXCLUDE_FROM_ALL)
+# An aggregating parent build may already provide libglew_static and FreeImage from sibling components.
+if(NOT TARGET libglew_static)
+    add_subdirectory("${GLEW_SOURCE_PATH}" "${CMAKE_CURRENT_BINARY_DIR}/thirdparty/GLEW" EXCLUDE_FROM_ALL)
+endif()
 if(NOT TARGET libglew_static)
     message(FATAL_ERROR "GLEW_SOURCE_PATH must provide the libglew_static CMake target.")
 endif()
-add_subdirectory("${FREEIMAGE_SOURCE_PATH}" "${CMAKE_CURRENT_BINARY_DIR}/thirdparty/FreeImage" EXCLUDE_FROM_ALL)
+if(NOT TARGET FreeImage)
+    add_subdirectory("${FREEIMAGE_SOURCE_PATH}" "${CMAKE_CURRENT_BINARY_DIR}/thirdparty/FreeImage" EXCLUDE_FROM_ALL)
+endif()
 if(NOT TARGET FreeImage)
     message(FATAL_ERROR "FREEIMAGE_SOURCE_PATH must provide the FreeImage CMake target.")
 endif()
@@ -112,13 +117,13 @@ install(FILES include/Interface/IMetaRenderer.h DESTINATION include/Interface)
 # renderer). The manifest lists those symbols; the synchronizer downloads the
 # upstream catalog into a persistent cache, prunes it, and publishes the result.
 option(RENDERER_SYNC_GAMEDATA "Download and prune Renderer's gamedata catalog before building" ON)
-set(RENDERER_GAMEDATA_DIR "${CMAKE_BINARY_DIR}/assets/svencoop/metahook/gamedata/renderer" CACHE PATH "Renderer gamedata catalog directory")
+set(RENDERER_GAMEDATA_DIR "${PROJECT_BINARY_DIR}/assets/svencoop/metahook/gamedata/renderer" CACHE PATH "Renderer gamedata catalog directory")
 if(RENDERER_SYNC_GAMEDATA)
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
     add_custom_target(RendererGameData
         COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/scripts/sync-gamedata.py"
             --manifest "${CMAKE_CURRENT_SOURCE_DIR}/scripts/manifests/renderer.json"
-            --target-dir "${RENDERER_GAMEDATA_DIR}" --temp-root "${CMAKE_BINARY_DIR}/gamedata-sync"
+            --target-dir "${RENDERER_GAMEDATA_DIR}" --temp-root "${PROJECT_BINARY_DIR}/gamedata-sync"
         COMMENT "Synchronizing and validating Renderer gamedata"
         VERBATIM
     )
