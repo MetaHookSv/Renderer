@@ -110,7 +110,6 @@ install(TARGETS Renderer RUNTIME DESTINATION svencoop/metahook/plugins)
 install(FILES "$<TARGET_PDB_FILE:Renderer>" DESTINATION svencoop/metahook/plugins)
 install(FILES "$<TARGET_FILE:FreeImage>" DESTINATION svencoop/metahook/dlls/FreeImage)
 install(DIRECTORY assets/svencoop/renderer DESTINATION svencoop)
-install(FILES include/Interface/IMetaRenderer.h DESTINATION include/Interface)
 
 # Renderer ships its own gamedata catalog, pruned to the symbols it resolves, in
 # a nested directory the launcher's catalog loader merges (metahook/gamedata/
