@@ -57,6 +57,15 @@ endif()
 if(NOT TARGET FreeImage)
     message(FATAL_ERROR "FREEIMAGE_SOURCE_PATH must provide the FreeImage CMake target.")
 endif()
+# Group the vendored FreeImage libraries and their codecs under one IDE filter.
+# A sibling component may provide them, so only touch targets that exist.
+foreach(freeimage_target FreeImage LibJPEG LibJXR LibOpenJPEG LibPNG LibRawLite
+    LibTIFF4 LibWebP OpenEXR ZLib)
+    if(TARGET ${freeimage_target})
+        set_target_properties(${freeimage_target} PROPERTIES FOLDER "FreeImage")
+    endif()
+endforeach()
+unset(freeimage_target)
 
 add_library(renderer_settings INTERFACE)
 target_compile_features(renderer_settings INTERFACE cxx_std_20)
