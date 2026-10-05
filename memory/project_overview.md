@@ -28,7 +28,7 @@ Renderer 自身公共接口为 `include/Interface/IMetaRenderer.h`，从 MetaHoo
 优先使用本仓库副本并随 install 发布；MetaHook 来源副本保留不变。
 
 MetaHook 提供公共 API、SourceSDK、VGUI 代码，仅消费其源码，不构建宿主可执行文件。
-指定 `METAHOOK_SOURCE_PATH` 时直接使用外部仓库根目录；否则通过 FetchContent 获取固定版本，
+指定 `METAHOOK_SOURCE_PATH` 时直接使用外部仓库根目录；否则通过 FetchContent 获取最新 `main`，
 不使用 MetaHook submodule，也不初始化宿主的递归依赖。
 GLEW 静态链接，FreeImage 动态链接并随插件安装。SDL/Capstone 只消费头文件。
 SDL2/SDL3 由 MetaHook 构建、安装；Renderer 的 `SDL2_INCLUDE_DIRS` 必需，

@@ -30,7 +30,7 @@ scripts\build-Renderer-x86-Release.bat "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/
 
 ## 手动指定源码路径
 
-MetaHook、VGUI2Extension、UtilThreadTask、FreeImage 和 GLEW 默认自动下载固定版本。需要复用本地源码时，可按需传入以下可选参数：
+MetaHook 默认自动下载最新 `main`，VGUI2Extension、UtilThreadTask、FreeImage 和 GLEW 默认自动下载固定版本。需要复用本地源码时，可按需传入以下可选参数：
 
 | 参数 | 本地源码目录 |
 | --- | --- |
@@ -94,4 +94,4 @@ ctest --test-dir build/x86/Release -C Release --output-on-failure
 LiveBuild 和 Release 共用 `.github/actions/build-windows-x86/action.yml`，在 Renderer
 同级目录克隆 MetaHook、VGUI2Extension 和 UtilThreadTask 的 `main` 分支，记录各自的提交 SHA，
 并显式传入 `METAHOOK_SOURCE_PATH`、`VGUI2EXTENSION_SOURCE_PATH` 和 `UTILTHREADTASK_SOURCE_PATH`。
-本地未指定源码路径时仍使用固定提交。
+本地未指定源码路径时，MetaHook 取最新 `main`，其余依赖使用固定提交。

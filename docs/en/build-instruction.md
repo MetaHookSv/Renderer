@@ -33,7 +33,7 @@ and `build/x86/Release`. This project provides plain Debug and Release, no AVX2 
 
 ## Specifying source paths manually
 
-MetaHook, VGUI2Extension, UtilThreadTask, FreeImage and GLEW are downloaded automatically at fixed versions. To reuse
+MetaHook is downloaded automatically from the latest `main`, and VGUI2Extension, UtilThreadTask, FreeImage and GLEW at fixed versions. To reuse
 local sources, pass any of these optional parameters:
 
 | Parameter | Local source directory |
@@ -110,5 +110,5 @@ ctest --test-dir build/x86/Release -C Release --output-on-failure
 LiveBuild and Release share `.github/actions/build-windows-x86/action.yml`. It clones
 the `main` branches of MetaHook, VGUI2Extension and UtilThreadTask beside Renderer,
 records their commit SHAs, and passes `METAHOOK_SOURCE_PATH`, `VGUI2EXTENSION_SOURCE_PATH`
-and `UTILTHREADTASK_SOURCE_PATH` explicitly. Local builds without source paths continue
-to use pinned commits.
+and `UTILTHREADTASK_SOURCE_PATH` explicitly. Local builds without source paths fetch
+MetaHook from the latest `main` and the other dependencies at pinned commits.
