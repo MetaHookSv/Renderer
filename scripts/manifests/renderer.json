@@ -6,6 +6,14 @@
     "cof-5936",
     "cstrike-3248",
     "cstrike-3647",
+    "cstrike-4554",
+    "cstrike-6153",
+    "cstrike-8684",
+    "cstrike-10210",
+    "czero-8684",
+    "czero-10210",
+    "czeror-8684",
+    "czeror-10210",
     "hl-10210",
     "hl-3248",
     "hl-3266",
@@ -427,7 +435,15 @@
         "hl-10210",
         "cof-5936",
         "cstrike-3248",
-        "cstrike-3647"
+        "cstrike-3647",
+        "cstrike-4554",
+        "cstrike-6153",
+        "cstrike-8684",
+        "cstrike-10210",
+        "czero-8684",
+        "czero-10210",
+        "czeror-8684",
+        "czeror-10210"
       ],
       "symbols": {
         "client": {
@@ -438,6 +454,34 @@
           "GameStudioRenderer_StudioRenderModel": "virtualFunction",
           "GameStudioRenderer_StudioSaveBones": "virtualFunction",
           "GameStudioRenderer_StudioSetupBones": "virtualFunction"
+        }
+      }
+    },
+    {
+      "when": [
+        "cstrike-3248",
+        "cstrike-3647",
+        "cstrike-4554",
+        "cstrike-6153",
+        "cstrike-8684",
+        "cstrike-10210",
+        "czero-8684",
+        "czero-10210"
+      ],
+      "symbols": {
+        "client": {
+          "g_PlayerExtraInfo": "global"
+        }
+      }
+    },
+    {
+      "when": [
+        "czeror-8684",
+        "czeror-10210"
+      ],
+      "symbols": {
+        "client": {
+          "g_PlayerExtraInfo_CZDS": "global"
         }
       }
     }
