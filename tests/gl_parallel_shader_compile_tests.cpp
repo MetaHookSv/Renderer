@@ -4,13 +4,21 @@
 // test: it opens a real GL context through the shared GLFW target and asks the
 // driver which parallel-shader-compile flavor it implements. It is diagnostics,
 // so it prints a report and does not assert on the capability itself -- a
-// missing extension is a valid driver result, not a test failure.
+// missing extension is a valid driver result, not a test failure. When no GL
+// context can be created at all the test reports kSkipExitCode so CTest marks it
+// skipped instead of failed.
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
 #include <cstdio>
 
 namespace {
+
+// Reported to CTest through the test's SKIP_RETURN_CODE property. A machine
+// without an OpenGL-capable driver (headless CI runners, WGL unable to create a
+// context) cannot run this probe at all; that is an environment limitation, not
+// a regression, so it must not fail the build.
+constexpr int kSkipExitCode = 2;
 
 // A function must be reachable through the current context to be callable.
 // GLEW only sets the pointer when the driver advertised the extension, so a
@@ -29,8 +37,8 @@ int main()
     });
     if (glfwInit() != GLFW_TRUE)
     {
-        std::fprintf(stderr, "gl_parallel_shader_compile_tests: glfwInit failed\n");
-        return 1;
+        std::fprintf(stderr, "gl_parallel_shader_compile_tests: glfwInit failed, skipping\n");
+        return kSkipExitCode;
     }
 
     // A context is needed so GLEW can query the driver; nothing is drawn.
@@ -38,9 +46,10 @@ int main()
     GLFWwindow* window = glfwCreateWindow(64, 64, "parallel shader compile probe", nullptr, nullptr);
     if (!window)
     {
-        std::fprintf(stderr, "gl_parallel_shader_compile_tests: glfwCreateWindow failed\n");
+        std::fprintf(stderr,
+            "gl_parallel_shader_compile_tests: no OpenGL context available, skipping\n");
         glfwTerminate();
-        return 1;
+        return kSkipExitCode;
     }
     glfwMakeContextCurrent(window);
 
@@ -51,11 +60,12 @@ int main()
     GLenum initResult = glewInit();
     if (initResult != GLEW_OK)
     {
-        std::fprintf(stderr, "gl_parallel_shader_compile_tests: glewInit failed: %s\n",
+        std::fprintf(stderr,
+            "gl_parallel_shader_compile_tests: glewInit failed: %s, skipping\n",
             glewGetErrorString(initResult));
         glfwDestroyWindow(window);
         glfwTerminate();
-        return 1;
+        return kSkipExitCode;
     }
 
     const char* version = reinterpret_cast<const char*>(glGetString(GL_VERSION));

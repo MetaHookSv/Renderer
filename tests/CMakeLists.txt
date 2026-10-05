@@ -43,3 +43,7 @@ add_executable(gl_parallel_shader_compile_tests gl_parallel_shader_compile_tests
 target_compile_definitions(gl_parallel_shader_compile_tests PRIVATE GLEW_STATIC GLFW_INCLUDE_NONE)
 target_link_libraries(gl_parallel_shader_compile_tests PRIVATE renderer_settings libglew_static glfw)
 add_test(NAME gl_parallel_shader_compile_tests COMMAND gl_parallel_shader_compile_tests)
+# The probe needs a driver-backed GL context. Runners that cannot provide one
+# (WGL reports no OpenGL support, e.g. headless CI) exit with this code so CTest
+# marks the test skipped instead of failing the build.
+set_tests_properties(gl_parallel_shader_compile_tests PROPERTIES SKIP_RETURN_CODE 2)
