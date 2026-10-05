@@ -151,15 +151,7 @@ install(DIRECTORY "${RENDERER_GAMEDATA_DIR}/" DESTINATION svencoop/metahook/game
 option(RENDERER_BUILD_TESTS "Build the existing Renderer regression tests" OFF)
 if(RENDERER_BUILD_TESTS)
     enable_testing()
-    foreach(test studio_model_validation_tests studio_model_load_tests ringbuffer_tests sc_client_tests)
-        add_executable(${test} "tests/${test}.cpp")
-        target_link_libraries(${test} PRIVATE renderer_settings)
-        # These tests include production translation units and discard unused handlers.
-        # Assertions must remain enabled in Release as in the original test runner.
-        target_compile_options(${test} PRIVATE /UNDEBUG /Gy $<$<CONFIG:Release>:/O1>)
-        target_link_options(${test} PRIVATE /OPT:REF /INCREMENTAL:NO)
-        add_test(NAME ${test} COMMAND ${test})
-    endforeach()
+    add_subdirectory(tests)
 endif()
 
 # The aggregate solution owns its single LaunchGame target.
