@@ -26,7 +26,9 @@ scripts\build-Renderer-x86-Release.bat "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/
 两个入口均使用 `Visual Studio 17 2022 -A Win32`，执行 configure、build 和 install。
 可从工程外调用；未设置 `SolutionDir` 时由脚本位置定位工程。初始化、下载、配置、编译或安装
 失败返回非零退出码。构建目录为 `build/x86/Debug` 和 `build/x86/Release`。
-本工程提供普通 Debug、Release，不提供 AVX2 入口。
+入口只提供普通 Debug、Release；可选开关 `RENDERER_BUILD_AVX2` 会额外增加一个以
+`/arch:AVX2` 编译的 Release 目标，安装为 `Renderer_AVX2.dll`（加载器会先探测该名字，
+再回退到 `Renderer.dll`）。
 
 ## 手动指定源码路径
 
