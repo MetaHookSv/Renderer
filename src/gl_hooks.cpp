@@ -755,7 +755,9 @@ void Engine_FillAddress_GL_SelectTexture(const mh_dll_info_t& RealDllInfo)
 
 void Engine_FillAddress_R_ForceCVars(const mh_dll_info_t& RealDllInfo)
 {
-	gPrivateFuncs.R_ForceCVars = (decltype(gPrivateFuncs.R_ForceCVars))GamedataResolvePtr(RealDllInfo.ImageBase, "engine", "R_ForceCVars", MH_GAMESYMBOL_KIND_FUNCTION);
+	//R_ForceCVars has no standalone body on builds that inline the force-cvar logic
+	//(hl-3248/3266/3329/3647); resolve it as optional and leave the hook off there.
+	gPrivateFuncs.R_ForceCVars = (decltype(gPrivateFuncs.R_ForceCVars))GamedataResolvePtrIfAvailable(RealDllInfo.ImageBase, "engine", "R_ForceCVars", MH_GAMESYMBOL_KIND_FUNCTION);
 	gPrivateFuncs.R_CheckVariables = (decltype(gPrivateFuncs.R_CheckVariables))GamedataResolvePtr(RealDllInfo.ImageBase, "engine", "R_CheckVariables", MH_GAMESYMBOL_KIND_FUNCTION);
 	gPrivateFuncs.R_AnimateLight = (decltype(gPrivateFuncs.R_AnimateLight))GamedataResolvePtr(RealDllInfo.ImageBase, "engine", "R_AnimateLight", MH_GAMESYMBOL_KIND_FUNCTION);
 }
@@ -1166,7 +1168,8 @@ void Engine_InstallHooks(void)
 	}
 
 	//For Sven
-	Install_InlineHook(R_ForceCVars);
+	if (gPrivateFuncs.R_ForceCVars)
+		Install_InlineHook(R_ForceCVars);
 	Install_InlineHook(R_NewMap);
 	Install_InlineHook(Mod_PointInLeaf);
 	Install_InlineHook(R_GLStudioDrawPoints);
