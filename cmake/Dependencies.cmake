@@ -155,7 +155,7 @@ function(renderer_prepare_dependencies)
     else()
         renderer_fetch_source(renderer_freeimage
             "https://github.com/hzqst/FreeImage_clone"
-            "c68700b9fe699dbbf99f88a611065f101cba1a41" source)
+            "007c9e4c5d4198a1646b6c5274fd855be9cca7ef" source)
     endif()
     if(NOT EXISTS "${source}/CMakeLists.txt" OR NOT EXISTS "${source}/Source/FreeImage.h")
         message(FATAL_ERROR "FreeImage source tree (FREEIMAGE_SOURCE_PATH or FetchContent) must contain CMakeLists.txt and Source/FreeImage.h: ${source}")
