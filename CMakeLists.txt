@@ -122,6 +122,26 @@ install(FILES "$<TARGET_PDB_FILE:Renderer>" DESTINATION svencoop/metahook/plugin
 install(FILES "$<TARGET_FILE:FreeImage>" DESTINATION svencoop/metahook/dlls/FreeImage)
 install(DIRECTORY assets/svencoop/renderer DESTINATION svencoop)
 
+# Optional AVX2 variant installed as Renderer_AVX2.dll. The launcher probes
+# *_AVX2.dll before the baseline name, so publishing this keeps an AVX2-capable
+# installation from loading a stale copy left behind by an older release.
+option(RENDERER_BUILD_AVX2 "Also build and install Renderer_AVX2.dll" OFF)
+if(RENDERER_BUILD_AVX2)
+    add_library(Renderer_AVX2 SHARED ${RENDERER_SOURCES})
+    target_link_libraries(Renderer_AVX2 PRIVATE renderer_settings libglew_static FreeImage opengl32)
+    target_compile_definitions(Renderer_AVX2 PRIVATE $<$<CONFIG:Debug>:_DEBUG>)
+    target_compile_options(Renderer_AVX2 PRIVATE /MP /Zi
+        $<$<CONFIG:Debug>:/arch:SSE2> $<$<CONFIG:Release>:/arch:AVX2>)
+    target_link_options(Renderer_AVX2 PRIVATE /DEBUG
+        $<$<CONFIG:Debug>:/INCREMENTAL>
+        $<$<CONFIG:Release>:/INCREMENTAL:NO;/OPT:REF;/OPT:ICF;/LARGEADDRESSAWARE>)
+    set_target_properties(Renderer_AVX2 PROPERTIES
+        OUTPUT_NAME Renderer_AVX2
+        INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE FOLDER "MetaHookPlugins")
+    install(TARGETS Renderer_AVX2 RUNTIME DESTINATION svencoop/metahook/plugins)
+    install(FILES "$<TARGET_PDB_FILE:Renderer_AVX2>" DESTINATION svencoop/metahook/plugins)
+endif()
+
 # Renderer ships its own gamedata catalog, pruned to the symbols it resolves, in
 # a nested directory the launcher's catalog loader merges (metahook/gamedata/
 # renderer). The manifest lists those symbols; the synchronizer downloads the
