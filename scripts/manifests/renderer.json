@@ -90,7 +90,6 @@
           "R_BeamDrawList": "function",
           "R_CheckVariables": "function",
           "R_CullBox": "function",
-          "R_ForceCVars": "function",
           "R_FreeDeadParticles": "function",
           "R_GLStudioDrawPoints": "function",
           "R_GetSpriteFrame": "function",
@@ -263,6 +262,20 @@
       ],
       "symbols": {
         "DT_Initialize": "function"
+      }
+    },
+    {
+      "when": [
+        "cof-5936",
+        "hl-10210",
+        "hl-4554",
+        "hl-6153",
+        "hl-8684",
+        "svencoop-10257",
+        "svencoop-8948"
+      ],
+      "symbols": {
+        "R_ForceCVars": "function"
       }
     },
     {
