@@ -6216,7 +6216,7 @@ void __fastcall CVideoMode_Common_DrawStartupGraphic(void* pthis, int dummy, voi
 
 void __fastcall CGame_DrawStartupVideo(void* pgame, int dummy, const char* filename, void* window)
 {
-	//not available yet. See https://github.com/hzqst/MetaHookSv/issues/699
+	//not available yet. See https://github.com/MetaHookSv/MetaHookSv/issues/699
 }
 
 void LegacyMultiTextureInit()
