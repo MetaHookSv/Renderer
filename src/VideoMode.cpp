@@ -5,22 +5,18 @@
 
 void VideoMode_FillAddress(const mh_dll_info_t& DllInfo, const mh_dll_info_t& RealDllInfo)
 {
-	
 }
 
 void VideoMode_InstallHooks(void)
 {
-	if (g_iEngineType == ENGINE_GOLDSRC_HL25)
-	{
-		
-	}
-	else
-	{
-		
-	}
+    if (g_iEngineType == ENGINE_GOLDSRC_HL25)
+    {
+    }
+    else
+    {
+    }
 }
 
 void VideoMode_UninstallHooks(void)
 {
-
 }

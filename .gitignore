@@ -7,3 +7,6 @@ __pycache__/
 /Debug/
 /Release/
 /x64/
+
+# Generated from the shared FormatValidation source during CMake configuration.
+/.clang-format

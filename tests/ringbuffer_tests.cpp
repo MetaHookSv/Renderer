@@ -1,8 +1,12 @@
 // Exercise the production allocator and Renderer frame lifecycle without a GPU.
 #include "../src/gl_local.h"
-static void TestFinish() { assert(false); }
-static GLenum TestGetError() { assert(false); return GL_NO_ERROR; }
-#define glFinish TestFinish
+static void   TestFinish() { assert(false); }
+static GLenum TestGetError()
+{
+    assert(false);
+    return GL_NO_ERROR;
+}
+#define glFinish   TestFinish
 #define glGetError TestGetError
 #include "../src/gl_ringbuffer.cpp"
 #undef glFinish
@@ -19,28 +23,32 @@ IPMBRingBuffer* g_FilledRectVertexBuffer{};
 IPMBRingBuffer* g_RectInstanceBuffer{};
 IPMBRingBuffer* g_RectIndexBuffer{};
 
-static unsigned char mappedMemory[1024];
-static unsigned warnings{}, fences{}, deletedFences{};
-static GLenum waitResult = GL_ALREADY_SIGNALED;
-static void ConsolePrint(const char*, ...) { ++warnings; }
-GLuint GL_GenBuffer() { return 1; }
-void GL_DeleteBuffer(GLuint) {}
-void GL_BindVAO(GLuint) {}
-static void GLAPIENTRY BindBuffer(GLenum, GLuint) {}
-static void GLAPIENTRY BufferStorage(GLenum, GLsizeiptr, const void*, GLbitfield) {}
-static void* GLAPIENTRY MapBufferRange(GLenum, GLintptr, GLsizeiptr, GLbitfield) { return mappedMemory; }
+static unsigned char        mappedMemory[1024];
+static unsigned             warnings{}, fences{}, deletedFences{};
+static GLenum               waitResult = GL_ALREADY_SIGNALED;
+static void                 ConsolePrint(const char*, ...) { ++warnings; }
+GLuint                      GL_GenBuffer() { return 1; }
+void                        GL_DeleteBuffer(GLuint) {}
+void                        GL_BindVAO(GLuint) {}
+static void GLAPIENTRY      BindBuffer(GLenum, GLuint) {}
+static void GLAPIENTRY      BufferStorage(GLenum, GLsizeiptr, const void*, GLbitfield) {}
+static void* GLAPIENTRY     MapBufferRange(GLenum, GLintptr, GLsizeiptr, GLbitfield) { return mappedMemory; }
 static GLboolean GLAPIENTRY UnmapBuffer(GLenum) { return GL_TRUE; }
-static GLsync GLAPIENTRY FenceSync(GLenum, GLbitfield) { ++fences; return reinterpret_cast<GLsync>(1); }
-static void GLAPIENTRY DeleteSync(GLsync) { ++deletedFences; }
+static GLsync GLAPIENTRY    FenceSync(GLenum, GLbitfield)
+{
+    ++fences;
+    return reinterpret_cast<GLsync>(1);
+}
+static void GLAPIENTRY   DeleteSync(GLsync) { ++deletedFences; }
 static GLenum GLAPIENTRY ClientWaitSync(GLsync, GLbitfield, GLuint64) { return waitResult; }
 
-PFNGLBINDBUFFERPROC __glewBindBuffer = BindBuffer;
-PFNGLBUFFERSTORAGEPROC __glewBufferStorage = BufferStorage;
+PFNGLBINDBUFFERPROC     __glewBindBuffer     = BindBuffer;
+PFNGLBUFFERSTORAGEPROC  __glewBufferStorage  = BufferStorage;
 PFNGLMAPBUFFERRANGEPROC __glewMapBufferRange = MapBufferRange;
-PFNGLUNMAPBUFFERPROC __glewUnmapBuffer = UnmapBuffer;
-PFNGLOBJECTLABELPROC __glewObjectLabel = nullptr;
-PFNGLFENCESYNCPROC __glewFenceSync = FenceSync;
-PFNGLDELETESYNCPROC __glewDeleteSync = DeleteSync;
+PFNGLUNMAPBUFFERPROC    __glewUnmapBuffer    = UnmapBuffer;
+PFNGLOBJECTLABELPROC    __glewObjectLabel    = nullptr;
+PFNGLFENCESYNCPROC      __glewFenceSync      = FenceSync;
+PFNGLDELETESYNCPROC     __glewDeleteSync     = DeleteSync;
 PFNGLCLIENTWAITSYNCPROC __glewClientWaitSync = ClientWaitSync;
 
 int main()
@@ -102,8 +110,7 @@ int main()
     IPMBRingBuffer** slots[] = {
         &g_TriAPIVertexBuffer, &g_TriAPIIndexBuffer,
         &g_TexturedRectVertexBuffer, &g_FilledRectVertexBuffer,
-        &g_RectInstanceBuffer, &g_RectIndexBuffer
-    };
+        &g_RectInstanceBuffer, &g_RectIndexBuffer};
     R_BeginRingBufferFrame();
     R_EndRingBufferFrame();
     R_BeginRingBufferFrame();

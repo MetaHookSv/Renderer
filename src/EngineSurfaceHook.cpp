@@ -5,938 +5,937 @@
 
 #include <VGUI/VGuiVertex.h>
 
-extern IEngineSurface * staticSurface;
-extern IEngineSurface_HL25 * staticSurface_HL25;
-void* g_pBaseUISurface = nullptr;
+extern IEngineSurface*      staticSurface;
+extern IEngineSurface_HL25* staticSurface_HL25;
+void*                       g_pBaseUISurface = nullptr;
 
 static std::unordered_map<int, EngineSurfaceTexture*> g_VGuiSurfaceTextures;
-static EngineSurfaceTexture* staticTextureCurrent{};
+static EngineSurfaceTexture*                          staticTextureCurrent{};
 
-EngineSurfaceVertexBuffer_t(*g_VertexBuffer)[MAXVERTEXBUFFERS] = nullptr;
+EngineSurfaceVertexBuffer_t (*g_VertexBuffer)[MAXVERTEXBUFFERS] = nullptr;
 
 int(*g_iVertexBufferEntriesUsed) = 0;
 
 RECT* g_ScissorRect = nullptr;
-bool* g_bScissor = nullptr;
+bool* g_bScissor    = nullptr;
 
-static void(__fastcall* m_pfnEngineSurface_pushMakeCurrent)(void* pthis, int, int* insets, int* absExtents, int* clipRect, bool translateToScreenSpace) = NULL;
-static void(__fastcall* m_pfnEngineSurface_popMakeCurrent)(void* pthis, int) = NULL;
-static void(__fastcall* m_pfnEngineSurface_drawFilledRect)(void* pthis, int, int x0, int y0, int x1, int y1) = NULL;
-static void(__fastcall* m_pfnEngineSurface_drawOutlinedRect)(void* pthis, int, int x0, int y0, int x1, int y1) = NULL;
-static void(__fastcall* m_pfnEngineSurface_drawLine)(void* pthis, int, int x0, int y0, int x1, int y1) = NULL;
-static void(__fastcall* m_pfnEngineSurface_drawPolyLine)(void* pthis, int, int* px, int* py, int numPoints) = NULL;
-static void(__fastcall* m_pfnEngineSurface_drawTexturedPolygon)(void* pthis, int, vgui::VGuiVertex* pVertices, int n) = NULL;
-static void(__fastcall* m_pfnEngineSurface_drawSetTextureRGBA)(void* pthis, int, int textureId, const char* data, int wide, int tall, qboolean hardwareFilter, qboolean hasAlphaChannel) = NULL;
-static void(__fastcall* m_pfnEngineSurface_drawSetTexture)(void* pthis, int, int textureId) = NULL;
-static void(__fastcall* m_pfnEngineSurface_drawTexturedRect)(void* pthis, int, int x0, int y0, int x1, int y1) = NULL;
-static void(__fastcall* m_pfnEngineSurface_drawTexturedRectAdd)(void* pthis, int, int x0, int y0, int x1, int y1) = NULL;
-static int(__fastcall* m_pfnEngineSurface_createNewTextureID)(void* pthis, int) = NULL;
-static void(__fastcall* m_pfnEngineSurface_drawPrintCharAdd)(void* pthis, int, int x, int y, int wide, int tall, float s0, float t0, float s1, float t1) = NULL;
-static void(__fastcall* m_pfnEngineSurface_drawSetTextureFile)(void* pthis, int, int textureId, const char* filename, qboolean hardwareFilter, bool forceReload) = NULL;
-static void(__fastcall* m_pfnEngineSurface_drawGetTextureSize)(void* pthis, int, int textureId, int& wide, int& tall) = NULL;
-static bool(__fastcall* m_pfnEngineSurface_isTextureIDValid)(void* pthis, int, int) = NULL;
+static void(__fastcall* m_pfnEngineSurface_pushMakeCurrent)(void* pthis, int, int* insets, int* absExtents, int* clipRect, bool translateToScreenSpace)                                     = NULL;
+static void(__fastcall* m_pfnEngineSurface_popMakeCurrent)(void* pthis, int)                                                                                                                = NULL;
+static void(__fastcall* m_pfnEngineSurface_drawFilledRect)(void* pthis, int, int x0, int y0, int x1, int y1)                                                                                = NULL;
+static void(__fastcall* m_pfnEngineSurface_drawOutlinedRect)(void* pthis, int, int x0, int y0, int x1, int y1)                                                                              = NULL;
+static void(__fastcall* m_pfnEngineSurface_drawLine)(void* pthis, int, int x0, int y0, int x1, int y1)                                                                                      = NULL;
+static void(__fastcall* m_pfnEngineSurface_drawPolyLine)(void* pthis, int, int* px, int* py, int numPoints)                                                                                 = NULL;
+static void(__fastcall* m_pfnEngineSurface_drawTexturedPolygon)(void* pthis, int, vgui::VGuiVertex* pVertices, int n)                                                                       = NULL;
+static void(__fastcall* m_pfnEngineSurface_drawSetTextureRGBA)(void* pthis, int, int textureId, const char* data, int wide, int tall, qboolean hardwareFilter, qboolean hasAlphaChannel)    = NULL;
+static void(__fastcall* m_pfnEngineSurface_drawSetTexture)(void* pthis, int, int textureId)                                                                                                 = NULL;
+static void(__fastcall* m_pfnEngineSurface_drawTexturedRect)(void* pthis, int, int x0, int y0, int x1, int y1)                                                                              = NULL;
+static void(__fastcall* m_pfnEngineSurface_drawTexturedRectAdd)(void* pthis, int, int x0, int y0, int x1, int y1)                                                                           = NULL;
+static int(__fastcall* m_pfnEngineSurface_createNewTextureID)(void* pthis, int)                                                                                                             = NULL;
+static void(__fastcall* m_pfnEngineSurface_drawPrintCharAdd)(void* pthis, int, int x, int y, int wide, int tall, float s0, float t0, float s1, float t1)                                    = NULL;
+static void(__fastcall* m_pfnEngineSurface_drawSetTextureFile)(void* pthis, int, int textureId, const char* filename, qboolean hardwareFilter, bool forceReload)                            = NULL;
+static void(__fastcall* m_pfnEngineSurface_drawGetTextureSize)(void* pthis, int, int textureId, int& wide, int& tall)                                                                       = NULL;
+static bool(__fastcall* m_pfnEngineSurface_isTextureIDValid)(void* pthis, int, int)                                                                                                         = NULL;
 static void(__fastcall* m_pfnEngineSurface_drawSetSubTextureRGBA)(void* pthis, int, int textureID, int drawX, int drawY, const unsigned char* rgba, int subTextureWide, int subTextureTall) = NULL;
-static void(__fastcall* m_pfnEngineSurface_drawFlushText)(void* pthis, int) = NULL;
-static void(__fastcall* m_pfnEngineSurface_drawSetTextureBGRA)(void* pthis, int, int textureId, const char* data, int wide, int tall, qboolean hardwareFilter, bool forceUpload) = NULL;
-static void(__fastcall* m_pfnEngineSurface_drawUpdateRegionTextureBGRA)(void* pthis, int, int textureID, int x, int y, const unsigned char* pchData, int wide, int tall) = NULL;
+static void(__fastcall* m_pfnEngineSurface_drawFlushText)(void* pthis, int)                                                                                                                 = NULL;
+static void(__fastcall* m_pfnEngineSurface_drawSetTextureBGRA)(void* pthis, int, int textureId, const char* data, int wide, int tall, qboolean hardwareFilter, bool forceUpload)            = NULL;
+static void(__fastcall* m_pfnEngineSurface_drawUpdateRegionTextureBGRA)(void* pthis, int, int textureID, int x, int y, const unsigned char* pchData, int wide, int tall)                    = NULL;
 static void(__fastcall* m_pfnBaseUISurface_DrawSetTexture)(void* pthis, int, int textureID);
 
 void Engine_FillAddress_EngineSurface_drawFlushText(const mh_dll_info_t& RealDllInfo)
 {
-	g_VertexBuffer = (decltype(g_VertexBuffer))GamedataResolvePtr(RealDllInfo.ImageBase, "engine", "g_VertexBuffer", MH_GAMESYMBOL_KIND_GLOBAL);
-	g_iVertexBufferEntriesUsed = (decltype(g_iVertexBufferEntriesUsed))GamedataResolvePtr(RealDllInfo.ImageBase, "engine", "g_iVertexBufferEntriesUsed", MH_GAMESYMBOL_KIND_GLOBAL);
+    g_VertexBuffer             = (decltype(g_VertexBuffer))GamedataResolvePtr(RealDllInfo.ImageBase, "engine", "g_VertexBuffer", MH_GAMESYMBOL_KIND_GLOBAL);
+    g_iVertexBufferEntriesUsed = (decltype(g_iVertexBufferEntriesUsed))GamedataResolvePtr(RealDllInfo.ImageBase, "engine", "g_iVertexBufferEntriesUsed", MH_GAMESYMBOL_KIND_GLOBAL);
 }
 
 void Engine_FillAddress_EngineSurface_pushMakeCurrent(const mh_dll_info_t& RealDllInfo)
 {
-	pmainwindow = (decltype(pmainwindow))GamedataResolvePtr(RealDllInfo.ImageBase, "engine", "pmainwindow", MH_GAMESYMBOL_KIND_GLOBAL);
-	g_bScissor = (decltype(g_bScissor))GamedataResolvePtr(RealDllInfo.ImageBase, "engine", "g_bScissor", MH_GAMESYMBOL_KIND_GLOBAL);
-	g_ScissorRect = (decltype(g_ScissorRect))GamedataResolvePtr(RealDllInfo.ImageBase, "engine", "g_ScissorRect", MH_GAMESYMBOL_KIND_GLOBAL);
+    pmainwindow   = (decltype(pmainwindow))GamedataResolvePtr(RealDllInfo.ImageBase, "engine", "pmainwindow", MH_GAMESYMBOL_KIND_GLOBAL);
+    g_bScissor    = (decltype(g_bScissor))GamedataResolvePtr(RealDllInfo.ImageBase, "engine", "g_bScissor", MH_GAMESYMBOL_KIND_GLOBAL);
+    g_ScissorRect = (decltype(g_ScissorRect))GamedataResolvePtr(RealDllInfo.ImageBase, "engine", "g_ScissorRect", MH_GAMESYMBOL_KIND_GLOBAL);
 }
 
 inline float InterpTCoord(float val, float mins, float maxs, float tMin, float tMax)
 {
-	float flPercent = (float)(val - mins) / (maxs - mins);
-	return tMin + (tMax - tMin) * flPercent;
+    float flPercent = (float)(val - mins) / (maxs - mins);
+    return tMin + (tMax - tMin) * flPercent;
 }
 
 static bool ScissorRect_TCoords(int x0, int y0, int x1, int y1, float s0, float t0, float s1, float t1, RECT* pOut, TCoordRect* pTCoords)
 {
-	RECT rcChar;
+    RECT rcChar;
 
-	rcChar.left = x0;
-	rcChar.top = y0;
-	rcChar.right = x1;
-	rcChar.bottom = y1;
+    rcChar.left   = x0;
+    rcChar.top    = y0;
+    rcChar.right  = x1;
+    rcChar.bottom = y1;
 
-	if ((*g_bScissor))
-	{
-		if (!IntersectRect(pOut, g_ScissorRect, &rcChar))
-			return false;
+    if ((*g_bScissor))
+    {
+        if (!IntersectRect(pOut, g_ScissorRect, &rcChar))
+            return false;
 
-		if (pTCoords)
-		{
-			pTCoords->s0 = InterpTCoord(pOut->left, rcChar.left, rcChar.right, s0, s1);
-			pTCoords->s1 = InterpTCoord(pOut->right, rcChar.left, rcChar.right, s0, s1);
-			pTCoords->t0 = InterpTCoord(pOut->top, rcChar.top, rcChar.bottom, t0, t1);
-			pTCoords->t1 = InterpTCoord(pOut->bottom, rcChar.top, rcChar.bottom, t0, t1);
-		}
-	}
-	else
-	{
-		*pOut = rcChar;
+        if (pTCoords)
+        {
+            pTCoords->s0 = InterpTCoord(pOut->left, rcChar.left, rcChar.right, s0, s1);
+            pTCoords->s1 = InterpTCoord(pOut->right, rcChar.left, rcChar.right, s0, s1);
+            pTCoords->t0 = InterpTCoord(pOut->top, rcChar.top, rcChar.bottom, t0, t1);
+            pTCoords->t1 = InterpTCoord(pOut->bottom, rcChar.top, rcChar.bottom, t0, t1);
+        }
+    }
+    else
+    {
+        *pOut = rcChar;
 
-		if (pTCoords)
-		{
-			pTCoords->s0 = s0;
-			pTCoords->s1 = s1;
-			pTCoords->t0 = t0;
-			pTCoords->t1 = t1;
-		}
-	}
+        if (pTCoords)
+        {
+            pTCoords->s0 = s0;
+            pTCoords->s1 = s1;
+            pTCoords->t0 = t0;
+            pTCoords->t1 = t1;
+        }
+    }
 
-	return true;
+    return true;
 }
 
 static bool ScissorRect(int x0, int y0, int x1, int y1, RECT* pOut)
 {
-	return ScissorRect_TCoords(x0, y0, x1, y1, 0, 0, 0, 0, pOut, NULL);
+    return ScissorRect_TCoords(x0, y0, x1, y1, 0, 0, 0, 0, pOut, NULL);
 }
 
 static EngineSurfaceTexture* staticGetTextureById(int id)
 {
-	auto it = g_VGuiSurfaceTextures.find(id);
+    auto it = g_VGuiSurfaceTextures.find(id);
 
-	if (it != g_VGuiSurfaceTextures.end())
-	{
-		return it->second;
-	}
+    if (it != g_VGuiSurfaceTextures.end())
+    {
+        return it->second;
+    }
 
-	return nullptr;
+    return nullptr;
 }
 
 static EngineSurfaceTexture* staticAllocTextureForId(int id)
 {
-	auto it = g_VGuiSurfaceTextures.find(id);
+    auto it = g_VGuiSurfaceTextures.find(id);
 
-	if (it != g_VGuiSurfaceTextures.end())
-	{
-		return it->second;
-	}
+    if (it != g_VGuiSurfaceTextures.end())
+    {
+        return it->second;
+    }
 
-	EngineSurfaceTexture* pNewEntry = new EngineSurfaceTexture;
+    EngineSurfaceTexture* pNewEntry = new EngineSurfaceTexture;
 
-	g_VGuiSurfaceTextures[id] = pNewEntry;
+    g_VGuiSurfaceTextures[id] = pNewEntry;
 
-	return pNewEntry;
+    return pNewEntry;
 }
 
 void staticFreeTextureId(int id)
 {
-	auto it = g_VGuiSurfaceTextures.find(id);
-	if (it != g_VGuiSurfaceTextures.end())
-	{
-		EngineSurfaceTexture* pNewEntry = it->second;
+    auto it = g_VGuiSurfaceTextures.find(id);
+    if (it != g_VGuiSurfaceTextures.end())
+    {
+        EngineSurfaceTexture* pNewEntry = it->second;
 
-		delete pNewEntry;
+        delete pNewEntry;
 
-		g_VGuiSurfaceTextures.erase(it);
-	}
+        g_VGuiSurfaceTextures.erase(it);
+    }
 }
 
 void __fastcall enginesurface_pushMakeCurrent(void* pthis, int, int* insets, int* absExtents, int* clipRect, bool translateToScreenSpace)
 {
-	int surfaceAbsExtents[4] = { 0 };
-	int xTranslate = 0, yTranslate = 0;
+    int surfaceAbsExtents[4] = {0};
+    int xTranslate = 0, yTranslate = 0;
 
-	POINT pnt = { 0 };
-	RECT rect = { 0 };
+    POINT pnt  = {0};
+    RECT  rect = {0};
 
-	if (gPrivateFuncs.SDL_GetWindowPosition)
-	{
-		if (translateToScreenSpace)
-		{
-			if (g_pMetaHookAPI->VideoModeIsWindowed())
-			{
-				gPrivateFuncs.SDL_GetWindowPosition(Sys_GetMainWindow(), (int*)&pnt.x, (int*)&pnt.y);
-			}
-			else
-			{
-				pnt.x = 0;
-				pnt.y = 0;
-			}
-		}
+    if (gPrivateFuncs.SDL_GetWindowPosition)
+    {
+        if (translateToScreenSpace)
+        {
+            if (g_pMetaHookAPI->VideoModeIsWindowed())
+            {
+                gPrivateFuncs.SDL_GetWindowPosition(Sys_GetMainWindow(), (int*)&pnt.x, (int*)&pnt.y);
+            }
+            else
+            {
+                pnt.x = 0;
+                pnt.y = 0;
+            }
+        }
 
-		if (g_pMetaHookAPI->VideoModeIsWindowed())
-		{
-			gPrivateFuncs.SDL_GetWindowSize(Sys_GetMainWindow(), (int*)&rect.right, (int*)&rect.bottom);
-		}
-		else
-		{
-			g_pMetaHookAPI->GetVideoMode((int*)&rect.right, (int*)&rect.bottom, nullptr, nullptr);
-		}
-	}
-	else
-	{
-		if (translateToScreenSpace)
-			ClientToScreen((HWND)Sys_GetMainWindow(), &pnt);
+        if (g_pMetaHookAPI->VideoModeIsWindowed())
+        {
+            gPrivateFuncs.SDL_GetWindowSize(Sys_GetMainWindow(), (int*)&rect.right, (int*)&rect.bottom);
+        }
+        else
+        {
+            g_pMetaHookAPI->GetVideoMode((int*)&rect.right, (int*)&rect.bottom, nullptr, nullptr);
+        }
+    }
+    else
+    {
+        if (translateToScreenSpace)
+            ClientToScreen((HWND)Sys_GetMainWindow(), &pnt);
 
-		GetClientRect((HWND)Sys_GetMainWindow(), &rect);
-	}
+        GetClientRect((HWND)Sys_GetMainWindow(), &rect);
+    }
 
-	xTranslate = pnt.x;
-	yTranslate = pnt.y;
+    xTranslate = pnt.x;
+    yTranslate = pnt.y;
 
-	int wide = rect.right;
-	int tall = rect.bottom;
+    int wide = rect.right;
+    int tall = rect.bottom;
 
-	int x0, y0, x1, y1;
+    int x0, y0, x1, y1;
 
-	x0 = insets[0];
-	y0 = insets[1];
+    x0 = insets[0];
+    y0 = insets[1];
 
-	x1 = absExtents[0] - xTranslate;
-	y1 = absExtents[1] - yTranslate;
+    x1 = absExtents[0] - xTranslate;
+    y1 = absExtents[1] - yTranslate;
 
-	surfaceAbsExtents[0] = absExtents[0] - xTranslate;
-	surfaceAbsExtents[1] = absExtents[1] - yTranslate;
-	surfaceAbsExtents[2] = absExtents[2] - xTranslate;
-	surfaceAbsExtents[3] = absExtents[3] - yTranslate;
+    surfaceAbsExtents[0] = absExtents[0] - xTranslate;
+    surfaceAbsExtents[1] = absExtents[1] - yTranslate;
+    surfaceAbsExtents[2] = absExtents[2] - xTranslate;
+    surfaceAbsExtents[3] = absExtents[3] - yTranslate;
 
-	(*g_bScissor) = true;
-	(*g_ScissorRect).left = clipRect[0] - xTranslate - (insets[0] + surfaceAbsExtents[0]);
-	(*g_ScissorRect).top = clipRect[1] - yTranslate - (insets[1] + surfaceAbsExtents[1]);
-	(*g_ScissorRect).right = clipRect[2] - xTranslate - (insets[0] + surfaceAbsExtents[0]);
-	(*g_ScissorRect).bottom = clipRect[3] - yTranslate - (insets[1] + surfaceAbsExtents[1]);
+    (*g_bScissor)           = true;
+    (*g_ScissorRect).left   = clipRect[0] - xTranslate - (insets[0] + surfaceAbsExtents[0]);
+    (*g_ScissorRect).top    = clipRect[1] - yTranslate - (insets[1] + surfaceAbsExtents[1]);
+    (*g_ScissorRect).right  = clipRect[2] - xTranslate - (insets[0] + surfaceAbsExtents[0]);
+    (*g_ScissorRect).bottom = clipRect[3] - yTranslate - (insets[1] + surfaceAbsExtents[1]);
 
-	R_PushWorldMatrix();
+    R_PushWorldMatrix();
 
-	R_PushProjectionMatrix();
+    R_PushProjectionMatrix();
 
-	R_SetupOrthoProjectionMatrix(0, wide, tall, 0, -1, 1, true);
+    R_SetupOrthoProjectionMatrix(0, wide, tall, 0, -1, 1, true);
 
-	R_LoadIdentityForWorldMatrix();
+    R_LoadIdentityForWorldMatrix();
 
-	R_TranslateWorldMatrix(x0, y0, 0);
+    R_TranslateWorldMatrix(x0, y0, 0);
 
-	R_TranslateWorldMatrix(x1, y1, 0);
+    R_TranslateWorldMatrix(x1, y1, 0);
 }
 
 void __fastcall enginesurface_popMakeCurrent(void* pthis, int)
 {
-	enginesurface_drawFlushText(pthis, 0);
+    enginesurface_drawFlushText(pthis, 0);
 
-	(*g_bScissor) = false;
+    (*g_bScissor) = false;
 
-	R_PopProjectionMatrix();
+    R_PopProjectionMatrix();
 
-	R_PopWorldMatrix();
+    R_PopWorldMatrix();
 }
 
 void __fastcall enginesurface_drawFilledRect(void* pthis, int, int x0, int y0, int x1, int y1)
 {
-	int (*_drawColor)[4] = (decltype(_drawColor))((ULONG_PTR)pthis + gPrivateFuncs.offset_enginesurface_drawColor);
+    int (*_drawColor)[4] = (decltype(_drawColor))((ULONG_PTR)pthis + gPrivateFuncs.offset_enginesurface_drawColor);
 
-	if ((*_drawColor)[3] == 255)
-		return;
+    if ((*_drawColor)[3] == 255)
+        return;
 
-	RECT rcOut;
+    RECT rcOut;
 
-	if (!ScissorRect(x0, y0, x1, y1, &rcOut))
-		return;
+    if (!ScissorRect(x0, y0, x1, y1, &rcOut))
+        return;
 
-	filledrectvertex_t vertices[4];
+    filledrectvertex_t vertices[4];
 
-	vertices[0].col[0] = (*_drawColor)[0] / 255.0f;
-	vertices[0].col[1] = (*_drawColor)[1] / 255.0f;
-	vertices[0].col[2] = (*_drawColor)[2] / 255.0f;
-	vertices[0].col[3] = 1.0f - ((*_drawColor)[3] / 255.0f);
-	vertices[0].pos[0] = rcOut.left;
-	vertices[0].pos[1] = rcOut.top;
+    vertices[0].col[0] = (*_drawColor)[0] / 255.0f;
+    vertices[0].col[1] = (*_drawColor)[1] / 255.0f;
+    vertices[0].col[2] = (*_drawColor)[2] / 255.0f;
+    vertices[0].col[3] = 1.0f - ((*_drawColor)[3] / 255.0f);
+    vertices[0].pos[0] = rcOut.left;
+    vertices[0].pos[1] = rcOut.top;
 
-	vertices[1].col[0] = (*_drawColor)[0] / 255.0f;
-	vertices[1].col[1] = (*_drawColor)[1] / 255.0f;
-	vertices[1].col[2] = (*_drawColor)[2] / 255.0f;
-	vertices[1].col[3] = 1.0f - ((*_drawColor)[3] / 255.0f);
-	vertices[1].pos[0] = rcOut.right;
-	vertices[1].pos[1] = rcOut.top;
+    vertices[1].col[0] = (*_drawColor)[0] / 255.0f;
+    vertices[1].col[1] = (*_drawColor)[1] / 255.0f;
+    vertices[1].col[2] = (*_drawColor)[2] / 255.0f;
+    vertices[1].col[3] = 1.0f - ((*_drawColor)[3] / 255.0f);
+    vertices[1].pos[0] = rcOut.right;
+    vertices[1].pos[1] = rcOut.top;
 
-	vertices[2].col[0] = (*_drawColor)[0] / 255.0f;
-	vertices[2].col[1] = (*_drawColor)[1] / 255.0f;
-	vertices[2].col[2] = (*_drawColor)[2] / 255.0f;
-	vertices[2].col[3] = 1.0f - ((*_drawColor)[3] / 255.0f);
-	vertices[2].pos[0] = rcOut.right;
-	vertices[2].pos[1] = rcOut.bottom;
+    vertices[2].col[0] = (*_drawColor)[0] / 255.0f;
+    vertices[2].col[1] = (*_drawColor)[1] / 255.0f;
+    vertices[2].col[2] = (*_drawColor)[2] / 255.0f;
+    vertices[2].col[3] = 1.0f - ((*_drawColor)[3] / 255.0f);
+    vertices[2].pos[0] = rcOut.right;
+    vertices[2].pos[1] = rcOut.bottom;
 
-	vertices[3].col[0] = (*_drawColor)[0] / 255.0f;
-	vertices[3].col[1] = (*_drawColor)[1] / 255.0f;
-	vertices[3].col[2] = (*_drawColor)[2] / 255.0f;
-	vertices[3].col[3] = 1.0f - ((*_drawColor)[3] / 255.0f);
-	vertices[3].pos[0] = rcOut.left;
-	vertices[3].pos[1] = rcOut.bottom;
+    vertices[3].col[0] = (*_drawColor)[0] / 255.0f;
+    vertices[3].col[1] = (*_drawColor)[1] / 255.0f;
+    vertices[3].col[2] = (*_drawColor)[2] / 255.0f;
+    vertices[3].col[3] = 1.0f - ((*_drawColor)[3] / 255.0f);
+    vertices[3].pos[0] = rcOut.left;
+    vertices[3].pos[1] = rcOut.bottom;
 
-	const uint32_t indices[] = { 0,1,2,2,3,0 };
+    const uint32_t indices[] = {0, 1, 2, 2, 3, 0};
 
-	R_DrawFilledRect(vertices, _countof(vertices), indices, _countof(indices), DRAW_FILLED_RECT_ALPHA_BLEND_ENABLED, "drawFilledRect");
+    R_DrawFilledRect(vertices, _countof(vertices), indices, _countof(indices), DRAW_FILLED_RECT_ALPHA_BLEND_ENABLED, "drawFilledRect");
 }
 
 void __fastcall enginesurface_drawOutlinedRect(void* pthis, int, int x0, int y0, int x1, int y1)
 {
-	int (*_drawColor)[4] = (decltype(_drawColor))((ULONG_PTR)pthis + gPrivateFuncs.offset_enginesurface_drawColor);
+    int (*_drawColor)[4] = (decltype(_drawColor))((ULONG_PTR)pthis + gPrivateFuncs.offset_enginesurface_drawColor);
 
-	if ((*_drawColor)[3] == 255)
-		return;
+    if ((*_drawColor)[3] == 255)
+        return;
 
-	enginesurface_drawFilledRect(pthis, 0, x0, y0, x1, y0 + 1);
-	enginesurface_drawFilledRect(pthis, 0, x0, y1 - 1, x1, y1);
-	enginesurface_drawFilledRect(pthis, 0, x0, y0 + 1, x0 + 1, y1 - 1);
-	enginesurface_drawFilledRect(pthis, 0, x1 - 1, y0 + 1, x1, y1 - 1);
+    enginesurface_drawFilledRect(pthis, 0, x0, y0, x1, y0 + 1);
+    enginesurface_drawFilledRect(pthis, 0, x0, y1 - 1, x1, y1);
+    enginesurface_drawFilledRect(pthis, 0, x0, y0 + 1, x0 + 1, y1 - 1);
+    enginesurface_drawFilledRect(pthis, 0, x1 - 1, y0 + 1, x1, y1 - 1);
 }
 
 void __fastcall enginesurface_drawLine(void* pthis, int, int x0, int y0, int x1, int y1)
 {
-	int (*_drawColor)[4] = (decltype(_drawColor))((ULONG_PTR)pthis + gPrivateFuncs.offset_enginesurface_drawColor);
+    int (*_drawColor)[4] = (decltype(_drawColor))((ULONG_PTR)pthis + gPrivateFuncs.offset_enginesurface_drawColor);
 
-	if ((*_drawColor)[3] == 255)
-		return;
+    if ((*_drawColor)[3] == 255)
+        return;
 
-	filledrectvertex_t vertices[2];
+    filledrectvertex_t vertices[2];
 
-	vertices[0].col[0] = (*_drawColor)[0] / 255.0f;
-	vertices[0].col[1] = (*_drawColor)[1] / 255.0f;
-	vertices[0].col[2] = (*_drawColor)[2] / 255.0f;
-	vertices[0].col[3] = 1.0f - ((*_drawColor)[3] / 255.0f);
-	vertices[0].pos[0] = x0;
-	vertices[0].pos[1] = y0;
+    vertices[0].col[0] = (*_drawColor)[0] / 255.0f;
+    vertices[0].col[1] = (*_drawColor)[1] / 255.0f;
+    vertices[0].col[2] = (*_drawColor)[2] / 255.0f;
+    vertices[0].col[3] = 1.0f - ((*_drawColor)[3] / 255.0f);
+    vertices[0].pos[0] = x0;
+    vertices[0].pos[1] = y0;
 
-	vertices[1].col[0] = (*_drawColor)[0] / 255.0f;
-	vertices[1].col[1] = (*_drawColor)[1] / 255.0f;
-	vertices[1].col[2] = (*_drawColor)[2] / 255.0f;
-	vertices[1].col[3] = 1.0f - ((*_drawColor)[3] / 255.0f);
-	vertices[1].pos[0] = x1;
-	vertices[1].pos[1] = y1;
+    vertices[1].col[0] = (*_drawColor)[0] / 255.0f;
+    vertices[1].col[1] = (*_drawColor)[1] / 255.0f;
+    vertices[1].col[2] = (*_drawColor)[2] / 255.0f;
+    vertices[1].col[3] = 1.0f - ((*_drawColor)[3] / 255.0f);
+    vertices[1].pos[0] = x1;
+    vertices[1].pos[1] = y1;
 
-	const uint32_t indices[] = { 0,1 };
+    const uint32_t indices[] = {0, 1};
 
-	R_DrawFilledRect(vertices, _countof(vertices), indices, _countof(indices), DRAW_FILLED_RECT_LINE_ENABLED, "drawFilledRect");
+    R_DrawFilledRect(vertices, _countof(vertices), indices, _countof(indices), DRAW_FILLED_RECT_LINE_ENABLED, "drawFilledRect");
 }
 
 void __fastcall enginesurface_drawPolyLine(void* pthis, int, int* px, int* py, int numPoints)
 {
-	int (*_drawColor)[4] = (decltype(_drawColor))((ULONG_PTR)pthis + 4);
+    int (*_drawColor)[4] = (decltype(_drawColor))((ULONG_PTR)pthis + 4);
 
-	if ((*_drawColor)[3] == 255)
-		return;
+    if ((*_drawColor)[3] == 255)
+        return;
 
-	std::vector<filledrectvertex_t> vertices;
-	std::vector<uint32_t> indices;
+    std::vector<filledrectvertex_t> vertices;
+    std::vector<uint32_t>           indices;
 
-	for (int i = 0; i < numPoints; ++i)
-	{
-		filledrectvertex_t v;
+    for (int i = 0; i < numPoints; ++i)
+    {
+        filledrectvertex_t v;
 
-		v.col[0] = (*_drawColor)[0] / 255.0f;
-		v.col[1] = (*_drawColor)[1] / 255.0f;
-		v.col[2] = (*_drawColor)[2] / 255.0f;
-		v.col[3] = 1.0f - ((*_drawColor)[3] / 255.0f);
+        v.col[0] = (*_drawColor)[0] / 255.0f;
+        v.col[1] = (*_drawColor)[1] / 255.0f;
+        v.col[2] = (*_drawColor)[2] / 255.0f;
+        v.col[3] = 1.0f - ((*_drawColor)[3] / 255.0f);
 
-		v.pos[0] = px[i];
-		v.pos[1] = py[i];
+        v.pos[0] = px[i];
+        v.pos[1] = py[i];
 
-		vertices.emplace_back(v);
-	}
+        vertices.emplace_back(v);
+    }
 
-	for (uint32_t i = 0; i < (uint32_t)vertices.size() - 1; ++i)
-	{
-		indices.emplace_back(i);
-		indices.emplace_back(i + 1);
-	}
+    for (uint32_t i = 0; i < (uint32_t)vertices.size() - 1; ++i)
+    {
+        indices.emplace_back(i);
+        indices.emplace_back(i + 1);
+    }
 
-	R_DrawFilledRect(vertices.data(), vertices.size(), indices.data(), indices.size(), DRAW_FILLED_RECT_LINE_ENABLED, "drawFilledRect");
+    R_DrawFilledRect(vertices.data(), vertices.size(), indices.data(), indices.size(), DRAW_FILLED_RECT_LINE_ENABLED, "drawFilledRect");
 }
 
 void __fastcall enginesurface_drawSetTextureRGBA(void* pthis, int, int textureId, const char* data, int wide, int tall, qboolean hardwareFilter, qboolean hasAlphaChannel)
 {
-	auto texture = staticGetTextureById(textureId);
+    auto texture = staticGetTextureById(textureId);
 
-	if (!texture)
-		texture = staticAllocTextureForId(textureId);
+    if (!texture)
+        texture = staticAllocTextureForId(textureId);
 
-	if (texture)
-	{
-		texture->_id = textureId;
-		texture->_wide = wide;
-		texture->_tall = tall;
+    if (texture)
+    {
+        texture->_id   = textureId;
+        texture->_wide = wide;
+        texture->_tall = tall;
 
-		texture->_s0 = 0;
-		texture->_t0 = 0;
-		texture->_s1 = 1;
-		texture->_t1 = 1;
+        texture->_s0 = 0;
+        texture->_t0 = 0;
+        texture->_s1 = 1;
+        texture->_t1 = 1;
 
-		staticTextureCurrent = texture;
-		GL_Bind(textureId);
+        staticTextureCurrent = texture;
+        GL_Bind(textureId);
 
-		if (hardwareFilter)
-		{
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		}
-		else
-		{
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		}
+        if (hardwareFilter)
+        {
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        }
+        else
+        {
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        }
 
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, wide, tall, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, wide, tall, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 
-		GL_SetTextureDebugNameFormat(textureId, "drawSetTextureRGBA - %d", textureId);
-	}
+        GL_SetTextureDebugNameFormat(textureId, "drawSetTextureRGBA - %d", textureId);
+    }
 }
 
 void __fastcall enginesurface_drawSetTexture(void* pthis, int, int textureId)
 {
-	if (textureId != (*currenttexture))
-	{
-		enginesurface_drawFlushText(pthis, 0);
+    if (textureId != (*currenttexture))
+    {
+        enginesurface_drawFlushText(pthis, 0);
 
-		(*currenttexture) = textureId;
-	}
+        (*currenttexture) = textureId;
+    }
 
-	staticTextureCurrent = staticGetTextureById(textureId);
+    staticTextureCurrent = staticGetTextureById(textureId);
 
-	glBindTexture(GL_TEXTURE_2D, textureId);
+    glBindTexture(GL_TEXTURE_2D, textureId);
 }
 
 void __fastcall enginesurface_drawTexturedRect(void* pthis, int, int x0, int y0, int x1, int y1)
 {
-	if (!staticTextureCurrent)
-		return;
+    if (!staticTextureCurrent)
+        return;
 
-	int (*_drawColor)[4] = (decltype(_drawColor))((ULONG_PTR)pthis + gPrivateFuncs.offset_enginesurface_drawColor);
+    int (*_drawColor)[4] = (decltype(_drawColor))((ULONG_PTR)pthis + gPrivateFuncs.offset_enginesurface_drawColor);
 
-	if ((*_drawColor)[3] == 255)
-		return;
+    if ((*_drawColor)[3] == 255)
+        return;
 
-	RECT rcOut;
-	TCoordRect tRect;
+    RECT       rcOut;
+    TCoordRect tRect;
 
-	if (!ScissorRect_TCoords(x0, y0, x1, y1, staticTextureCurrent->_s0, staticTextureCurrent->_t0, staticTextureCurrent->_s1, staticTextureCurrent->_t1, &rcOut, &tRect))
-		return;
+    if (!ScissorRect_TCoords(x0, y0, x1, y1, staticTextureCurrent->_s0, staticTextureCurrent->_t0, staticTextureCurrent->_s1, staticTextureCurrent->_t1, &rcOut, &tRect))
+        return;
 
-	texturedrectvertex_t vertices[4];
+    texturedrectvertex_t vertices[4];
 
-	vertices[0].col[0] = (*_drawColor)[0] / 255.0f;
-	vertices[0].col[1] = (*_drawColor)[1] / 255.0f;
-	vertices[0].col[2] = (*_drawColor)[2] / 255.0f;
-	vertices[0].col[3] = 1.0f - ((*_drawColor)[3] / 255.0f);
-	vertices[0].texcoord[0] = tRect.s0;
-	vertices[0].texcoord[1] = tRect.t0;
-	vertices[0].pos[0] = rcOut.left;
-	vertices[0].pos[1] = rcOut.top;
+    vertices[0].col[0]      = (*_drawColor)[0] / 255.0f;
+    vertices[0].col[1]      = (*_drawColor)[1] / 255.0f;
+    vertices[0].col[2]      = (*_drawColor)[2] / 255.0f;
+    vertices[0].col[3]      = 1.0f - ((*_drawColor)[3] / 255.0f);
+    vertices[0].texcoord[0] = tRect.s0;
+    vertices[0].texcoord[1] = tRect.t0;
+    vertices[0].pos[0]      = rcOut.left;
+    vertices[0].pos[1]      = rcOut.top;
 
-	vertices[1].col[0] = (*_drawColor)[0] / 255.0f;
-	vertices[1].col[1] = (*_drawColor)[1] / 255.0f;
-	vertices[1].col[2] = (*_drawColor)[2] / 255.0f;
-	vertices[1].col[3] = 1.0f - ((*_drawColor)[3] / 255.0f);
-	vertices[1].texcoord[0] = tRect.s1;
-	vertices[1].texcoord[1] = tRect.t0;
-	vertices[1].pos[0] = rcOut.right;
-	vertices[1].pos[1] = rcOut.top;
+    vertices[1].col[0]      = (*_drawColor)[0] / 255.0f;
+    vertices[1].col[1]      = (*_drawColor)[1] / 255.0f;
+    vertices[1].col[2]      = (*_drawColor)[2] / 255.0f;
+    vertices[1].col[3]      = 1.0f - ((*_drawColor)[3] / 255.0f);
+    vertices[1].texcoord[0] = tRect.s1;
+    vertices[1].texcoord[1] = tRect.t0;
+    vertices[1].pos[0]      = rcOut.right;
+    vertices[1].pos[1]      = rcOut.top;
 
-	vertices[2].col[0] = (*_drawColor)[0] / 255.0f;
-	vertices[2].col[1] = (*_drawColor)[1] / 255.0f;
-	vertices[2].col[2] = (*_drawColor)[2] / 255.0f;
-	vertices[2].col[3] = 1.0f - ((*_drawColor)[3] / 255.0f);
-	vertices[2].texcoord[0] = tRect.s1;
-	vertices[2].texcoord[1] = tRect.t1;
-	vertices[2].pos[0] = rcOut.right;
-	vertices[2].pos[1] = rcOut.bottom;
+    vertices[2].col[0]      = (*_drawColor)[0] / 255.0f;
+    vertices[2].col[1]      = (*_drawColor)[1] / 255.0f;
+    vertices[2].col[2]      = (*_drawColor)[2] / 255.0f;
+    vertices[2].col[3]      = 1.0f - ((*_drawColor)[3] / 255.0f);
+    vertices[2].texcoord[0] = tRect.s1;
+    vertices[2].texcoord[1] = tRect.t1;
+    vertices[2].pos[0]      = rcOut.right;
+    vertices[2].pos[1]      = rcOut.bottom;
 
-	vertices[3].col[0] = (*_drawColor)[0] / 255.0f;
-	vertices[3].col[1] = (*_drawColor)[1] / 255.0f;
-	vertices[3].col[2] = (*_drawColor)[2] / 255.0f;
-	vertices[3].col[3] = 1.0f - ((*_drawColor)[3] / 255.0f);
-	vertices[3].texcoord[0] = tRect.s0;
-	vertices[3].texcoord[1] = tRect.t1;
-	vertices[3].pos[0] = rcOut.left;
-	vertices[3].pos[1] = rcOut.bottom;
+    vertices[3].col[0]      = (*_drawColor)[0] / 255.0f;
+    vertices[3].col[1]      = (*_drawColor)[1] / 255.0f;
+    vertices[3].col[2]      = (*_drawColor)[2] / 255.0f;
+    vertices[3].col[3]      = 1.0f - ((*_drawColor)[3] / 255.0f);
+    vertices[3].texcoord[0] = tRect.s0;
+    vertices[3].texcoord[1] = tRect.t1;
+    vertices[3].pos[0]      = rcOut.left;
+    vertices[3].pos[1]      = rcOut.bottom;
 
-	const uint32_t indices[] = { 0,1,2,2,3,0 };
+    const uint32_t indices[] = {0, 1, 2, 2, 3, 0};
 
-	(*currenttexture) = staticTextureCurrent->_id;
+    (*currenttexture) = staticTextureCurrent->_id;
 
-	R_DrawTexturedRect(staticTextureCurrent->_id, vertices, _countof(vertices), indices, _countof(indices), DRAW_TEXTURED_RECT_ALPHA_BLEND_ENABLED, "drawTexturedRect");
+    R_DrawTexturedRect(staticTextureCurrent->_id, vertices, _countof(vertices), indices, _countof(indices), DRAW_TEXTURED_RECT_ALPHA_BLEND_ENABLED, "drawTexturedRect");
 }
 
 void __fastcall enginesurface_drawTexturedRectAdd(void* pthis, int, int x0, int y0, int x1, int y1)
 {
-	if (!staticTextureCurrent)
-		return;
+    if (!staticTextureCurrent)
+        return;
 
-	int (*_drawColor)[4] = (decltype(_drawColor))((ULONG_PTR)pthis + gPrivateFuncs.offset_enginesurface_drawColor);
+    int (*_drawColor)[4] = (decltype(_drawColor))((ULONG_PTR)pthis + gPrivateFuncs.offset_enginesurface_drawColor);
 
-	if ((*_drawColor)[3] == 255)
-		return;
+    if ((*_drawColor)[3] == 255)
+        return;
 
-	RECT rcOut;
-	TCoordRect tRect;
+    RECT       rcOut;
+    TCoordRect tRect;
 
-	if (!ScissorRect_TCoords(x0, y0, x1, y1, staticTextureCurrent->_s0, staticTextureCurrent->_t0, staticTextureCurrent->_s1, staticTextureCurrent->_t1, &rcOut, &tRect))
-		return;
+    if (!ScissorRect_TCoords(x0, y0, x1, y1, staticTextureCurrent->_s0, staticTextureCurrent->_t0, staticTextureCurrent->_s1, staticTextureCurrent->_t1, &rcOut, &tRect))
+        return;
 
-	texturedrectvertex_t vertices[4];
+    texturedrectvertex_t vertices[4];
 
-	vertices[0].col[0] = (*_drawColor)[0] / 255.0f;
-	vertices[0].col[1] = (*_drawColor)[1] / 255.0f;
-	vertices[0].col[2] = (*_drawColor)[2] / 255.0f;
-	vertices[0].col[3] = 1.0f - ((*_drawColor)[3] / 255.0f);
-	vertices[0].texcoord[0] = tRect.s0;
-	vertices[0].texcoord[1] = tRect.t0;
-	vertices[0].pos[0] = rcOut.left;
-	vertices[0].pos[1] = rcOut.top;
+    vertices[0].col[0]      = (*_drawColor)[0] / 255.0f;
+    vertices[0].col[1]      = (*_drawColor)[1] / 255.0f;
+    vertices[0].col[2]      = (*_drawColor)[2] / 255.0f;
+    vertices[0].col[3]      = 1.0f - ((*_drawColor)[3] / 255.0f);
+    vertices[0].texcoord[0] = tRect.s0;
+    vertices[0].texcoord[1] = tRect.t0;
+    vertices[0].pos[0]      = rcOut.left;
+    vertices[0].pos[1]      = rcOut.top;
 
-	vertices[1].col[0] = (*_drawColor)[0] / 255.0f;
-	vertices[1].col[1] = (*_drawColor)[1] / 255.0f;
-	vertices[1].col[2] = (*_drawColor)[2] / 255.0f;
-	vertices[1].col[3] = 1.0f - ((*_drawColor)[3] / 255.0f);
-	vertices[1].texcoord[0] = tRect.s1;
-	vertices[1].texcoord[1] = tRect.t0;
-	vertices[1].pos[0] = rcOut.right;
-	vertices[1].pos[1] = rcOut.top;
+    vertices[1].col[0]      = (*_drawColor)[0] / 255.0f;
+    vertices[1].col[1]      = (*_drawColor)[1] / 255.0f;
+    vertices[1].col[2]      = (*_drawColor)[2] / 255.0f;
+    vertices[1].col[3]      = 1.0f - ((*_drawColor)[3] / 255.0f);
+    vertices[1].texcoord[0] = tRect.s1;
+    vertices[1].texcoord[1] = tRect.t0;
+    vertices[1].pos[0]      = rcOut.right;
+    vertices[1].pos[1]      = rcOut.top;
 
-	vertices[2].col[0] = (*_drawColor)[0] / 255.0f;
-	vertices[2].col[1] = (*_drawColor)[1] / 255.0f;
-	vertices[2].col[2] = (*_drawColor)[2] / 255.0f;
-	vertices[2].col[3] = 1.0f - ((*_drawColor)[3] / 255.0f);
-	vertices[2].texcoord[0] = tRect.s1;
-	vertices[2].texcoord[1] = tRect.t1;
-	vertices[2].pos[0] = rcOut.right;
-	vertices[2].pos[1] = rcOut.bottom;
+    vertices[2].col[0]      = (*_drawColor)[0] / 255.0f;
+    vertices[2].col[1]      = (*_drawColor)[1] / 255.0f;
+    vertices[2].col[2]      = (*_drawColor)[2] / 255.0f;
+    vertices[2].col[3]      = 1.0f - ((*_drawColor)[3] / 255.0f);
+    vertices[2].texcoord[0] = tRect.s1;
+    vertices[2].texcoord[1] = tRect.t1;
+    vertices[2].pos[0]      = rcOut.right;
+    vertices[2].pos[1]      = rcOut.bottom;
 
-	vertices[3].col[0] = (*_drawColor)[0] / 255.0f;
-	vertices[3].col[1] = (*_drawColor)[1] / 255.0f;
-	vertices[3].col[2] = (*_drawColor)[2] / 255.0f;
-	vertices[3].col[3] = 1.0f - ((*_drawColor)[3] / 255.0f);
-	vertices[3].texcoord[0] = tRect.s0;
-	vertices[3].texcoord[1] = tRect.t1;
-	vertices[3].pos[0] = rcOut.left;
-	vertices[3].pos[1] = rcOut.bottom;
+    vertices[3].col[0]      = (*_drawColor)[0] / 255.0f;
+    vertices[3].col[1]      = (*_drawColor)[1] / 255.0f;
+    vertices[3].col[2]      = (*_drawColor)[2] / 255.0f;
+    vertices[3].col[3]      = 1.0f - ((*_drawColor)[3] / 255.0f);
+    vertices[3].texcoord[0] = tRect.s0;
+    vertices[3].texcoord[1] = tRect.t1;
+    vertices[3].pos[0]      = rcOut.left;
+    vertices[3].pos[1]      = rcOut.bottom;
 
-	const uint32_t indices[] = { 0,1,2,2,3,0 };
+    const uint32_t indices[] = {0, 1, 2, 2, 3, 0};
 
-	(*currenttexture) = staticTextureCurrent->_id;
+    (*currenttexture) = staticTextureCurrent->_id;
 
-	R_DrawTexturedRect(staticTextureCurrent->_id, vertices, _countof(vertices), indices, _countof(indices), DRAW_TEXTURED_RECT_ALPHA_BASED_ADDITIVE_ENABLED, "drawTexturedRectAdd");
+    R_DrawTexturedRect(staticTextureCurrent->_id, vertices, _countof(vertices), indices, _countof(indices), DRAW_TEXTURED_RECT_ALPHA_BASED_ADDITIVE_ENABLED, "drawTexturedRectAdd");
 }
 
 void __fastcall enginesurface_drawTexturedPolygon(void* pthis, int, vgui::VGuiVertex* pVertices, int n)
 {
-	if (!staticTextureCurrent)
-		return;
+    if (!staticTextureCurrent)
+        return;
 
-	if (n < 3)
-		return;
+    if (n < 3)
+        return;
 
-	// 获取 drawColor
-	int (*_drawColor)[4] = (decltype(_drawColor))((ULONG_PTR)pthis + gPrivateFuncs.offset_enginesurface_drawColor);
+    // 获取 drawColor
+    int (*_drawColor)[4] = (decltype(_drawColor))((ULONG_PTR)pthis + gPrivateFuncs.offset_enginesurface_drawColor);
 
-	if ((*_drawColor)[3] == 255)
-		return;
+    if ((*_drawColor)[3] == 255)
+        return;
 
-	// 将 VGuiVertex 顶点转换为 vertex3f_t 用于三角化
-	std::vector<texturedrectvertex_t> polyVerticesFull;
-	polyVerticesFull.reserve(n);
+    // 将 VGuiVertex 顶点转换为 vertex3f_t 用于三角化
+    std::vector<texturedrectvertex_t> polyVerticesFull;
+    polyVerticesFull.reserve(n);
 
-	std::vector<vertex3f_t> polyVertices;
-	polyVertices.reserve(n);
+    std::vector<vertex3f_t> polyVertices;
+    polyVertices.reserve(n);
 
-	for (int i = 0; i < n; ++i)
-	{
-		texturedrectvertex_t vertexFull;
-		vertexFull.pos[0] = (float)pVertices[i].GetX();
-		vertexFull.pos[1] = (float)pVertices[i].GetY();
-		vertexFull.texcoord[0] = pVertices[i].GetU();
-		vertexFull.texcoord[1] = pVertices[i].GetV();
-		vertexFull.col[0] = (*_drawColor)[0] / 255.0f;
-		vertexFull.col[1] = (*_drawColor)[1] / 255.0f;
-		vertexFull.col[2] = (*_drawColor)[2] / 255.0f;
-		vertexFull.col[3] = 1.0f - ((*_drawColor)[3] / 255.0f);
+    for (int i = 0; i < n; ++i)
+    {
+        texturedrectvertex_t vertexFull;
+        vertexFull.pos[0]      = (float)pVertices[i].GetX();
+        vertexFull.pos[1]      = (float)pVertices[i].GetY();
+        vertexFull.texcoord[0] = pVertices[i].GetU();
+        vertexFull.texcoord[1] = pVertices[i].GetV();
+        vertexFull.col[0]      = (*_drawColor)[0] / 255.0f;
+        vertexFull.col[1]      = (*_drawColor)[1] / 255.0f;
+        vertexFull.col[2]      = (*_drawColor)[2] / 255.0f;
+        vertexFull.col[3]      = 1.0f - ((*_drawColor)[3] / 255.0f);
 
-		vertex3f_t vertex;
-		vertex.v[0] = (float)pVertices[i].GetX();
-		vertex.v[1] = (float)pVertices[i].GetY();
-		vertex.v[2] = 0;
+        vertex3f_t vertex;
+        vertex.v[0] = (float)pVertices[i].GetX();
+        vertex.v[1] = (float)pVertices[i].GetY();
+        vertex.v[2] = 0;
 
-		polyVerticesFull.emplace_back(vertexFull);
-		polyVertices.emplace_back(vertex);
-	}
+        polyVerticesFull.emplace_back(vertexFull);
+        polyVertices.emplace_back(vertex);
+    }
 
-	// 使用 R_PolygonToTriangleList 将多边形转换为三角形索引列表
-	std::vector<uint32_t> indices;
-	R_PolygonToTriangleList(polyVertices, indices);
+    // 使用 R_PolygonToTriangleList 将多边形转换为三角形索引列表
+    std::vector<uint32_t> indices;
+    R_PolygonToTriangleList(polyVertices, indices);
 
-	if (indices.empty())
-		return;
+    if (indices.empty())
+        return;
 
-	(*currenttexture) = staticTextureCurrent->_id;
+    (*currenttexture) = staticTextureCurrent->_id;
 
-	R_DrawTexturedRect(staticTextureCurrent->_id, polyVerticesFull.data(), polyVerticesFull.size(), indices.data(), indices.size(), DRAW_TEXTURED_RECT_ALPHA_BLEND_ENABLED, "drawTexturedPolygon");
+    R_DrawTexturedRect(staticTextureCurrent->_id, polyVerticesFull.data(), polyVerticesFull.size(), indices.data(), indices.size(), DRAW_TEXTURED_RECT_ALPHA_BLEND_ENABLED, "drawTexturedPolygon");
 }
 
 void __fastcall enginesurface_drawPrintCharAdd(void* pthis, int, int x, int y, int wide, int tall, float s0, float t0, float s1, float t1)
 {
-	int (*_drawTextColor)[4] = (decltype(_drawTextColor))((ULONG_PTR)pthis + gPrivateFuncs.offset_enginesurface_drawTextColor);
+    int (*_drawTextColor)[4] = (decltype(_drawTextColor))((ULONG_PTR)pthis + gPrivateFuncs.offset_enginesurface_drawTextColor);
 
-	if ((*_drawTextColor)[3] == 255)
-		return;
+    if ((*_drawTextColor)[3] == 255)
+        return;
 
-	RECT rcOut;
-	TCoordRect tRect;
+    RECT       rcOut;
+    TCoordRect tRect;
 
-	if (!ScissorRect_TCoords(x, y, x + wide, y + tall, s0, t0, s1, t1, &rcOut, &tRect))
-		return;
+    if (!ScissorRect_TCoords(x, y, x + wide, y + tall, s0, t0, s1, t1, &rcOut, &tRect))
+        return;
 
-	texturedrectvertex_t vertices[4];
+    texturedrectvertex_t vertices[4];
 
-	vertices[0].col[0] = (*_drawTextColor)[0] / 255.0f;
-	vertices[0].col[1] = (*_drawTextColor)[1] / 255.0f;
-	vertices[0].col[2] = (*_drawTextColor)[2] / 255.0f;
-	vertices[0].col[3] = 1.0f - ((*_drawTextColor)[3] / 255.0f);
-	vertices[0].texcoord[0] = tRect.s0;
-	vertices[0].texcoord[1] = tRect.t0;
-	vertices[0].pos[0] = rcOut.left;
-	vertices[0].pos[1] = rcOut.top;
+    vertices[0].col[0]      = (*_drawTextColor)[0] / 255.0f;
+    vertices[0].col[1]      = (*_drawTextColor)[1] / 255.0f;
+    vertices[0].col[2]      = (*_drawTextColor)[2] / 255.0f;
+    vertices[0].col[3]      = 1.0f - ((*_drawTextColor)[3] / 255.0f);
+    vertices[0].texcoord[0] = tRect.s0;
+    vertices[0].texcoord[1] = tRect.t0;
+    vertices[0].pos[0]      = rcOut.left;
+    vertices[0].pos[1]      = rcOut.top;
 
-	vertices[1].col[0] = (*_drawTextColor)[0] / 255.0f;
-	vertices[1].col[1] = (*_drawTextColor)[1] / 255.0f;
-	vertices[1].col[2] = (*_drawTextColor)[2] / 255.0f;
-	vertices[1].col[3] = 1.0f - ((*_drawTextColor)[3] / 255.0f);
-	vertices[1].texcoord[0] = tRect.s1;
-	vertices[1].texcoord[1] = tRect.t0;
-	vertices[1].pos[0] = rcOut.right;
-	vertices[1].pos[1] = rcOut.top;
+    vertices[1].col[0]      = (*_drawTextColor)[0] / 255.0f;
+    vertices[1].col[1]      = (*_drawTextColor)[1] / 255.0f;
+    vertices[1].col[2]      = (*_drawTextColor)[2] / 255.0f;
+    vertices[1].col[3]      = 1.0f - ((*_drawTextColor)[3] / 255.0f);
+    vertices[1].texcoord[0] = tRect.s1;
+    vertices[1].texcoord[1] = tRect.t0;
+    vertices[1].pos[0]      = rcOut.right;
+    vertices[1].pos[1]      = rcOut.top;
 
-	vertices[2].col[0] = (*_drawTextColor)[0] / 255.0f;
-	vertices[2].col[1] = (*_drawTextColor)[1] / 255.0f;
-	vertices[2].col[2] = (*_drawTextColor)[2] / 255.0f;
-	vertices[2].col[3] = 1.0f - ((*_drawTextColor)[3] / 255.0f);
-	vertices[2].texcoord[0] = tRect.s1;
-	vertices[2].texcoord[1] = tRect.t1;
-	vertices[2].pos[0] = rcOut.right;
-	vertices[2].pos[1] = rcOut.bottom;
+    vertices[2].col[0]      = (*_drawTextColor)[0] / 255.0f;
+    vertices[2].col[1]      = (*_drawTextColor)[1] / 255.0f;
+    vertices[2].col[2]      = (*_drawTextColor)[2] / 255.0f;
+    vertices[2].col[3]      = 1.0f - ((*_drawTextColor)[3] / 255.0f);
+    vertices[2].texcoord[0] = tRect.s1;
+    vertices[2].texcoord[1] = tRect.t1;
+    vertices[2].pos[0]      = rcOut.right;
+    vertices[2].pos[1]      = rcOut.bottom;
 
-	vertices[3].col[0] = (*_drawTextColor)[0] / 255.0f;
-	vertices[3].col[1] = (*_drawTextColor)[1] / 255.0f;
-	vertices[3].col[2] = (*_drawTextColor)[2] / 255.0f;
-	vertices[3].col[3] = 1.0f - ((*_drawTextColor)[3] / 255.0f);
-	vertices[3].texcoord[0] = tRect.s0;
-	vertices[3].texcoord[1] = tRect.t1;
-	vertices[3].pos[0] = rcOut.left;
-	vertices[3].pos[1] = rcOut.bottom;
+    vertices[3].col[0]      = (*_drawTextColor)[0] / 255.0f;
+    vertices[3].col[1]      = (*_drawTextColor)[1] / 255.0f;
+    vertices[3].col[2]      = (*_drawTextColor)[2] / 255.0f;
+    vertices[3].col[3]      = 1.0f - ((*_drawTextColor)[3] / 255.0f);
+    vertices[3].texcoord[0] = tRect.s0;
+    vertices[3].texcoord[1] = tRect.t1;
+    vertices[3].pos[0]      = rcOut.left;
+    vertices[3].pos[1]      = rcOut.bottom;
 
-	const uint32_t indices[] = { 0,1,2,2,3,0 };
+    const uint32_t indices[] = {0, 1, 2, 2, 3, 0};
 
-	(*currenttexture) = staticTextureCurrent->_id;
+    (*currenttexture) = staticTextureCurrent->_id;
 
-	R_DrawTexturedRect(staticTextureCurrent->_id, vertices, _countof(vertices), indices, _countof(indices), DRAW_TEXTURED_RECT_ALPHA_BASED_ADDITIVE_ENABLED, "drawPrintCharAdd");
+    R_DrawTexturedRect(staticTextureCurrent->_id, vertices, _countof(vertices), indices, _countof(indices), DRAW_TEXTURED_RECT_ALPHA_BASED_ADDITIVE_ENABLED, "drawPrintCharAdd");
 }
 
 void __fastcall enginesurface_drawSetTextureFile(void* pthis, int dummy, int textureId, const char* filename, qboolean hardwareFilter, bool forceReload)
 {
-	bool bLoaded = false;
-	char filepath[1024]{};
+    bool bLoaded = false;
+    char filepath[1024]{};
 
-	auto texture = staticGetTextureById(textureId);
+    auto texture = staticGetTextureById(textureId);
 
-	if (texture && !forceReload)
-	{
-		enginesurface_drawSetTexture(pthis, dummy, textureId);
-		return;
-	}
+    if (texture && !forceReload)
+    {
+        enginesurface_drawSetTexture(pthis, dummy, textureId);
+        return;
+    }
 
-	gl_loadtexture_context_t loadContext;
-	loadContext.wrap = GL_CLAMP_TO_EDGE;
-	loadContext.filter = hardwareFilter ? GL_LINEAR : GL_NEAREST;
+    gl_loadtexture_context_t loadContext;
+    loadContext.wrap   = GL_CLAMP_TO_EDGE;
+    loadContext.filter = hardwareFilter ? GL_LINEAR : GL_NEAREST;
 
-	//GoldSrc engine buildnum 3266 has bug with LoadTGA that don't take TGA's direction flags into account.
-	if (g_dwEngineBuildnum <= 3266)
-		loadContext.ignore_direction_LoadTGA = true;
+    //GoldSrc engine buildnum 3266 has bug with LoadTGA that don't take TGA's direction flags into account.
+    if (g_dwEngineBuildnum <= 3266)
+        loadContext.ignore_direction_LoadTGA = true;
 
-	loadContext.callback = [pthis, textureId, hardwareFilter, filename](gl_loadtexture_context_t* ctx) {
+    loadContext.callback = [pthis, textureId, hardwareFilter, filename](gl_loadtexture_context_t* ctx) {
+        if (ctx->mipmaps.size() > 0)
+        {
+            if (ctx->compressed)
+            {
+                auto texture = staticGetTextureById(textureId);
 
-		if (ctx->mipmaps.size() > 0)
-		{
-			if (ctx->compressed)
-			{
-				auto texture = staticGetTextureById(textureId);
+                if (!texture)
+                    texture = staticAllocTextureForId(textureId);
 
-				if (!texture)
-					texture = staticAllocTextureForId(textureId);
+                if (texture)
+                {
+                    texture->_id   = textureId;
+                    texture->_wide = ctx->width;
+                    texture->_tall = ctx->height;
 
-				if (texture)
-				{
-					texture->_id = textureId;
-					texture->_wide = ctx->width;
-					texture->_tall = ctx->height;
+                    texture->_s0 = 0;
+                    texture->_t0 = 0;
+                    texture->_s1 = 1;
+                    texture->_t1 = 1;
 
-					texture->_s0 = 0;
-					texture->_t0 = 0;
-					texture->_s1 = 1;
-					texture->_t1 = 1;
+                    strncpy(texture->_name, filename, sizeof(texture->_name) - 1);
+                    texture->_name[sizeof(texture->_name) - 1] = 0;
 
-					strncpy(texture->_name, filename, sizeof(texture->_name) - 1);
-					texture->_name[sizeof(texture->_name) - 1] = 0;
+                    GL_Bind(textureId);
+                    GL_UploadCompressedTexture(ctx, GL_TEXTURE_2D);
 
-					GL_Bind(textureId);
-					GL_UploadCompressedTexture(ctx, GL_TEXTURE_2D);
+                    GL_SetTextureDebugNameFormat(textureId, "enginesurface - %s", filename);
+                }
 
-					GL_SetTextureDebugNameFormat(textureId, "enginesurface - %s", filename);
-				}
+                return true;
+            }
+            else
+            {
+                auto texture = staticGetTextureById(textureId);
 
-				return true;
-			}
-			else
-			{
-				auto texture = staticGetTextureById(textureId);
+                if (!texture)
+                    texture = staticAllocTextureForId(textureId);
 
-				if (!texture)
-					texture = staticAllocTextureForId(textureId);
+                if (texture)
+                {
+                    texture->_id   = textureId;
+                    texture->_wide = ctx->width;
+                    texture->_tall = ctx->height;
 
-				if (texture)
-				{
-					texture->_id = textureId;
-					texture->_wide = ctx->width;
-					texture->_tall = ctx->height;
+                    texture->_s0 = 0;
+                    texture->_t0 = 0;
+                    texture->_s1 = 1;
+                    texture->_t1 = 1;
 
-					texture->_s0 = 0;
-					texture->_t0 = 0;
-					texture->_s1 = 1;
-					texture->_t1 = 1;
+                    strncpy(texture->_name, filename, sizeof(texture->_name) - 1);
+                    texture->_name[sizeof(texture->_name) - 1] = 0;
 
-					strncpy(texture->_name, filename, sizeof(texture->_name) - 1);
-					texture->_name[sizeof(texture->_name) - 1] = 0;
+                    GL_Bind(textureId);
+                    GL_UploadUncompressedTexture(ctx, GL_TEXTURE_2D);
 
-					GL_Bind(textureId);
-					GL_UploadUncompressedTexture(ctx, GL_TEXTURE_2D);
+                    GL_SetTextureDebugNameFormat(textureId, "enginesurface - %s", filename);
+                }
 
-					GL_SetTextureDebugNameFormat(textureId, "enginesurface - %s", filename);
-				}
+                return true;
+            }
+        }
 
-				return true;
-			}
-		}
+        return false;
+    };
 
-		return false;
-		};
+    if (1)
+    {
+        snprintf(filepath, sizeof(filepath), "%s.dds", filename);
 
-	if (1)
-	{
-		snprintf(filepath, sizeof(filepath), "%s.dds", filename);
+        if (g_iEngineType == ENGINE_SVENGINE && !bLoaded && LoadDDS(filepath, "UI", &loadContext))
+        {
+            bLoaded = true;
+        }
 
-		if (g_iEngineType == ENGINE_SVENGINE && !bLoaded && LoadDDS(filepath, "UI", &loadContext))
-		{
-			bLoaded = true;
-		}
+        if (!bLoaded && LoadDDS(filepath, NULL, &loadContext))
+        {
+            bLoaded = true;
+        }
+    }
 
-		if (!bLoaded && LoadDDS(filepath, NULL, &loadContext))
-		{
-			bLoaded = true;
-		}
-	}
+    if (!bLoaded)
+    {
+        snprintf(filepath, sizeof(filepath), "%s.tga", filename);
 
-	if (!bLoaded)
-	{
-		snprintf(filepath, sizeof(filepath), "%s.tga", filename);
+        if (g_iEngineType == ENGINE_SVENGINE && !bLoaded && LoadImageGenericFileIO(filepath, "UI", &loadContext))
+        {
+            bLoaded = true;
+        }
 
-		if (g_iEngineType == ENGINE_SVENGINE && !bLoaded && LoadImageGenericFileIO(filepath, "UI", &loadContext))
-		{
-			bLoaded = true;
-		}
+        if (!bLoaded && LoadImageGenericFileIO(filepath, NULL, &loadContext))
+        {
+            bLoaded = true;
+        }
+    }
 
-		if (!bLoaded && LoadImageGenericFileIO(filepath, NULL, &loadContext))
-		{
-			bLoaded = true;
-		}
-	}
+    if (!bLoaded)
+    {
+        snprintf(filepath, sizeof(filepath), "%s.bmp", filename);
 
-	if (!bLoaded)
-	{
-		snprintf(filepath, sizeof(filepath), "%s.bmp", filename);
+        if (g_iEngineType == ENGINE_SVENGINE && !bLoaded && LoadImageGenericFileIO(filepath, "UI", &loadContext))
+        {
+            bLoaded = true;
+        }
 
-		if (g_iEngineType == ENGINE_SVENGINE && !bLoaded && LoadImageGenericFileIO(filepath, "UI", &loadContext))
-		{
-			bLoaded = true;
-		}
+        if (!bLoaded && LoadImageGenericFileIO(filepath, NULL, &loadContext))
+        {
+            bLoaded = true;
+        }
+    }
 
-		if (!bLoaded && LoadImageGenericFileIO(filepath, NULL, &loadContext))
-		{
-			bLoaded = true;
-		}
-	}
-
-	if (texture)
-	{
-		enginesurface_drawSetTexture(pthis, 0, textureId);
-	}
+    if (texture)
+    {
+        enginesurface_drawSetTexture(pthis, 0, textureId);
+    }
 }
 
 void __fastcall enginesurface_drawGetTextureSize(void* pthis, int, int textureId, int& wide, int& tall)
 {
-	auto texture = staticGetTextureById(textureId);
+    auto texture = staticGetTextureById(textureId);
 
-	if (texture)
-	{
-		wide = texture->_wide;
-		tall = texture->_tall;
-	}
-	else
-	{
-		wide = 0;
-		tall = 0;
-	}
+    if (texture)
+    {
+        wide = texture->_wide;
+        tall = texture->_tall;
+    }
+    else
+    {
+        wide = 0;
+        tall = 0;
+    }
 }
 
 bool __fastcall enginesurface_isTextureIDValid(void* pthis, int, int textureId)
 {
-	return (staticGetTextureById(textureId) != nullptr);
+    return (staticGetTextureById(textureId) != nullptr);
 }
 
 void __fastcall enginesurface_drawSetSubTextureRGBA(void* pthis, int, int textureID, int drawX, int drawY, const unsigned char* rgba, int subTextureWide, int subTextureTall)
 {
-	if (subTextureWide == 0 || subTextureTall == 0)
-	{
-		gEngfuncs.Con_DPrintf("drawSetSubTextureRGBA: invalid wide or tall.\n");
-		return;
-	}
+    if (subTextureWide == 0 || subTextureTall == 0)
+    {
+        gEngfuncs.Con_DPrintf("drawSetSubTextureRGBA: invalid wide or tall.\n");
+        return;
+    }
 
-	glBindTexture(GL_TEXTURE_2D, textureID);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, drawX, drawY, subTextureWide, subTextureTall, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
-	glBindTexture(GL_TEXTURE_2D, 0);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, drawX, drawY, subTextureWide, subTextureTall, GL_RGBA, GL_UNSIGNED_BYTE, rgba);
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void __fastcall enginesurface_drawSetTextureBGRA(void* pthis, int, int textureId, const char* data, int wide, int tall, qboolean hardwareFilter, bool forceUpload)
 {
-	auto texture = staticGetTextureById(textureId);
+    auto texture = staticGetTextureById(textureId);
 
-	if (!texture)
-		texture = staticAllocTextureForId(textureId);
+    if (!texture)
+        texture = staticAllocTextureForId(textureId);
 
-	if (texture)
-	{
-		texture->_id = textureId;
-		texture->_wide = wide;
-		texture->_tall = tall;
+    if (texture)
+    {
+        texture->_id   = textureId;
+        texture->_wide = wide;
+        texture->_tall = tall;
 
-		texture->_s0 = 0;
-		texture->_t0 = 0;
-		texture->_s1 = 1;
-		texture->_t1 = 1;
+        texture->_s0 = 0;
+        texture->_t0 = 0;
+        texture->_s1 = 1;
+        texture->_t1 = 1;
 
-		staticTextureCurrent = texture;
-		GL_Bind(textureId);
+        staticTextureCurrent = texture;
+        GL_Bind(textureId);
 
-		if (hardwareFilter)
-		{
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		}
-		else
-		{
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		}
+        if (hardwareFilter)
+        {
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        }
+        else
+        {
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        }
 
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, wide, tall, 0, GL_BGRA, GL_UNSIGNED_BYTE, data);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, wide, tall, 0, GL_BGRA, GL_UNSIGNED_BYTE, data);
 
-		GL_SetTextureDebugNameFormat(textureId, "drawSetTextureBGRA - %d", textureId);
-	}
+        GL_SetTextureDebugNameFormat(textureId, "drawSetTextureBGRA - %d", textureId);
+    }
 }
 
 void __fastcall enginesurface_drawUpdateRegionTextureBGRA(void* pthis, int, int textureID, int x, int y, const unsigned char* pchData, int wide, int tall)
 {
-	if (wide == 0 || tall == 0)
-	{
-		gEngfuncs.Con_DPrintf("drawUpdateRegionTextureBGRA: invalid wide or tall.\n");
-		return;
-	}
+    if (wide == 0 || tall == 0)
+    {
+        gEngfuncs.Con_DPrintf("drawUpdateRegionTextureBGRA: invalid wide or tall.\n");
+        return;
+    }
 
-	auto texture = staticGetTextureById(textureID);
+    auto texture = staticGetTextureById(textureID);
 
-	if (texture)
-	{
-		glBindTexture(GL_TEXTURE_2D, textureID);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-		glPixelStorei(GL_UNPACK_ROW_LENGTH, texture->_wide);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y, texture->_wide, tall, GL_BGRA, GL_UNSIGNED_BYTE, pchData + (y * texture->_wide * 4));
-		glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-		glBindTexture(GL_TEXTURE_2D, 0);
-	}
+    if (texture)
+    {
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, texture->_wide);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, y, texture->_wide, tall, GL_BGRA, GL_UNSIGNED_BYTE, pchData + (y * texture->_wide * 4));
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
 }
 
 int __fastcall enginesurface_createNewTextureID(void* pthis, int dummy)
 {
-	// allocated_surface_texture = 5810; from BlobEngine
-	return (int)GL_GenTexture();
+    // allocated_surface_texture = 5810; from BlobEngine
+    return (int)GL_GenTexture();
 }
 
 void __fastcall enginesurface_drawFlushText(void* pthis, int dummy)
 {
-	int (*_drawTextColor)[4] = (decltype(_drawTextColor))((ULONG_PTR)pthis + gPrivateFuncs.offset_enginesurface_drawTextColor);
+    int (*_drawTextColor)[4] = (decltype(_drawTextColor))((ULONG_PTR)pthis + gPrivateFuncs.offset_enginesurface_drawTextColor);
 
-	if ((*g_iVertexBufferEntriesUsed) > 0)
-	{
-		std::vector<texturedrectvertex_t> vertices;
-		std::vector<uint32_t> indices;
+    if ((*g_iVertexBufferEntriesUsed) > 0)
+    {
+        std::vector<texturedrectvertex_t> vertices;
+        std::vector<uint32_t>             indices;
 
-		vertices.reserve((*g_iVertexBufferEntriesUsed));
+        vertices.reserve((*g_iVertexBufferEntriesUsed));
 
-		for (int i = 0; i < (*g_iVertexBufferEntriesUsed); i++)
-		{
-			texturedrectvertex_t v;
+        for (int i = 0; i < (*g_iVertexBufferEntriesUsed); i++)
+        {
+            texturedrectvertex_t v;
 
-			memcpy(v.texcoord, (*g_VertexBuffer)[i].texcoords, sizeof(vec2_t));
-			memcpy(v.pos, (*g_VertexBuffer)[i].vertex, sizeof(vec2_t));
-			v.col[0] = (*_drawTextColor)[0] / 255.0f;
-			v.col[1] = (*_drawTextColor)[1] / 255.0f;
-			v.col[2] = (*_drawTextColor)[2] / 255.0f;
-			v.col[3] = 1.0f - ((*_drawTextColor)[3] / 255.0f);
+            memcpy(v.texcoord, (*g_VertexBuffer)[i].texcoords, sizeof(vec2_t));
+            memcpy(v.pos, (*g_VertexBuffer)[i].vertex, sizeof(vec2_t));
+            v.col[0] = (*_drawTextColor)[0] / 255.0f;
+            v.col[1] = (*_drawTextColor)[1] / 255.0f;
+            v.col[2] = (*_drawTextColor)[2] / 255.0f;
+            v.col[3] = 1.0f - ((*_drawTextColor)[3] / 255.0f);
 
-			vertices.emplace_back(v);
-		}
+            vertices.emplace_back(v);
+        }
 
-		const uint32_t baseIndices[] = { 0, 1, 2, 2, 3, 0 };
+        const uint32_t baseIndices[] = {0, 1, 2, 2, 3, 0};
 
-		for (int i = 0; i < (*g_iVertexBufferEntriesUsed); i += 4)
-		{
-			for (int j = 0; j < _countof(baseIndices); ++j)
-			{
-				indices.emplace_back(i + baseIndices[j]);
-			}
-		}
+        for (int i = 0; i < (*g_iVertexBufferEntriesUsed); i += 4)
+        {
+            for (int j = 0; j < _countof(baseIndices); ++j)
+            {
+                indices.emplace_back(i + baseIndices[j]);
+            }
+        }
 
-		R_DrawTexturedRect((*currenttexture), vertices.data(), vertices.size(), indices.data(), indices.size(), DRAW_TEXTURED_RECT_ALPHA_BLEND_ENABLED, "drawFlushText");
+        R_DrawTexturedRect((*currenttexture), vertices.data(), vertices.size(), indices.data(), indices.size(), DRAW_TEXTURED_RECT_ALPHA_BLEND_ENABLED, "drawFlushText");
 
-		(*g_iVertexBufferEntriesUsed) = 0;
-	}
+        (*g_iVertexBufferEntriesUsed) = 0;
+    }
 }
 
 void __fastcall BaseUISurface_DrawSetTexture(void* pthis, int dummy, int textureId)
 {
-	auto m_CurrentTextureId = (int*)((ULONG_PTR)g_pBaseUISurface + gPrivateFuncs.offset_BaseUISurface_m_CurrentTextureId);
+    auto m_CurrentTextureId = (int*)((ULONG_PTR)g_pBaseUISurface + gPrivateFuncs.offset_BaseUISurface_m_CurrentTextureId);
 
-	(*m_CurrentTextureId) = -1;
+    (*m_CurrentTextureId) = -1;
 
-	m_pfnBaseUISurface_DrawSetTexture(pthis, dummy, textureId);
+    m_pfnBaseUISurface_DrawSetTexture(pthis, dummy, textureId);
 }
 
 #if 0
@@ -1272,175 +1271,172 @@ static CEngineSurfaceProxy_HL25 g_EngineSurfaceProxy_HL25;
 
 void EngineSurface_FillAddress(const mh_dll_info_t& DllInfo, const mh_dll_info_t& RealDllInfo)
 {
-	auto engineFactory = g_pMetaHookAPI->GetEngineFactory();
+    auto engineFactory = g_pMetaHookAPI->GetEngineFactory();
 
-	if (engineFactory)
-	{
+    if (engineFactory)
+    {
 #define ENGINE_SURFACE_VERSION "EngineSurface007"
-		if (g_iEngineType == ENGINE_GOLDSRC_HL25)
-		{
-			staticSurface_HL25 = (decltype(staticSurface_HL25))engineFactory(ENGINE_SURFACE_VERSION, NULL);
+        if (g_iEngineType == ENGINE_GOLDSRC_HL25)
+        {
+            staticSurface_HL25 = (decltype(staticSurface_HL25))engineFactory(ENGINE_SURFACE_VERSION, NULL);
 
-			auto engineSurface_vftable = *(PVOID**)staticSurface_HL25;
+            auto engineSurface_vftable = *(PVOID**)staticSurface_HL25;
 
-			gPrivateFuncs.index_enginesurface_pushMakeCurrent = 1;
-			gPrivateFuncs.index_enginesurface_popMakeCurrent = 2;
-			gPrivateFuncs.index_enginesurface_drawFilledRect = 3;
-			gPrivateFuncs.index_enginesurface_drawOutlinedRect = 4;
-			gPrivateFuncs.index_enginesurface_drawLine = 5;
-			gPrivateFuncs.index_enginesurface_drawPolyLine = 6;
-			gPrivateFuncs.index_enginesurface_drawTexturedPolygon = 7;
-			gPrivateFuncs.index_enginesurface_drawSetTextureRGBA = 8;
-			gPrivateFuncs.index_enginesurface_drawSetTexture = 9;
-			gPrivateFuncs.index_enginesurface_drawTexturedRect = 10;
-			gPrivateFuncs.index_enginesurface_drawTexturedRectAdd = 11;
-			gPrivateFuncs.index_enginesurface_createNewTextureID = 12;
-			gPrivateFuncs.index_enginesurface_drawPrintCharAdd = 18;
-			gPrivateFuncs.index_enginesurface_drawSetTextureFile = 19;
-			gPrivateFuncs.index_enginesurface_drawGetTextureSize = 20;
-			gPrivateFuncs.index_enginesurface_isTextureIDValid = 21;
-			gPrivateFuncs.index_enginesurface_drawSetSubTextureRGBA = 22;
-			gPrivateFuncs.index_enginesurface_drawFlushText = 23;
-			gPrivateFuncs.index_enginesurface_drawSetTextureBGRA = 25;
-			gPrivateFuncs.index_enginesurface_drawUpdateRegionTextureBGRA = 26;
+            gPrivateFuncs.index_enginesurface_pushMakeCurrent             = 1;
+            gPrivateFuncs.index_enginesurface_popMakeCurrent              = 2;
+            gPrivateFuncs.index_enginesurface_drawFilledRect              = 3;
+            gPrivateFuncs.index_enginesurface_drawOutlinedRect            = 4;
+            gPrivateFuncs.index_enginesurface_drawLine                    = 5;
+            gPrivateFuncs.index_enginesurface_drawPolyLine                = 6;
+            gPrivateFuncs.index_enginesurface_drawTexturedPolygon         = 7;
+            gPrivateFuncs.index_enginesurface_drawSetTextureRGBA          = 8;
+            gPrivateFuncs.index_enginesurface_drawSetTexture              = 9;
+            gPrivateFuncs.index_enginesurface_drawTexturedRect            = 10;
+            gPrivateFuncs.index_enginesurface_drawTexturedRectAdd         = 11;
+            gPrivateFuncs.index_enginesurface_createNewTextureID          = 12;
+            gPrivateFuncs.index_enginesurface_drawPrintCharAdd            = 18;
+            gPrivateFuncs.index_enginesurface_drawSetTextureFile          = 19;
+            gPrivateFuncs.index_enginesurface_drawGetTextureSize          = 20;
+            gPrivateFuncs.index_enginesurface_isTextureIDValid            = 21;
+            gPrivateFuncs.index_enginesurface_drawSetSubTextureRGBA       = 22;
+            gPrivateFuncs.index_enginesurface_drawFlushText               = 23;
+            gPrivateFuncs.index_enginesurface_drawSetTextureBGRA          = 25;
+            gPrivateFuncs.index_enginesurface_drawUpdateRegionTextureBGRA = 26;
 
 
-			gPrivateFuncs.enginesurface_popMakeCurrent = (decltype(gPrivateFuncs.enginesurface_popMakeCurrent))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_popMakeCurrent, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawFilledRect = (decltype(gPrivateFuncs.enginesurface_drawFilledRect))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawFilledRect, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawOutlinedRect = (decltype(gPrivateFuncs.enginesurface_drawOutlinedRect))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawOutlinedRect, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawLine = (decltype(gPrivateFuncs.enginesurface_drawLine))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawLine, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawPolyLine = (decltype(gPrivateFuncs.enginesurface_drawPolyLine))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawPolyLine, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawSetTextureRGBA = (decltype(gPrivateFuncs.enginesurface_drawSetTextureRGBA))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawSetTextureRGBA, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawSetTexture = (decltype(gPrivateFuncs.enginesurface_drawSetTexture))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawSetTexture, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawTexturedRect = (decltype(gPrivateFuncs.enginesurface_drawTexturedRect))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawTexturedRect, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_createNewTextureID = (decltype(gPrivateFuncs.enginesurface_createNewTextureID))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_createNewTextureID, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawPrintCharAdd = (decltype(gPrivateFuncs.enginesurface_drawPrintCharAdd))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawPrintCharAdd, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawSetTextureFile = (decltype(gPrivateFuncs.enginesurface_drawSetTextureFile))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawSetTextureFile, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawGetTextureSize = (decltype(gPrivateFuncs.enginesurface_drawGetTextureSize))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawGetTextureSize, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_isTextureIDValid = (decltype(gPrivateFuncs.enginesurface_isTextureIDValid))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_isTextureIDValid, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawSetSubTextureRGBA = (decltype(gPrivateFuncs.enginesurface_drawSetSubTextureRGBA))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawSetSubTextureRGBA, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawSetTextureBGRA = (decltype(gPrivateFuncs.enginesurface_drawSetTextureBGRA))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawSetTextureBGRA, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawUpdateRegionTextureBGRA = (decltype(gPrivateFuncs.enginesurface_drawUpdateRegionTextureBGRA))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawUpdateRegionTextureBGRA, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_popMakeCurrent              = (decltype(gPrivateFuncs.enginesurface_popMakeCurrent))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_popMakeCurrent, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawFilledRect              = (decltype(gPrivateFuncs.enginesurface_drawFilledRect))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawFilledRect, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawOutlinedRect            = (decltype(gPrivateFuncs.enginesurface_drawOutlinedRect))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawOutlinedRect, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawLine                    = (decltype(gPrivateFuncs.enginesurface_drawLine))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawLine, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawPolyLine                = (decltype(gPrivateFuncs.enginesurface_drawPolyLine))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawPolyLine, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawSetTextureRGBA          = (decltype(gPrivateFuncs.enginesurface_drawSetTextureRGBA))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawSetTextureRGBA, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawSetTexture              = (decltype(gPrivateFuncs.enginesurface_drawSetTexture))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawSetTexture, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawTexturedRect            = (decltype(gPrivateFuncs.enginesurface_drawTexturedRect))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawTexturedRect, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_createNewTextureID          = (decltype(gPrivateFuncs.enginesurface_createNewTextureID))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_createNewTextureID, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawPrintCharAdd            = (decltype(gPrivateFuncs.enginesurface_drawPrintCharAdd))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawPrintCharAdd, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawSetTextureFile          = (decltype(gPrivateFuncs.enginesurface_drawSetTextureFile))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawSetTextureFile, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawGetTextureSize          = (decltype(gPrivateFuncs.enginesurface_drawGetTextureSize))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawGetTextureSize, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_isTextureIDValid            = (decltype(gPrivateFuncs.enginesurface_isTextureIDValid))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_isTextureIDValid, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawSetSubTextureRGBA       = (decltype(gPrivateFuncs.enginesurface_drawSetSubTextureRGBA))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawSetSubTextureRGBA, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawSetTextureBGRA          = (decltype(gPrivateFuncs.enginesurface_drawSetTextureBGRA))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawSetTextureBGRA, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawUpdateRegionTextureBGRA = (decltype(gPrivateFuncs.enginesurface_drawUpdateRegionTextureBGRA))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawUpdateRegionTextureBGRA, DllInfo, RealDllInfo, RealDllInfo);
+        }
+        else
+        {
+            staticSurface = (decltype(staticSurface))engineFactory(ENGINE_SURFACE_VERSION, NULL);
 
-		}
-		else
-		{
-			staticSurface = (decltype(staticSurface))engineFactory(ENGINE_SURFACE_VERSION, NULL);
+            auto engineSurface_vftable = *(PVOID**)staticSurface;
 
-			auto engineSurface_vftable = *(PVOID**)staticSurface;
+            gPrivateFuncs.index_enginesurface_pushMakeCurrent             = 1;
+            gPrivateFuncs.index_enginesurface_popMakeCurrent              = 2;
+            gPrivateFuncs.index_enginesurface_drawFilledRect              = 3;
+            gPrivateFuncs.index_enginesurface_drawOutlinedRect            = 4;
+            gPrivateFuncs.index_enginesurface_drawLine                    = 5;
+            gPrivateFuncs.index_enginesurface_drawPolyLine                = 6;
+            gPrivateFuncs.index_enginesurface_drawTexturedPolygon         = 7;
+            gPrivateFuncs.index_enginesurface_drawSetTextureRGBA          = 8;
+            gPrivateFuncs.index_enginesurface_drawSetTexture              = 9;
+            gPrivateFuncs.index_enginesurface_drawTexturedRect            = 10;
+            gPrivateFuncs.index_enginesurface_createNewTextureID          = 11;
+            gPrivateFuncs.index_enginesurface_drawPrintCharAdd            = 17;
+            gPrivateFuncs.index_enginesurface_drawSetTextureFile          = 18;
+            gPrivateFuncs.index_enginesurface_drawGetTextureSize          = 19;
+            gPrivateFuncs.index_enginesurface_isTextureIDValid            = 20;
+            gPrivateFuncs.index_enginesurface_drawSetSubTextureRGBA       = 21;
+            gPrivateFuncs.index_enginesurface_drawFlushText               = 22;
+            gPrivateFuncs.index_enginesurface_drawSetTextureBGRA          = 24;
+            gPrivateFuncs.index_enginesurface_drawUpdateRegionTextureBGRA = 25;
 
-			gPrivateFuncs.index_enginesurface_pushMakeCurrent = 1;
-			gPrivateFuncs.index_enginesurface_popMakeCurrent = 2;
-			gPrivateFuncs.index_enginesurface_drawFilledRect = 3;
-			gPrivateFuncs.index_enginesurface_drawOutlinedRect = 4;
-			gPrivateFuncs.index_enginesurface_drawLine = 5;
-			gPrivateFuncs.index_enginesurface_drawPolyLine = 6;
-			gPrivateFuncs.index_enginesurface_drawTexturedPolygon = 7;
-			gPrivateFuncs.index_enginesurface_drawSetTextureRGBA = 8;
-			gPrivateFuncs.index_enginesurface_drawSetTexture = 9;
-			gPrivateFuncs.index_enginesurface_drawTexturedRect = 10;
-			gPrivateFuncs.index_enginesurface_createNewTextureID = 11;
-			gPrivateFuncs.index_enginesurface_drawPrintCharAdd = 17;
-			gPrivateFuncs.index_enginesurface_drawSetTextureFile = 18;
-			gPrivateFuncs.index_enginesurface_drawGetTextureSize = 19;
-			gPrivateFuncs.index_enginesurface_isTextureIDValid = 20;
-			gPrivateFuncs.index_enginesurface_drawSetSubTextureRGBA = 21;
-			gPrivateFuncs.index_enginesurface_drawFlushText = 22;
-			gPrivateFuncs.index_enginesurface_drawSetTextureBGRA = 24;
-			gPrivateFuncs.index_enginesurface_drawUpdateRegionTextureBGRA = 25;
+            gPrivateFuncs.enginesurface_popMakeCurrent              = (decltype(gPrivateFuncs.enginesurface_popMakeCurrent))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_popMakeCurrent, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawFilledRect              = (decltype(gPrivateFuncs.enginesurface_drawFilledRect))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawFilledRect, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawOutlinedRect            = (decltype(gPrivateFuncs.enginesurface_drawOutlinedRect))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawOutlinedRect, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawLine                    = (decltype(gPrivateFuncs.enginesurface_drawLine))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawLine, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawPolyLine                = (decltype(gPrivateFuncs.enginesurface_drawPolyLine))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawPolyLine, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawSetTextureRGBA          = (decltype(gPrivateFuncs.enginesurface_drawSetTextureRGBA))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawSetTextureRGBA, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawSetTexture              = (decltype(gPrivateFuncs.enginesurface_drawSetTexture))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawSetTexture, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawTexturedRect            = (decltype(gPrivateFuncs.enginesurface_drawTexturedRect))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawTexturedRect, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawTexturedRectAdd         = (decltype(gPrivateFuncs.enginesurface_drawTexturedRectAdd))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawTexturedRectAdd, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_createNewTextureID          = (decltype(gPrivateFuncs.enginesurface_createNewTextureID))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_createNewTextureID, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawPrintCharAdd            = (decltype(gPrivateFuncs.enginesurface_drawPrintCharAdd))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawPrintCharAdd, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawSetTextureFile          = (decltype(gPrivateFuncs.enginesurface_drawSetTextureFile))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawSetTextureFile, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawGetTextureSize          = (decltype(gPrivateFuncs.enginesurface_drawGetTextureSize))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawGetTextureSize, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_isTextureIDValid            = (decltype(gPrivateFuncs.enginesurface_isTextureIDValid))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_isTextureIDValid, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawSetSubTextureRGBA       = (decltype(gPrivateFuncs.enginesurface_drawSetSubTextureRGBA))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawSetSubTextureRGBA, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawSetTextureBGRA          = (decltype(gPrivateFuncs.enginesurface_drawSetTextureBGRA))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawSetTextureBGRA, DllInfo, RealDllInfo, RealDllInfo);
+            gPrivateFuncs.enginesurface_drawUpdateRegionTextureBGRA = (decltype(gPrivateFuncs.enginesurface_drawUpdateRegionTextureBGRA))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawUpdateRegionTextureBGRA, DllInfo, RealDllInfo, RealDllInfo);
+        }
 
-			gPrivateFuncs.enginesurface_popMakeCurrent = (decltype(gPrivateFuncs.enginesurface_popMakeCurrent))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_popMakeCurrent, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawFilledRect = (decltype(gPrivateFuncs.enginesurface_drawFilledRect))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawFilledRect, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawOutlinedRect = (decltype(gPrivateFuncs.enginesurface_drawOutlinedRect))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawOutlinedRect, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawLine = (decltype(gPrivateFuncs.enginesurface_drawLine))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawLine, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawPolyLine = (decltype(gPrivateFuncs.enginesurface_drawPolyLine))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawPolyLine, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawSetTextureRGBA = (decltype(gPrivateFuncs.enginesurface_drawSetTextureRGBA))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawSetTextureRGBA, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawSetTexture = (decltype(gPrivateFuncs.enginesurface_drawSetTexture))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawSetTexture, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawTexturedRect = (decltype(gPrivateFuncs.enginesurface_drawTexturedRect))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawTexturedRect, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawTexturedRectAdd = (decltype(gPrivateFuncs.enginesurface_drawTexturedRectAdd))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawTexturedRectAdd, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_createNewTextureID = (decltype(gPrivateFuncs.enginesurface_createNewTextureID))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_createNewTextureID, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawPrintCharAdd = (decltype(gPrivateFuncs.enginesurface_drawPrintCharAdd))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawPrintCharAdd, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawSetTextureFile = (decltype(gPrivateFuncs.enginesurface_drawSetTextureFile))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawSetTextureFile, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawGetTextureSize = (decltype(gPrivateFuncs.enginesurface_drawGetTextureSize))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawGetTextureSize, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_isTextureIDValid = (decltype(gPrivateFuncs.enginesurface_isTextureIDValid))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_isTextureIDValid, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawSetSubTextureRGBA = (decltype(gPrivateFuncs.enginesurface_drawSetSubTextureRGBA))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawSetSubTextureRGBA, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawSetTextureBGRA = (decltype(gPrivateFuncs.enginesurface_drawSetTextureBGRA))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawSetTextureBGRA, DllInfo, RealDllInfo, RealDllInfo);
-			gPrivateFuncs.enginesurface_drawUpdateRegionTextureBGRA = (decltype(gPrivateFuncs.enginesurface_drawUpdateRegionTextureBGRA))GetVFunctionFromVFTable(engineSurface_vftable, gPrivateFuncs.index_enginesurface_drawUpdateRegionTextureBGRA, DllInfo, RealDllInfo, RealDllInfo);
+        Engine_FillAddress_EngineSurface_pushMakeCurrent(RealDllInfo);
+        Engine_FillAddress_EngineSurface_drawFlushText(RealDllInfo);
 
-		}
+        if (g_iEngineType == ENGINE_SVENGINE)
+        {
+            gPrivateFuncs.offset_enginesurface_drawColor     = 4;
+            gPrivateFuncs.offset_enginesurface_drawTextColor = 20;
+        }
+        else
+        {
+            gPrivateFuncs.offset_enginesurface_drawColor     = 8;
+            gPrivateFuncs.offset_enginesurface_drawTextColor = 24;
+        }
 
-		Engine_FillAddress_EngineSurface_pushMakeCurrent(RealDllInfo);
-		Engine_FillAddress_EngineSurface_drawFlushText(RealDllInfo);
-
-		if (g_iEngineType == ENGINE_SVENGINE)
-		{
-			gPrivateFuncs.offset_enginesurface_drawColor = 4;
-			gPrivateFuncs.offset_enginesurface_drawTextColor = 20;
-		}
-		else
-		{
-			gPrivateFuncs.offset_enginesurface_drawColor = 8;
-			gPrivateFuncs.offset_enginesurface_drawTextColor = 24;
-		}
-
-		g_pBaseUISurface = engineFactory("VGUI_Surface026", NULL);
-		gPrivateFuncs.index_BaseUISurface_DrawSetTexture = 27;
-		gPrivateFuncs.offset_BaseUISurface_m_CurrentTextureId = 32;
-	}
+        g_pBaseUISurface                                      = engineFactory("VGUI_Surface026", NULL);
+        gPrivateFuncs.index_BaseUISurface_DrawSetTexture      = 27;
+        gPrivateFuncs.offset_BaseUISurface_m_CurrentTextureId = 32;
+    }
 }
 
 void EngineSurface_InstallHooks(void)
 {
-	if (g_iEngineType == ENGINE_GOLDSRC_HL25)
-	{
-		g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_pushMakeCurrent, (void*)enginesurface_pushMakeCurrent, (void**)&m_pfnEngineSurface_pushMakeCurrent);
-		g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_popMakeCurrent, (void*)enginesurface_popMakeCurrent, (void**)&m_pfnEngineSurface_popMakeCurrent);
-		g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawFilledRect, (void*)enginesurface_drawFilledRect, (void**)&m_pfnEngineSurface_drawFilledRect);
-		g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawOutlinedRect, (void*)enginesurface_drawOutlinedRect, (void**)&m_pfnEngineSurface_drawOutlinedRect);
-		g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawLine, (void*)enginesurface_drawLine, (void**)&m_pfnEngineSurface_drawLine);
-		g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawPolyLine, (void*)enginesurface_drawPolyLine, (void**)&m_pfnEngineSurface_drawPolyLine);
-		g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawTexturedPolygon, (void*)enginesurface_drawTexturedPolygon, (void**)&m_pfnEngineSurface_drawTexturedPolygon);
-		g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawSetTextureRGBA, (void*)enginesurface_drawSetTextureRGBA, (void**)&m_pfnEngineSurface_drawSetTextureRGBA);
-		g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawSetTexture, (void*)enginesurface_drawSetTexture, (void**)&m_pfnEngineSurface_drawSetTexture);
-		g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawTexturedRect, (void*)enginesurface_drawTexturedRect, (void**)&m_pfnEngineSurface_drawTexturedRect);
-		g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawTexturedRectAdd, (void*)enginesurface_drawTexturedRectAdd, (void**)&m_pfnEngineSurface_drawTexturedRectAdd);
-		g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_createNewTextureID, (void*)enginesurface_createNewTextureID, (void**)&m_pfnEngineSurface_createNewTextureID);
-		g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawPrintCharAdd, (void*)enginesurface_drawPrintCharAdd, (void**)&m_pfnEngineSurface_drawPrintCharAdd);
-		g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawSetTextureFile, (void*)enginesurface_drawSetTextureFile, (void**)&m_pfnEngineSurface_drawSetTextureFile);
-		g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawGetTextureSize, (void*)enginesurface_drawGetTextureSize, (void**)&m_pfnEngineSurface_drawGetTextureSize);
-		g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_isTextureIDValid, (void*)enginesurface_isTextureIDValid, (void**)&m_pfnEngineSurface_isTextureIDValid);
-		g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawSetSubTextureRGBA, (void*)enginesurface_drawSetSubTextureRGBA, (void**)&m_pfnEngineSurface_drawSetSubTextureRGBA);
-		g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawFlushText, (void*)enginesurface_drawFlushText, (void**)&m_pfnEngineSurface_drawFlushText);
-		g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawSetTextureBGRA, (void*)enginesurface_drawSetTextureBGRA, (void**)&m_pfnEngineSurface_drawSetTextureBGRA);
-		g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawUpdateRegionTextureBGRA, (void*)enginesurface_drawUpdateRegionTextureBGRA, (void**)&m_pfnEngineSurface_drawUpdateRegionTextureBGRA);
-	}
-	else
-	{
-		g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_pushMakeCurrent, (void*)enginesurface_pushMakeCurrent, (void**)&m_pfnEngineSurface_pushMakeCurrent);
-		g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_popMakeCurrent, (void*)enginesurface_popMakeCurrent, (void**)&m_pfnEngineSurface_popMakeCurrent);
-		g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawFilledRect, (void*)enginesurface_drawFilledRect, (void**)&m_pfnEngineSurface_drawFilledRect);
-		g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawOutlinedRect, (void*)enginesurface_drawOutlinedRect, (void**)&m_pfnEngineSurface_drawOutlinedRect);
-		g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawLine, (void*)enginesurface_drawLine, (void**)&m_pfnEngineSurface_drawLine);
-		g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawPolyLine, (void*)enginesurface_drawPolyLine, (void**)&m_pfnEngineSurface_drawPolyLine);
-		g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawTexturedPolygon, (void*)enginesurface_drawTexturedPolygon, (void**)&m_pfnEngineSurface_drawTexturedPolygon);
-		g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawSetTextureRGBA, (void*)enginesurface_drawSetTextureRGBA, (void**)&m_pfnEngineSurface_drawSetTextureRGBA);
-		g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawSetTexture, (void*)enginesurface_drawSetTexture, (void**)&m_pfnEngineSurface_drawSetTexture);
-		g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawTexturedRect, (void*)enginesurface_drawTexturedRect, (void**)&m_pfnEngineSurface_drawTexturedRect);
-		g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_createNewTextureID, (void*)enginesurface_createNewTextureID, (void**)&m_pfnEngineSurface_createNewTextureID);
-		g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawPrintCharAdd, (void*)enginesurface_drawPrintCharAdd, (void**)&m_pfnEngineSurface_drawPrintCharAdd);
-		g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawSetTextureFile, (void*)enginesurface_drawSetTextureFile, (void**)&m_pfnEngineSurface_drawSetTextureFile);
-		g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawGetTextureSize, (void*)enginesurface_drawGetTextureSize, (void**)&m_pfnEngineSurface_drawGetTextureSize);
-		g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_isTextureIDValid, (void*)enginesurface_isTextureIDValid, (void**)&m_pfnEngineSurface_isTextureIDValid);
-		g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawSetSubTextureRGBA, (void*)enginesurface_drawSetSubTextureRGBA, (void**)&m_pfnEngineSurface_drawSetSubTextureRGBA);
-		g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawFlushText, (void*)enginesurface_drawFlushText, (void**)&m_pfnEngineSurface_drawFlushText);
-		g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawSetTextureBGRA, (void*)enginesurface_drawSetTextureBGRA, (void**)&m_pfnEngineSurface_drawSetTextureBGRA);
-		g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawUpdateRegionTextureBGRA, (void*)enginesurface_drawUpdateRegionTextureBGRA, (void**)&m_pfnEngineSurface_drawUpdateRegionTextureBGRA);
-	}
+    if (g_iEngineType == ENGINE_GOLDSRC_HL25)
+    {
+        g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_pushMakeCurrent, (void*)enginesurface_pushMakeCurrent, (void**)&m_pfnEngineSurface_pushMakeCurrent);
+        g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_popMakeCurrent, (void*)enginesurface_popMakeCurrent, (void**)&m_pfnEngineSurface_popMakeCurrent);
+        g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawFilledRect, (void*)enginesurface_drawFilledRect, (void**)&m_pfnEngineSurface_drawFilledRect);
+        g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawOutlinedRect, (void*)enginesurface_drawOutlinedRect, (void**)&m_pfnEngineSurface_drawOutlinedRect);
+        g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawLine, (void*)enginesurface_drawLine, (void**)&m_pfnEngineSurface_drawLine);
+        g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawPolyLine, (void*)enginesurface_drawPolyLine, (void**)&m_pfnEngineSurface_drawPolyLine);
+        g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawTexturedPolygon, (void*)enginesurface_drawTexturedPolygon, (void**)&m_pfnEngineSurface_drawTexturedPolygon);
+        g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawSetTextureRGBA, (void*)enginesurface_drawSetTextureRGBA, (void**)&m_pfnEngineSurface_drawSetTextureRGBA);
+        g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawSetTexture, (void*)enginesurface_drawSetTexture, (void**)&m_pfnEngineSurface_drawSetTexture);
+        g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawTexturedRect, (void*)enginesurface_drawTexturedRect, (void**)&m_pfnEngineSurface_drawTexturedRect);
+        g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawTexturedRectAdd, (void*)enginesurface_drawTexturedRectAdd, (void**)&m_pfnEngineSurface_drawTexturedRectAdd);
+        g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_createNewTextureID, (void*)enginesurface_createNewTextureID, (void**)&m_pfnEngineSurface_createNewTextureID);
+        g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawPrintCharAdd, (void*)enginesurface_drawPrintCharAdd, (void**)&m_pfnEngineSurface_drawPrintCharAdd);
+        g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawSetTextureFile, (void*)enginesurface_drawSetTextureFile, (void**)&m_pfnEngineSurface_drawSetTextureFile);
+        g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawGetTextureSize, (void*)enginesurface_drawGetTextureSize, (void**)&m_pfnEngineSurface_drawGetTextureSize);
+        g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_isTextureIDValid, (void*)enginesurface_isTextureIDValid, (void**)&m_pfnEngineSurface_isTextureIDValid);
+        g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawSetSubTextureRGBA, (void*)enginesurface_drawSetSubTextureRGBA, (void**)&m_pfnEngineSurface_drawSetSubTextureRGBA);
+        g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawFlushText, (void*)enginesurface_drawFlushText, (void**)&m_pfnEngineSurface_drawFlushText);
+        g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawSetTextureBGRA, (void*)enginesurface_drawSetTextureBGRA, (void**)&m_pfnEngineSurface_drawSetTextureBGRA);
+        g_pMetaHookAPI->VFTHook(staticSurface_HL25, 0, gPrivateFuncs.index_enginesurface_drawUpdateRegionTextureBGRA, (void*)enginesurface_drawUpdateRegionTextureBGRA, (void**)&m_pfnEngineSurface_drawUpdateRegionTextureBGRA);
+    }
+    else
+    {
+        g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_pushMakeCurrent, (void*)enginesurface_pushMakeCurrent, (void**)&m_pfnEngineSurface_pushMakeCurrent);
+        g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_popMakeCurrent, (void*)enginesurface_popMakeCurrent, (void**)&m_pfnEngineSurface_popMakeCurrent);
+        g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawFilledRect, (void*)enginesurface_drawFilledRect, (void**)&m_pfnEngineSurface_drawFilledRect);
+        g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawOutlinedRect, (void*)enginesurface_drawOutlinedRect, (void**)&m_pfnEngineSurface_drawOutlinedRect);
+        g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawLine, (void*)enginesurface_drawLine, (void**)&m_pfnEngineSurface_drawLine);
+        g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawPolyLine, (void*)enginesurface_drawPolyLine, (void**)&m_pfnEngineSurface_drawPolyLine);
+        g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawTexturedPolygon, (void*)enginesurface_drawTexturedPolygon, (void**)&m_pfnEngineSurface_drawTexturedPolygon);
+        g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawSetTextureRGBA, (void*)enginesurface_drawSetTextureRGBA, (void**)&m_pfnEngineSurface_drawSetTextureRGBA);
+        g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawSetTexture, (void*)enginesurface_drawSetTexture, (void**)&m_pfnEngineSurface_drawSetTexture);
+        g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawTexturedRect, (void*)enginesurface_drawTexturedRect, (void**)&m_pfnEngineSurface_drawTexturedRect);
+        g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_createNewTextureID, (void*)enginesurface_createNewTextureID, (void**)&m_pfnEngineSurface_createNewTextureID);
+        g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawPrintCharAdd, (void*)enginesurface_drawPrintCharAdd, (void**)&m_pfnEngineSurface_drawPrintCharAdd);
+        g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawSetTextureFile, (void*)enginesurface_drawSetTextureFile, (void**)&m_pfnEngineSurface_drawSetTextureFile);
+        g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawGetTextureSize, (void*)enginesurface_drawGetTextureSize, (void**)&m_pfnEngineSurface_drawGetTextureSize);
+        g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_isTextureIDValid, (void*)enginesurface_isTextureIDValid, (void**)&m_pfnEngineSurface_isTextureIDValid);
+        g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawSetSubTextureRGBA, (void*)enginesurface_drawSetSubTextureRGBA, (void**)&m_pfnEngineSurface_drawSetSubTextureRGBA);
+        g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawFlushText, (void*)enginesurface_drawFlushText, (void**)&m_pfnEngineSurface_drawFlushText);
+        g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawSetTextureBGRA, (void*)enginesurface_drawSetTextureBGRA, (void**)&m_pfnEngineSurface_drawSetTextureBGRA);
+        g_pMetaHookAPI->VFTHook(staticSurface, 0, gPrivateFuncs.index_enginesurface_drawUpdateRegionTextureBGRA, (void*)enginesurface_drawUpdateRegionTextureBGRA, (void**)&m_pfnEngineSurface_drawUpdateRegionTextureBGRA);
+    }
 
-	g_pMetaHookAPI->VFTHook(g_pBaseUISurface, 0, gPrivateFuncs.index_BaseUISurface_DrawSetTexture, (void*)BaseUISurface_DrawSetTexture, (void**)&m_pfnBaseUISurface_DrawSetTexture);
+    g_pMetaHookAPI->VFTHook(g_pBaseUISurface, 0, gPrivateFuncs.index_BaseUISurface_DrawSetTexture, (void*)BaseUISurface_DrawSetTexture, (void**)&m_pfnBaseUISurface_DrawSetTexture);
 }
 
 void EngineSurface_UninstallHooks(void)
 {
-
 }
