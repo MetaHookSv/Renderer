@@ -50,8 +50,12 @@ permalink: renderer/code-styles
 - Add TODO comments for future work: `// TODO: description`
 
 ## Formatting
-- **Indentation**: Tabs (appears to be the project standard)
-- **Braces**: Opening brace on same line for functions and control structures
+- **Formatter**: MetaHookSv/FormatValidation, pinned clang-format 23.1.3 with the shared DiligentCore style
+- **Indentation**: Four spaces
+- **Braces**: Shared custom wrapping rules; multiline functions and control blocks open on the next line
+- Preserve include order; the shared formatter disables include sorting
+- Configure with `-DFORMAT_VALIDATION_ONLY=ON`, then build `format-check` or `format`; the editor's root `.clang-format` is generated and ignored
+- Respect `.clang-format-ignore`; external SDKs and unmodified third-party copies remain excluded
 - **Line length**: No strict limit, but keep reasonable
 - **Spacing**: Space after keywords, around operators
 

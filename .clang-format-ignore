@@ -1,0 +1,9 @@
+# Repository-relative exclusions for shared FormatValidation.
+# Only src/, include/, and tests/ are selected; dependencies and artifacts are excluded.
+**/thirdparty/**
+**/build/**
+**/install/**
+
+# Unmodified Austin Appleby public-domain third-party implementation.
+src/MurmurHash2.cpp
+src/MurmurHash2.h
