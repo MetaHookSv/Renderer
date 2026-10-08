@@ -1,155 +1,155 @@
 #pragma once
 
 #ifndef GL_HUD_H
-#define GL_HUD_H
+#    define GL_HUD_H
 
-#include "gl_cvar.h"
-#include "gl_common.h"
-#include "enginedef.h"
-
-typedef struct
-{
-	int program;
-}pp_fxaa_program_t;
+#    include "gl_cvar.h"
+#    include "gl_common.h"
+#    include "enginedef.h"
 
 typedef struct
 {
-	int program;
-}pp_downsample_program_t;
+    int program;
+} pp_fxaa_program_t;
 
 typedef struct
 {
-	int program;
-}pp_downsample2x2_program_t;
+    int program;
+} pp_downsample_program_t;
 
 typedef struct
 {
-	int program;
-}pp_lumindown_program_t;
+    int program;
+} pp_downsample2x2_program_t;
 
 typedef struct
 {
-	int program;
-}pp_luminlog_program_t;
+    int program;
+} pp_lumindown_program_t;
 
 typedef struct
 {
-	int program;
-}pp_luminexp_program_t;
+    int program;
+} pp_luminlog_program_t;
 
 typedef struct
 {
-	int program;
-}pp_luminadapt_program_t;
+    int program;
+} pp_luminexp_program_t;
 
 typedef struct
 {
-	int program;
-}pp_brightpass_program_t;
+    int program;
+} pp_luminadapt_program_t;
 
 typedef struct
 {
-	int program;
-}pp_gaussianblurv_program_t, pp_gaussianblurh_program_t;
+    int program;
+} pp_brightpass_program_t;
 
 typedef struct
 {
-	int program;
-}pp_tonemap_program_t;
+    int program;
+} pp_gaussianblurv_program_t, pp_gaussianblurh_program_t;
 
 typedef struct
 {
-	int program;
-}depth_linearize_program_t;
+    int program;
+} pp_tonemap_program_t;
 
 typedef struct
 {
-	int program;
-}oitbuffer_clear_program_t;
+    int program;
+} depth_linearize_program_t;
 
 typedef struct
 {
-	int program;
-}blit_oitblend_program_t;
+    int program;
+} oitbuffer_clear_program_t;
 
 typedef struct
 {
-	int program;
-}gamma_correction_program_t;
+    int program;
+} blit_oitblend_program_t;
 
 typedef struct
 {
-	int program;
-}gamma_uncorrection_program_t;
+    int program;
+} gamma_correction_program_t;
 
 typedef struct
 {
-	int program;
-}copy_color_program_t;
+    int program;
+} gamma_uncorrection_program_t;
 
 typedef struct
 {
-	int program;
-}copy_color_halo_add_program_t;
+    int program;
+} copy_color_program_t;
 
 typedef struct
 {
-	int program;
-}under_water_effect_program_t;
+    int program;
+} copy_color_halo_add_program_t;
 
 typedef struct
 {
-	int program;
-	int texLinearDepth;
-	int texRandom;
-	int control_RadiusToScreen;
-	int control_projOrtho;
-	int control_projInfo;
-	int control_PowExponent;
-	int control_InvQuarterResolution;
-	int control_AOMultiplier;
-	int control_InvFullResolution;
-	int control_NDotVBias;
-	int control_NegInvR2;
-
-	int control_Fog;
-}hbao_calc_blur_program_t, hbao_calc_blur_fog_program_t;
+    int program;
+} under_water_effect_program_t;
 
 typedef struct
 {
-	int program;	
-}hbao_blur_program_t, hbao_blur2_program_t;
+    int program;
+    int texLinearDepth;
+    int texRandom;
+    int control_RadiusToScreen;
+    int control_projOrtho;
+    int control_projInfo;
+    int control_PowExponent;
+    int control_InvQuarterResolution;
+    int control_AOMultiplier;
+    int control_InvFullResolution;
+    int control_NDotVBias;
+    int control_NegInvR2;
+
+    int control_Fog;
+} hbao_calc_blur_program_t, hbao_calc_blur_fog_program_t;
 
 typedef struct
 {
-	int program;
-	int basetex;
-	int layer;
-}hud_debug_program_t;
+    int program;
+} hbao_blur_program_t, hbao_blur2_program_t;
+
+typedef struct
+{
+    int program;
+    int basetex;
+    int layer;
+} hud_debug_program_t;
 
 typedef struct drawtexturedrect_program_s
 {
-	int program;
-}drawtexturedrect_program_t;
+    int program;
+} drawtexturedrect_program_t;
 
 typedef struct drawfilledrect_program_s
 {
-	int program;
-}drawfilledrect_program_t;
+    int program;
+} drawfilledrect_program_t;
 
-extern cvar_t *r_hdr;
+extern cvar_t* r_hdr;
 
-extern MapConVar *r_hdr_blurwidth;
-extern MapConVar *r_hdr_exposure;
-extern MapConVar *r_hdr_darkness;
-extern MapConVar *r_hdr_adaptation;
+extern MapConVar* r_hdr_blurwidth;
+extern MapConVar* r_hdr_exposure;
+extern MapConVar* r_hdr_darkness;
+extern MapConVar* r_hdr_adaptation;
 
-extern cvar_t *r_ssao;
-extern MapConVar *r_ssao_radius;
-extern MapConVar *r_ssao_intensity;
-extern MapConVar *r_ssao_bias;
-extern MapConVar *r_ssao_blur_sharpness;
-extern cvar_t *r_fxaa;
+extern cvar_t*    r_ssao;
+extern MapConVar* r_ssao_radius;
+extern MapConVar* r_ssao_intensity;
+extern MapConVar* r_ssao_bias;
+extern MapConVar* r_ssao_blur_sharpness;
+extern cvar_t*    r_fxaa;
 
 extern int last_luminance;
 
@@ -163,7 +163,7 @@ void R_CopyColor(FBO_Container_t* src, FBO_Container_t* dst);
 void R_CopyColorHaloAdd(FBO_Container_t* src, FBO_Container_t* dst);
 void R_BlendOITBuffer(FBO_Container_t* src, FBO_Container_t* dst);
 void R_ClearOITBuffer(void);
-void R_LinearizeDepth(FBO_Container_t *src, FBO_Container_t* dst);
+void R_LinearizeDepth(FBO_Container_t* src, FBO_Container_t* dst);
 void R_AmbientOcclusion(FBO_Container_t* src, FBO_Container_t* dst);
 bool R_IsGammaBlendEnabled();
 void R_GammaCorrection(FBO_Container_t* src, FBO_Container_t* dst);
@@ -175,9 +175,9 @@ void R_FXAA(FBO_Container_t* src, FBO_Container_t* dst);
 bool R_IsFXAAEnabled(void);
 void R_UnderWaterEffect(FBO_Container_t* src, FBO_Container_t* dst);
 bool R_IsUnderWaterEffectEnabled(void);
-void GL_BlitFrameFufferToScreen(FBO_Container_t *src);
-void GL_BlitFrameBufferToFrameBufferColorOnly(FBO_Container_t *src, FBO_Container_t *dst);
-void GL_BlitFrameBufferToFrameBufferColorDepth(FBO_Container_t *src, FBO_Container_t *dst);
+void GL_BlitFrameFufferToScreen(FBO_Container_t* src);
+void GL_BlitFrameBufferToFrameBufferColorOnly(FBO_Container_t* src, FBO_Container_t* dst);
+void GL_BlitFrameBufferToFrameBufferColorDepth(FBO_Container_t* src, FBO_Container_t* dst);
 void GL_BlitFrameBufferToFrameBufferColorDepthStencil(FBO_Container_t* src, FBO_Container_t* dst);
 void GL_BlitFrameBufferToFrameBufferDepthOnly(FBO_Container_t* src, FBO_Container_t* dst);
 void GL_BlitFrameBufferToFrameBufferStencilOnly(FBO_Container_t* src, FBO_Container_t* dst);

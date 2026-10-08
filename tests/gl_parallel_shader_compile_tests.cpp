@@ -12,7 +12,8 @@
 
 #include <cstdio>
 
-namespace {
+namespace
+{
 
 // Reported to CTest through the test's SKIP_RETURN_CODE property. A machine
 // without an OpenGL-capable driver (headless CI runners, WGL unable to create a
@@ -47,7 +48,7 @@ int main()
     if (!window)
     {
         std::fprintf(stderr,
-            "gl_parallel_shader_compile_tests: no OpenGL context available, skipping\n");
+                     "gl_parallel_shader_compile_tests: no OpenGL context available, skipping\n");
         glfwTerminate();
         return kSkipExitCode;
     }
@@ -56,26 +57,24 @@ int main()
     // glewInit queries the context version and every advertised extension.
     // Core-profile drivers reject the legacy glGetString(GL_EXTENSIONS) that
     // GLEW probes by default, which only produces a harmless GL_INVALID_ENUM.
-    glewExperimental = GL_TRUE;
+    glewExperimental  = GL_TRUE;
     GLenum initResult = glewInit();
     if (initResult != GLEW_OK)
     {
         std::fprintf(stderr,
-            "gl_parallel_shader_compile_tests: glewInit failed: %s, skipping\n",
-            glewGetErrorString(initResult));
+                     "gl_parallel_shader_compile_tests: glewInit failed: %s, skipping\n",
+                     glewGetErrorString(initResult));
         glfwDestroyWindow(window);
         glfwTerminate();
         return kSkipExitCode;
     }
 
-    const char* version = reinterpret_cast<const char*>(glGetString(GL_VERSION));
-    const char* vendor = reinterpret_cast<const char*>(glGetString(GL_VENDOR));
+    const char* version  = reinterpret_cast<const char*>(glGetString(GL_VERSION));
+    const char* vendor   = reinterpret_cast<const char*>(glGetString(GL_VENDOR));
     const char* renderer = reinterpret_cast<const char*>(glGetString(GL_RENDERER));
 
-    const bool arbSupported = GLEW_ARB_parallel_shader_compile != GL_FALSE
-        && HasUsableEntryPoint(reinterpret_cast<void*>(__glewMaxShaderCompilerThreadsARB));
-    const bool khrSupported = GLEW_KHR_parallel_shader_compile != GL_FALSE
-        && HasUsableEntryPoint(reinterpret_cast<void*>(__glewMaxShaderCompilerThreadsKHR));
+    const bool arbSupported = GLEW_ARB_parallel_shader_compile != GL_FALSE && HasUsableEntryPoint(reinterpret_cast<void*>(__glewMaxShaderCompilerThreadsARB));
+    const bool khrSupported = GLEW_KHR_parallel_shader_compile != GL_FALSE && HasUsableEntryPoint(reinterpret_cast<void*>(__glewMaxShaderCompilerThreadsKHR));
 
     std::printf("OpenGL vendor   : %s\n", vendor ? vendor : "(null)");
     std::printf("OpenGL renderer : %s\n", renderer ? renderer : "(null)");
@@ -97,7 +96,7 @@ int main()
         GLenum queryError = glGetError();
         if (queryError == GL_NO_ERROR)
             std::printf("GL_MAX_SHADER_COMPILER_THREADS_ARB : %d%s\n", threadCount,
-                threadCount == 0 ? " (driver decides)" : "");
+                        threadCount == 0 ? " (driver decides)" : "");
         else
             std::printf("GL_MAX_SHADER_COMPILER_THREADS_ARB : query failed (GL error 0x%04X)\n", queryError);
     }

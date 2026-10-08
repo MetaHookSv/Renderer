@@ -8,376 +8,372 @@ cvar_t* r_shadow = NULL;
 class CBaseShadowTexture : public IShadowTexture
 {
 public:
-	CBaseShadowTexture(uint32_t size, bool bStatic) : m_size(size), m_bStatic(bStatic)
-	{
-		
-	}
+    CBaseShadowTexture(uint32_t size, bool bStatic) : m_size(size), m_bStatic(bStatic)
+    {
+    }
 
-	~CBaseShadowTexture()
-	{
-		if (m_depthtex)
-		{
-			gEngfuncs.Con_DPrintf("CBaseShadowTexture: delete m_depthtex [%d].\n", m_depthtex);
-			GL_DeleteTexture(m_depthtex);
-			m_depthtex = 0;
-		}
-	}
+    ~CBaseShadowTexture()
+    {
+        if (m_depthtex)
+        {
+            gEngfuncs.Con_DPrintf("CBaseShadowTexture: delete m_depthtex [%d].\n", m_depthtex);
+            GL_DeleteTexture(m_depthtex);
+            m_depthtex = 0;
+        }
+    }
 
-	bool IsReady() const override
-	{
-		return m_ready;
-	}
+    bool IsReady() const override
+    {
+        return m_ready;
+    }
 
-	void SetReady(bool bReady) override
-	{
-		m_ready = bReady;
-	}
+    void SetReady(bool bReady) override
+    {
+        m_ready = bReady;
+    }
 
-	bool IsCascaded() const override
-	{
-		return false;
-	}
+    bool IsCascaded() const override
+    {
+        return false;
+    }
 
-	bool IsCubemap() const override
-	{
-		return false;
-	}
+    bool IsCubemap() const override
+    {
+        return false;
+    }
 
-	bool IsStatic() const override
-	{
-		return m_bStatic;
-	}
-	
-	GLuint GetDepthTexture() const override
-	{
-		return m_depthtex;
-	}
+    bool IsStatic() const override
+    {
+        return m_bStatic;
+    }
 
-	uint32_t GetTextureSize() const override
-	{
-		return m_size;
-	}
+    GLuint GetDepthTexture() const override
+    {
+        return m_depthtex;
+    }
 
-	void SetViewport(float x, float y, float w, float h) override
-	{
-		m_viewport[0] = x;
-		m_viewport[1] = y;
-		m_viewport[2] = w;
-		m_viewport[3] = h;
-	}
-	const float* GetViewport() const override
-	{
-		return m_viewport;
-	}
+    uint32_t GetTextureSize() const override
+    {
+        return m_size;
+    }
 
-	void SetCSMDistance(int cascadedIndex, float distance) override
-	{
+    void SetViewport(float x, float y, float w, float h) override
+    {
+        m_viewport[0] = x;
+        m_viewport[1] = y;
+        m_viewport[2] = w;
+        m_viewport[3] = h;
+    }
+    const float* GetViewport() const override
+    {
+        return m_viewport;
+    }
 
-	}
+    void SetCSMDistance(int cascadedIndex, float distance) override
+    {
+    }
 
-	float GetCSMDistance(int cascadedIndex) const override
-	{
-		return 0;
-	}
+    float GetCSMDistance(int cascadedIndex) const override
+    {
+        return 0;
+    }
 
 protected:
-	GLuint m_depthtex{};
-	uint32_t m_size{};
-	float m_viewport[4]{};
-	bool m_ready{};
-	bool m_bStatic{};
+    GLuint   m_depthtex{};
+    uint32_t m_size{};
+    float    m_viewport[4]{};
+    bool     m_ready{};
+    bool     m_bStatic{};
 };
 
 class CSingleShadowTexture : public CBaseShadowTexture
 {
 public:
-	CSingleShadowTexture(uint32_t size, bool bStatic) : CBaseShadowTexture(size, bStatic)
-	{
-		m_depthtex = GL_GenShadowTexture(size, size, true);
-	}
+    CSingleShadowTexture(uint32_t size, bool bStatic) : CBaseShadowTexture(size, bStatic)
+    {
+        m_depthtex = GL_GenShadowTexture(size, size, true);
+    }
 
-	bool IsSingleLayer() const override
-	{
-		return true;
-	}
+    bool IsSingleLayer() const override
+    {
+        return true;
+    }
 
-	void SetWorldMatrix(int index, const mat4* mat) override
-	{
-		memcpy(m_worldmatrix, mat, sizeof(mat4));
-	}
-	void SetProjectionMatrix(int index, const mat4* mat) override
-	{
-		memcpy(m_projmatrix, mat, sizeof(mat4));
-	}
-	void SetShadowMatrix(int index, const mat4* mat) override
-	{
-		memcpy(m_shadowmatrix, mat, sizeof(mat4));
-	}
+    void SetWorldMatrix(int index, const mat4* mat) override
+    {
+        memcpy(m_worldmatrix, mat, sizeof(mat4));
+    }
+    void SetProjectionMatrix(int index, const mat4* mat) override
+    {
+        memcpy(m_projmatrix, mat, sizeof(mat4));
+    }
+    void SetShadowMatrix(int index, const mat4* mat) override
+    {
+        memcpy(m_shadowmatrix, mat, sizeof(mat4));
+    }
 
-	const mat4* GetWorldMatrix(int index) const override
-	{
-		return &m_worldmatrix;
-	}
-	const mat4* GetProjectionMatrix(int index) const override
-	{
-		return &m_projmatrix;
-	}
-	const mat4* GetShadowMatrix(int index) const override
-	{
-		return &m_shadowmatrix;
-	}
+    const mat4* GetWorldMatrix(int index) const override
+    {
+        return &m_worldmatrix;
+    }
+    const mat4* GetProjectionMatrix(int index) const override
+    {
+        return &m_projmatrix;
+    }
+    const mat4* GetShadowMatrix(int index) const override
+    {
+        return &m_shadowmatrix;
+    }
+
 private:
-	mat4 m_worldmatrix{};
-	mat4 m_projmatrix{};
-	mat4 m_shadowmatrix{};
+    mat4 m_worldmatrix{};
+    mat4 m_projmatrix{};
+    mat4 m_shadowmatrix{};
 };
 
 class CCascadedShadowTexture : public CBaseShadowTexture
 {
 public:
-	CCascadedShadowTexture(uint32_t size, bool bStatic) : CBaseShadowTexture(size, bStatic)
-	{
-		// Use texture array for CSM: size x size x 4 layers
-		m_depthtex = GL_GenShadowTextureArray(size, size, CSM_LEVELS, true);
-	}
+    CCascadedShadowTexture(uint32_t size, bool bStatic) : CBaseShadowTexture(size, bStatic)
+    {
+        // Use texture array for CSM: size x size x 4 layers
+        m_depthtex = GL_GenShadowTextureArray(size, size, CSM_LEVELS, true);
+    }
 
-	bool IsCascaded() const override
-	{
-		return true;
-	}
+    bool IsCascaded() const override
+    {
+        return true;
+    }
 
-	bool IsSingleLayer() const override
-	{
-		return false;
-	}
+    bool IsSingleLayer() const override
+    {
+        return false;
+    }
 
-	void SetWorldMatrix(int index, const mat4* mat) override
-	{
-		memcpy(&m_worldmatrix[index], mat, sizeof(mat4));
-	}
-	void SetProjectionMatrix(int index, const mat4* mat) override
-	{
-		memcpy(&m_projmatrix[index], mat, sizeof(mat4));
-	}
-	void SetShadowMatrix(int index, const mat4* mat) override
-	{
-		memcpy(&m_shadowmatrix[index], mat, sizeof(mat4));
-	}
+    void SetWorldMatrix(int index, const mat4* mat) override
+    {
+        memcpy(&m_worldmatrix[index], mat, sizeof(mat4));
+    }
+    void SetProjectionMatrix(int index, const mat4* mat) override
+    {
+        memcpy(&m_projmatrix[index], mat, sizeof(mat4));
+    }
+    void SetShadowMatrix(int index, const mat4* mat) override
+    {
+        memcpy(&m_shadowmatrix[index], mat, sizeof(mat4));
+    }
 
-	const mat4* GetWorldMatrix(int index) const override
-	{
-		return &m_worldmatrix[index];
-	}
-	const mat4* GetProjectionMatrix(int index) const override
-	{
-		return &m_projmatrix[index];
-	}
-	const mat4* GetShadowMatrix(int index) const override
-	{
-		return &m_shadowmatrix[index];
-	}
+    const mat4* GetWorldMatrix(int index) const override
+    {
+        return &m_worldmatrix[index];
+    }
+    const mat4* GetProjectionMatrix(int index) const override
+    {
+        return &m_projmatrix[index];
+    }
+    const mat4* GetShadowMatrix(int index) const override
+    {
+        return &m_shadowmatrix[index];
+    }
 
-	void SetCSMDistance(int index, float distance) override
-	{
-		m_csmDistances[index] = distance;
-	}
+    void SetCSMDistance(int index, float distance) override
+    {
+        m_csmDistances[index] = distance;
+    }
 
-	float GetCSMDistance(int index) const override
-	{
-		return m_csmDistances[index];
-	}
+    float GetCSMDistance(int index) const override
+    {
+        return m_csmDistances[index];
+    }
 
 private:
-	float m_csmDistances[CSM_LEVELS]{};
-	mat4 m_worldmatrix[CSM_LEVELS]{};
-	mat4 m_projmatrix[CSM_LEVELS]{};
-	mat4 m_shadowmatrix[CSM_LEVELS]{};
+    float m_csmDistances[CSM_LEVELS]{};
+    mat4  m_worldmatrix[CSM_LEVELS]{};
+    mat4  m_projmatrix[CSM_LEVELS]{};
+    mat4  m_shadowmatrix[CSM_LEVELS]{};
 };
 
 class CCubemapShadowTexture : public CBaseShadowTexture
 {
 public:
-	CCubemapShadowTexture(uint32_t size, bool bStatic) : CBaseShadowTexture(size, bStatic)
-	{
-		m_depthtex = GL_GenCubemapShadowTexture(size, size, true);
-	}
+    CCubemapShadowTexture(uint32_t size, bool bStatic) : CBaseShadowTexture(size, bStatic)
+    {
+        m_depthtex = GL_GenCubemapShadowTexture(size, size, true);
+    }
 
-	bool IsCubemap() const override
-	{
-		return true;
-	}
+    bool IsCubemap() const override
+    {
+        return true;
+    }
 
-	bool IsSingleLayer() const override
-	{
-		return false;
-	}
+    bool IsSingleLayer() const override
+    {
+        return false;
+    }
 
-	void SetWorldMatrix(int index, const mat4* mat) override
-	{
-		memcpy(&m_worldmatrix[index], mat, sizeof(mat4));
-	}
-	void SetProjectionMatrix(int index, const mat4* mat) override
-	{
-		memcpy(&m_projmatrix[index], mat, sizeof(mat4));
-	}
-	void SetShadowMatrix(int index, const mat4* mat) override
-	{
-		memcpy(&m_shadowmatrix[index], mat, sizeof(mat4));
-	}
+    void SetWorldMatrix(int index, const mat4* mat) override
+    {
+        memcpy(&m_worldmatrix[index], mat, sizeof(mat4));
+    }
+    void SetProjectionMatrix(int index, const mat4* mat) override
+    {
+        memcpy(&m_projmatrix[index], mat, sizeof(mat4));
+    }
+    void SetShadowMatrix(int index, const mat4* mat) override
+    {
+        memcpy(&m_shadowmatrix[index], mat, sizeof(mat4));
+    }
 
-	const mat4* GetWorldMatrix(int index) const override
-	{
-		return &m_worldmatrix[index];
-	}
-	const mat4* GetProjectionMatrix(int index) const override
-	{
-		return &m_projmatrix[index];
-	}
-	const mat4* GetShadowMatrix(int index) const override
-	{
-		return &m_shadowmatrix[index];
-	}
+    const mat4* GetWorldMatrix(int index) const override
+    {
+        return &m_worldmatrix[index];
+    }
+    const mat4* GetProjectionMatrix(int index) const override
+    {
+        return &m_projmatrix[index];
+    }
+    const mat4* GetShadowMatrix(int index) const override
+    {
+        return &m_shadowmatrix[index];
+    }
 
 private:
-	mat4 m_worldmatrix[6]{};
-	mat4 m_projmatrix[6]{};
-	mat4 m_shadowmatrix[6]{};
+    mat4 m_worldmatrix[6]{};
+    mat4 m_projmatrix[6]{};
+    mat4 m_shadowmatrix[6]{};
 };
 
-int StudioGetSequenceActivityType(model_t *mod, entity_state_t* entstate)
+int StudioGetSequenceActivityType(model_t* mod, entity_state_t* entstate)
 {
-	if (mod->type != mod_studio)
-		return 0;
+    if (mod->type != mod_studio)
+        return 0;
 
-	auto studiohdr = (studiohdr_t *)IEngineStudio.Mod_Extradata(mod);
+    auto studiohdr = (studiohdr_t*)IEngineStudio.Mod_Extradata(mod);
 
-	if (!studiohdr)
-		return 0;
+    if (!studiohdr)
+        return 0;
 
-	int sequence = entstate->sequence;
-	if (sequence >= studiohdr->numseq)
-		return 0;
+    int sequence = entstate->sequence;
+    if (sequence >= studiohdr->numseq)
+        return 0;
 
-	auto pseqdesc = (mstudioseqdesc_t*)((byte*)studiohdr + studiohdr->seqindex) + sequence;
+    auto pseqdesc = (mstudioseqdesc_t*)((byte*)studiohdr + studiohdr->seqindex) + sequence;
 
-	if (
-		pseqdesc->activity == ACT_DIESIMPLE ||
-		pseqdesc->activity == ACT_DIEBACKWARD ||
-		pseqdesc->activity == ACT_DIEFORWARD ||
-		pseqdesc->activity == ACT_DIEVIOLENT ||
-		pseqdesc->activity == ACT_DIEVIOLENT ||
-		pseqdesc->activity == ACT_DIE_HEADSHOT ||
-		pseqdesc->activity == ACT_DIE_CHESTSHOT ||
-		pseqdesc->activity == ACT_DIE_GUTSHOT ||
-		pseqdesc->activity == ACT_DIE_BACKSHOT
-		)
-	{
-		return 1;
-	}
+    if (
+        pseqdesc->activity == ACT_DIESIMPLE ||
+        pseqdesc->activity == ACT_DIEBACKWARD ||
+        pseqdesc->activity == ACT_DIEFORWARD ||
+        pseqdesc->activity == ACT_DIEVIOLENT ||
+        pseqdesc->activity == ACT_DIEVIOLENT ||
+        pseqdesc->activity == ACT_DIE_HEADSHOT ||
+        pseqdesc->activity == ACT_DIE_CHESTSHOT ||
+        pseqdesc->activity == ACT_DIE_GUTSHOT ||
+        pseqdesc->activity == ACT_DIE_BACKSHOT)
+    {
+        return 1;
+    }
 
-	if (
-		pseqdesc->activity == ACT_BARNACLE_HIT ||
-		pseqdesc->activity == ACT_BARNACLE_PULL ||
-		pseqdesc->activity == ACT_BARNACLE_CHOMP ||
-		pseqdesc->activity == ACT_BARNACLE_CHEW
-		)
-	{
-		return 2;
-	}
+    if (
+        pseqdesc->activity == ACT_BARNACLE_HIT ||
+        pseqdesc->activity == ACT_BARNACLE_PULL ||
+        pseqdesc->activity == ACT_BARNACLE_CHOMP ||
+        pseqdesc->activity == ACT_BARNACLE_CHEW)
+    {
+        return 2;
+    }
 
-	return 0;
+    return 0;
 }
 
 std::shared_ptr<IShadowTexture> R_CreateSingleShadowTexture(uint32_t size, bool bStatic)
 {
-	return std::make_shared<CSingleShadowTexture>(size, bStatic);
+    return std::make_shared<CSingleShadowTexture>(size, bStatic);
 }
 
 std::shared_ptr<IShadowTexture> R_CreateCascadedShadowTexture(uint32_t size, bool bStatic)
 {
-	return std::make_shared<CCascadedShadowTexture>(size, bStatic);
+    return std::make_shared<CCascadedShadowTexture>(size, bStatic);
 }
 
 std::shared_ptr<IShadowTexture> R_CreateCubemapShadowTexture(uint32_t size, bool bStatic)
 {
-	return std::make_shared<CCubemapShadowTexture>(size, bStatic);
+    return std::make_shared<CCubemapShadowTexture>(size, bStatic);
 }
 
 void R_InitShadow(void)
 {
-	r_shadow = gEngfuncs.pfnRegisterVariable("r_shadow", "1", FCVAR_ARCHIVE | FCVAR_CLIENTDLL);
+    r_shadow = gEngfuncs.pfnRegisterVariable("r_shadow", "1", FCVAR_ARCHIVE | FCVAR_CLIENTDLL);
 }
 
 void R_ShutdownShadow(void)
 {
-	
 }
 
 bool R_ShouldRenderShadow(void)
 {
-	if (R_IsRenderingShadowView())
-		return false;
+    if (R_IsRenderingShadowView())
+        return false;
 
-	if (R_IsRenderingWaterView())
-		return false;
+    if (R_IsRenderingWaterView())
+        return false;
 
-	if (R_IsRenderingPortal())
-		return false;
+    if (R_IsRenderingPortal())
+        return false;
 
-	if (gPrivateFuncs.CL_IsDevOverviewMode())
-		return false;
+    if (gPrivateFuncs.CL_IsDevOverviewMode())
+        return false;
 
-	return r_shadow->value ? true : false;
+    return r_shadow->value ? true : false;
 }
 
-bool R_ShouldCastShadow(cl_entity_t *ent)
+bool R_ShouldCastShadow(cl_entity_t* ent)
 {
-	if(!ent)
-		return false;
+    if (!ent)
+        return false;
 
-	if(!ent->model)
-		return false;
+    if (!ent->model)
+        return false;
 
-	if (ent->curstate.rendermode != kRenderNormal)
-		return false;
+    if (ent->curstate.rendermode != kRenderNormal)
+        return false;
 
-	if (ent->model->type == mod_studio)
-	{
-		if (ent->curstate.effects & EF_NODRAW)
-			return false;
+    if (ent->model->type == mod_studio)
+    {
+        if (ent->curstate.effects & EF_NODRAW)
+            return false;
 
-		//player model always render shadow
-		if (!strcmp(ent->model->name, "models/player.mdl"))
-			return true;
+        //player model always render shadow
+        if (!strcmp(ent->model->name, "models/player.mdl"))
+            return true;
 
-		if (ent->player)
-			return true;
+        if (ent->player)
+            return true;
 
-		//BulletPhysics ragdoll corpse
-		if (ent->curstate.iuser4 == PhyCorpseFlag)
-			return true;
+        //BulletPhysics ragdoll corpse
+        if (ent->curstate.iuser4 == PhyCorpseFlag)
+            return true;
 
-		if (ent->index == 0)
-			return false;
+        if (ent->index == 0)
+            return false;
 
-		if (ent->curstate.movetype == MOVETYPE_NONE && ent->curstate.solid == SOLID_NOT)
-			return false;
+        if (ent->curstate.movetype == MOVETYPE_NONE && ent->curstate.solid == SOLID_NOT)
+            return false;
 
-		if (g_iEngineType == ENGINE_SVENGINE)
-		{
-			if (ent->curstate.effects & EF_NOSHADOW)
-				return false;
-		}
+        if (g_iEngineType == ENGINE_SVENGINE)
+        {
+            if (ent->curstate.effects & EF_NOSHADOW)
+                return false;
+        }
 
-		return true;
-	}
+        return true;
+    }
 
-	return false;
+    return false;
 }
 
 void R_SetupShadowMatrix(float out[4][4], const float worldMatrix[4][4], const float projMatrix[4][4])
 {
-	/*
+    /*
 	Counterpart of following matrix:
 		const float bias[16] = {
 				0.5f, 0.0f, 0.0f, 0.0f,
@@ -397,645 +393,641 @@ void R_SetupShadowMatrix(float out[4][4], const float worldMatrix[4][4], const f
 		glMatrixMode(GL_MODELVIEW);
 	*/
 
-	const float bias[16] = {
-		0.5f, 0.0f, 0.0f, 0.0f,
-		0.0f, 0.5f, 0.0f, 0.0f,
-		0.0f, 0.0f, 0.5f, 0.0f,
-		0.5f, 0.5f, 0.5f, 1.0f
-	};
+    const float bias[16] = {
+        0.5f, 0.0f, 0.0f, 0.0f,
+        0.0f, 0.5f, 0.0f, 0.0f,
+        0.0f, 0.0f, 0.5f, 0.0f,
+        0.5f, 0.5f, 0.5f, 1.0f};
 
-	// First multiply projection matrix with world matrix
-	float projWorldMatrix[4][4];
-	Matrix4x4_Multiply(projWorldMatrix, worldMatrix, projMatrix);
+    // First multiply projection matrix with world matrix
+    float projWorldMatrix[4][4];
+    Matrix4x4_Multiply(projWorldMatrix, worldMatrix, projMatrix);
 
-	// Then multiply bias matrix with the result
-	Matrix4x4_Multiply(out, projWorldMatrix, (const float (*)[4])bias);
+    // Then multiply bias matrix with the result
+    Matrix4x4_Multiply(out, projWorldMatrix, (const float (*)[4])bias);
 }
 
 void R_RenderShadowmapForDynamicLights(void)
 {
-	if (!R_CanRenderGBuffer())
-		return;
+    if (!R_CanRenderGBuffer())
+        return;
 
-	if (R_ShouldRenderShadow())
-	{
-		GL_BeginDebugGroup("R_RenderShadowmapForDynamicLights");
+    if (R_ShouldRenderShadow())
+    {
+        GL_BeginDebugGroup("R_RenderShadowmapForDynamicLights");
 
-		const auto PointLightCallback = [](PointLightCallbackArgs *args, void *context)
-		{
-				if (args->ppStaticShadowTexture && args->staticShadowSize > 0)
-				{
-					if ((*args->ppStaticShadowTexture) == nullptr ||
-						(*args->ppStaticShadowTexture)->IsCubemap() != true ||
-						(*args->ppStaticShadowTexture)->IsStatic() != true ||
-						(*args->ppStaticShadowTexture)->GetTextureSize() != args->staticShadowSize)
-					{
-						(*args->ppStaticShadowTexture) = R_CreateCubemapShadowTexture(args->staticShadowSize, true);
-					}
+        const auto PointLightCallback = [](PointLightCallbackArgs* args, void* context) {
+            if (args->ppStaticShadowTexture && args->staticShadowSize > 0)
+            {
+                if ((*args->ppStaticShadowTexture) == nullptr ||
+                    (*args->ppStaticShadowTexture)->IsCubemap() != true ||
+                    (*args->ppStaticShadowTexture)->IsStatic() != true ||
+                    (*args->ppStaticShadowTexture)->GetTextureSize() != args->staticShadowSize)
+                {
+                    (*args->ppStaticShadowTexture) = R_CreateCubemapShadowTexture(args->staticShadowSize, true);
+                }
 
-					if ((*args->ppStaticShadowTexture) && !(*args->ppStaticShadowTexture)->IsReady())
-					{
-						r_draw_shadowview = true;
-						r_draw_multiview = true;
-						r_draw_nofrustumcull = true;
-						r_draw_lineardepth = true;
+                if ((*args->ppStaticShadowTexture) && !(*args->ppStaticShadowTexture)->IsReady())
+                {
+                    r_draw_shadowview    = true;
+                    r_draw_multiview     = true;
+                    r_draw_nofrustumcull = true;
+                    r_draw_lineardepth   = true;
 
-						const auto& pCurrentShadowTexture = (*args->ppStaticShadowTexture);
+                    const auto& pCurrentShadowTexture = (*args->ppStaticShadowTexture);
 
-						pCurrentShadowTexture->SetViewport(0, 0, pCurrentShadowTexture->GetTextureSize(), pCurrentShadowTexture->GetTextureSize());
+                    pCurrentShadowTexture->SetViewport(0, 0, pCurrentShadowTexture->GetTextureSize(), pCurrentShadowTexture->GetTextureSize());
 
-						GL_BeginDebugGroup("PointlightStaticShadowPass");
+                    GL_BeginDebugGroup("PointlightStaticShadowPass");
 
-						GL_BindFrameBufferWithTextures(&s_ShadowFBO, 0, 0, pCurrentShadowTexture->GetDepthTexture(), pCurrentShadowTexture->GetTextureSize(), pCurrentShadowTexture->GetTextureSize());
-						glDrawBuffer(GL_NONE);
-						glReadBuffer(GL_NONE);
+                    GL_BindFrameBufferWithTextures(&s_ShadowFBO, 0, 0, pCurrentShadowTexture->GetDepthTexture(), pCurrentShadowTexture->GetTextureSize(), pCurrentShadowTexture->GetTextureSize());
+                    glDrawBuffer(GL_NONE);
+                    glReadBuffer(GL_NONE);
 
-						GL_ClearDepthStencil(1.0f, STENCIL_MASK_NONE, STENCIL_MASK_ALL);
+                    GL_ClearDepthStencil(1.0f, STENCIL_MASK_NONE, STENCIL_MASK_ALL);
 
-						R_PushRefDef();
+                    R_PushRefDef();
 
-						R_SetViewport(
-							pCurrentShadowTexture->GetViewport()[0],
-							pCurrentShadowTexture->GetViewport()[1],
-							pCurrentShadowTexture->GetViewport()[2], 
-							pCurrentShadowTexture->GetViewport()[3]);
-
-						// Calculate 6 faces for cubemap shadow mapping
-						// OpenGL cubemap face order: +X, -X, +Y, -Y, +Z, -Z
-						const vec3_t cubemapAngles[] = {
-							{0, 0, 90},
-							{0, 180, 270},
-							{0, 90, 0},
-							{0, 270, 180},
-							{-90, 90, 0},
-							{90, 270, 0},
-						};
+                    R_SetViewport(
+                        pCurrentShadowTexture->GetViewport()[0],
+                        pCurrentShadowTexture->GetViewport()[1],
+                        pCurrentShadowTexture->GetViewport()[2],
+                        pCurrentShadowTexture->GetViewport()[3]);
 
-						camera_ubo_t CameraUBO{};
+                    // Calculate 6 faces for cubemap shadow mapping
+                    // OpenGL cubemap face order: +X, -X, +Y, -Y, +Z, -Z
+                    const vec3_t cubemapAngles[] = {
+                        {0, 0, 90},
+                        {0, 180, 270},
+                        {0, 90, 0},
+                        {0, 270, 180},
+                        {-90, 90, 0},
+                        {90, 270, 0},
+                    };
 
-						CameraUBO.numViews = 6;
+                    camera_ubo_t CameraUBO{};
 
-						for (int i = 0; i < 6; ++i)
-						{
-							VectorCopy(args->origin, (*r_refdef.vieworg));
-							VectorCopy(cubemapAngles[i], (*r_refdef.viewangles));
-							R_UpdateRefDef();
+                    CameraUBO.numViews = 6;
 
-							R_LoadIdentityForProjectionMatrix();
-							R_SetupPerspective(90, 90, 0.1f, args->radius);
-
-							R_LoadIdentityForWorldMatrix();
-							R_SetupPlayerViewWorldMatrix((*r_refdef.vieworg), (*r_refdef.viewangles));
-
-							R_SetFrustum(90, 90, r_frustum_right, r_frustum_top);
-
-							auto worldMatrix = (float (*)[4][4])R_GetWorldMatrix();
-							auto projMatrix = (float (*)[4][4])R_GetProjectionMatrix();
-
-							mat4 shadowMatrix;
-							R_SetupShadowMatrix(shadowMatrix, (*worldMatrix), (*projMatrix));
+                    for (int i = 0; i < 6; ++i)
+                    {
+                        VectorCopy(args->origin, (*r_refdef.vieworg));
+                        VectorCopy(cubemapAngles[i], (*r_refdef.viewangles));
+                        R_UpdateRefDef();
 
-							pCurrentShadowTexture->SetWorldMatrix(i, worldMatrix);
-							pCurrentShadowTexture->SetProjectionMatrix(i, projMatrix);
-							pCurrentShadowTexture->SetShadowMatrix(i, &shadowMatrix);
-
-							R_SetupCameraView(&CameraUBO.views[i]);
-						}
-
-						GL_UploadSubDataToUBO(g_WorldSurfaceRenderer.hCameraUBO, 0, sizeof(CameraUBO), &CameraUBO);
-
-						bool bAnyPolyRendered = false;
+                        R_LoadIdentityForProjectionMatrix();
+                        R_SetupPerspective(90, 90, 0.1f, args->radius);
 
-						{
-							auto old_brush_polys = (*c_brush_polys);
-							(*c_brush_polys) = 0;
+                        R_LoadIdentityForWorldMatrix();
+                        R_SetupPlayerViewWorldMatrix((*r_refdef.vieworg), (*r_refdef.viewangles));
 
-							auto old_draw_classify = r_draw_classify;
-							r_draw_classify = DRAW_CLASSIFY_WORLD;
+                        R_SetFrustum(90, 90, r_frustum_right, r_frustum_top);
+
+                        auto worldMatrix = (float (*)[4][4])R_GetWorldMatrix();
+                        auto projMatrix  = (float (*)[4][4])R_GetProjectionMatrix();
 
-							if (args->sourceEntityIndex != 0)
-							{
-								r_draw_hide_entity = true;
-								r_draw_hide_entity_index = args->sourceEntityIndex;
-							}
+                        mat4 shadowMatrix;
+                        R_SetupShadowMatrix(shadowMatrix, (*worldMatrix), (*projMatrix));
 
-							R_RenderScene();
+                        pCurrentShadowTexture->SetWorldMatrix(i, worldMatrix);
+                        pCurrentShadowTexture->SetProjectionMatrix(i, projMatrix);
+                        pCurrentShadowTexture->SetShadowMatrix(i, &shadowMatrix);
 
-							bAnyPolyRendered = (*c_brush_polys) > 0 ? true : false;
+                        R_SetupCameraView(&CameraUBO.views[i]);
+                    }
 
-							r_draw_hide_entity = false;
-							r_draw_classify = old_draw_classify;
-							(*c_brush_polys) = old_brush_polys;
-						}
-
-						R_PopRefDef();
+                    GL_UploadSubDataToUBO(g_WorldSurfaceRenderer.hCameraUBO, 0, sizeof(CameraUBO), &CameraUBO);
 
-						r_draw_shadowview = false;
-						r_draw_multiview = false;
-						r_draw_nofrustumcull = false;
-						r_draw_lineardepth = false;
+                    bool bAnyPolyRendered = false;
 
-						GL_EndDebugGroup();
+                    {
+                        auto old_brush_polys = (*c_brush_polys);
+                        (*c_brush_polys)     = 0;
 
-						pCurrentShadowTexture->SetReady(bAnyPolyRendered);
-					}
-				}
+                        auto old_draw_classify = r_draw_classify;
+                        r_draw_classify        = DRAW_CLASSIFY_WORLD;
 
-			if (args->ppDynamicShadowTexture && args->dynamicShadowSize > 0)
-			{
-				if ((*args->ppDynamicShadowTexture) == nullptr ||
-					(*args->ppDynamicShadowTexture)->IsCubemap() != true ||
-					(*args->ppDynamicShadowTexture)->IsStatic() != false || 
-					(*args->ppDynamicShadowTexture)->GetTextureSize() != args->dynamicShadowSize)
-				{
-					(*args->ppDynamicShadowTexture) = R_CreateCubemapShadowTexture(args->dynamicShadowSize, false);
-				}
+                        if (args->sourceEntityIndex != 0)
+                        {
+                            r_draw_hide_entity       = true;
+                            r_draw_hide_entity_index = args->sourceEntityIndex;
+                        }
 
-				if ((*args->ppDynamicShadowTexture) && !(*args->ppDynamicShadowTexture)->IsReady())
-				{
-					r_draw_shadowview = true;
-					r_draw_multiview = true;
-					r_draw_nofrustumcull = true;
-					r_draw_lineardepth = true;
+                        R_RenderScene();
 
-					const auto& pCurrentShadowTexture = (*args->ppDynamicShadowTexture);
+                        bAnyPolyRendered = (*c_brush_polys) > 0 ? true : false;
 
-					pCurrentShadowTexture->SetViewport(0, 0, pCurrentShadowTexture->GetTextureSize(), pCurrentShadowTexture->GetTextureSize());
+                        r_draw_hide_entity = false;
+                        r_draw_classify    = old_draw_classify;
+                        (*c_brush_polys)   = old_brush_polys;
+                    }
 
-					GL_BeginDebugGroup("PointlightDynamicShadowPass");
+                    R_PopRefDef();
 
-					GL_BindFrameBufferWithTextures(&s_ShadowFBO, 0, 0, pCurrentShadowTexture->GetDepthTexture(), pCurrentShadowTexture->GetTextureSize(), pCurrentShadowTexture->GetTextureSize());
-					glDrawBuffer(GL_NONE);
-					glReadBuffer(GL_NONE);
+                    r_draw_shadowview    = false;
+                    r_draw_multiview     = false;
+                    r_draw_nofrustumcull = false;
+                    r_draw_lineardepth   = false;
 
-					GL_ClearDepthStencil(1.0f, STENCIL_MASK_NONE, STENCIL_MASK_ALL);
-					
-					R_PushRefDef();
-
-					R_SetViewport(
-						pCurrentShadowTexture->GetViewport()[0],
-						pCurrentShadowTexture->GetViewport()[1],
-						pCurrentShadowTexture->GetViewport()[2],
-						pCurrentShadowTexture->GetViewport()[3]);
-
-					// Calculate 6 faces for cubemap shadow mapping
-					// OpenGL cubemap face order: +X, -X, +Y, -Y, +Z, -Z
-					const vec3_t cubemapAngles[] = {
-						{0, 0, 90},
-						{0, 180, 270},
-						{0, 90, 0},
-						{0, 270, 180},
-						{-90, 90, 0},
-						{90, 270, 0},
-					};
+                    GL_EndDebugGroup();
 
-					camera_ubo_t CameraUBO{};
+                    pCurrentShadowTexture->SetReady(bAnyPolyRendered);
+                }
+            }
 
-					CameraUBO.numViews = 6;
+            if (args->ppDynamicShadowTexture && args->dynamicShadowSize > 0)
+            {
+                if ((*args->ppDynamicShadowTexture) == nullptr ||
+                    (*args->ppDynamicShadowTexture)->IsCubemap() != true ||
+                    (*args->ppDynamicShadowTexture)->IsStatic() != false ||
+                    (*args->ppDynamicShadowTexture)->GetTextureSize() != args->dynamicShadowSize)
+                {
+                    (*args->ppDynamicShadowTexture) = R_CreateCubemapShadowTexture(args->dynamicShadowSize, false);
+                }
 
-					for (int i = 0; i < 6; ++i)
-					{
-						VectorCopy(args->origin, (*r_refdef.vieworg));
-						VectorCopy(cubemapAngles[i], (*r_refdef.viewangles));
-						R_UpdateRefDef();
+                if ((*args->ppDynamicShadowTexture) && !(*args->ppDynamicShadowTexture)->IsReady())
+                {
+                    r_draw_shadowview    = true;
+                    r_draw_multiview     = true;
+                    r_draw_nofrustumcull = true;
+                    r_draw_lineardepth   = true;
 
-						R_LoadIdentityForProjectionMatrix();
-						R_SetupPerspective(90, 90, 0.1f, args->radius);
+                    const auto& pCurrentShadowTexture = (*args->ppDynamicShadowTexture);
 
-						R_LoadIdentityForWorldMatrix();
-						R_SetupPlayerViewWorldMatrix((*r_refdef.vieworg), (*r_refdef.viewangles));
+                    pCurrentShadowTexture->SetViewport(0, 0, pCurrentShadowTexture->GetTextureSize(), pCurrentShadowTexture->GetTextureSize());
 
-						R_SetFrustum(90, 90, r_frustum_right, r_frustum_top);
+                    GL_BeginDebugGroup("PointlightDynamicShadowPass");
 
-						auto worldMatrix = (float (*)[4][4])R_GetWorldMatrix();
-						auto projMatrix = (float (*)[4][4])R_GetProjectionMatrix();
+                    GL_BindFrameBufferWithTextures(&s_ShadowFBO, 0, 0, pCurrentShadowTexture->GetDepthTexture(), pCurrentShadowTexture->GetTextureSize(), pCurrentShadowTexture->GetTextureSize());
+                    glDrawBuffer(GL_NONE);
+                    glReadBuffer(GL_NONE);
 
-						mat4 shadowMatrix;
-						R_SetupShadowMatrix(shadowMatrix, (*worldMatrix), (*projMatrix));
+                    GL_ClearDepthStencil(1.0f, STENCIL_MASK_NONE, STENCIL_MASK_ALL);
 
-						pCurrentShadowTexture->SetWorldMatrix(i, worldMatrix);
-						pCurrentShadowTexture->SetProjectionMatrix(i, projMatrix);
-						pCurrentShadowTexture->SetShadowMatrix(i, &shadowMatrix);
+                    R_PushRefDef();
 
-						R_SetupCameraView(&CameraUBO.views[i]);
-					}
+                    R_SetViewport(
+                        pCurrentShadowTexture->GetViewport()[0],
+                        pCurrentShadowTexture->GetViewport()[1],
+                        pCurrentShadowTexture->GetViewport()[2],
+                        pCurrentShadowTexture->GetViewport()[3]);
 
-					GL_UploadSubDataToUBO(g_WorldSurfaceRenderer.hCameraUBO, 0, sizeof(CameraUBO), &CameraUBO);
+                    // Calculate 6 faces for cubemap shadow mapping
+                    // OpenGL cubemap face order: +X, -X, +Y, -Y, +Z, -Z
+                    const vec3_t cubemapAngles[] = {
+                        {0, 0, 90},
+                        {0, 180, 270},
+                        {0, 90, 0},
+                        {0, 270, 180},
+                        {-90, 90, 0},
+                        {90, 270, 0},
+                    };
 
-					//Only draw non-world stuffs when we have static shadow
-					if (args->staticShadowSize > 0)
-					{
-						auto old_draw_classify = r_draw_classify;
-						r_draw_classify = DRAW_CLASSIFY_OPAQUE_ENTITIES;
+                    camera_ubo_t CameraUBO{};
 
-						if (args->sourceEntityIndex != 0)
-						{
-							r_draw_hide_entity = true;
-							r_draw_hide_entity_index = args->sourceEntityIndex;
-						}
+                    CameraUBO.numViews = 6;
 
-						R_RenderScene();
+                    for (int i = 0; i < 6; ++i)
+                    {
+                        VectorCopy(args->origin, (*r_refdef.vieworg));
+                        VectorCopy(cubemapAngles[i], (*r_refdef.viewangles));
+                        R_UpdateRefDef();
 
-						r_draw_hide_entity = false;
+                        R_LoadIdentityForProjectionMatrix();
+                        R_SetupPerspective(90, 90, 0.1f, args->radius);
 
-						r_draw_classify = old_draw_classify;
-					}
-					else
-					{
-						auto old_draw_classify = r_draw_classify;
-						r_draw_classify = DRAW_CLASSIFY_WORLD | DRAW_CLASSIFY_OPAQUE_ENTITIES;
+                        R_LoadIdentityForWorldMatrix();
+                        R_SetupPlayerViewWorldMatrix((*r_refdef.vieworg), (*r_refdef.viewangles));
 
-						R_RenderScene();
+                        R_SetFrustum(90, 90, r_frustum_right, r_frustum_top);
 
-						r_draw_classify = old_draw_classify;
-					}
+                        auto worldMatrix = (float (*)[4][4])R_GetWorldMatrix();
+                        auto projMatrix  = (float (*)[4][4])R_GetProjectionMatrix();
 
-					R_PopRefDef();
+                        mat4 shadowMatrix;
+                        R_SetupShadowMatrix(shadowMatrix, (*worldMatrix), (*projMatrix));
 
-					r_draw_shadowview = false;
-					r_draw_multiview = false;
-					r_draw_nofrustumcull = false;
-					r_draw_lineardepth = false;
+                        pCurrentShadowTexture->SetWorldMatrix(i, worldMatrix);
+                        pCurrentShadowTexture->SetProjectionMatrix(i, projMatrix);
+                        pCurrentShadowTexture->SetShadowMatrix(i, &shadowMatrix);
 
-					GL_EndDebugGroup();
+                        R_SetupCameraView(&CameraUBO.views[i]);
+                    }
 
-					pCurrentShadowTexture->SetReady(true);
-				}
-			}
-		};
+                    GL_UploadSubDataToUBO(g_WorldSurfaceRenderer.hCameraUBO, 0, sizeof(CameraUBO), &CameraUBO);
 
-		const auto SpotLightCallback = [](SpotLightCallbackArgs *args, void *context)
-		{
-			if (args->ppDynamicShadowTexture && args->dynamicShadowSize > 0)
-			{
-				if ((*args->ppDynamicShadowTexture) == nullptr || 
-					(*args->ppDynamicShadowTexture)->IsSingleLayer() != true ||
-					(*args->ppDynamicShadowTexture)->IsStatic() != false || 
-					(*args->ppDynamicShadowTexture)->GetTextureSize() != args->dynamicShadowSize)
-				{
-					(*args->ppDynamicShadowTexture) = R_CreateSingleShadowTexture(args->dynamicShadowSize, false);
-				}
+                    //Only draw non-world stuffs when we have static shadow
+                    if (args->staticShadowSize > 0)
+                    {
+                        auto old_draw_classify = r_draw_classify;
+                        r_draw_classify        = DRAW_CLASSIFY_OPAQUE_ENTITIES;
 
-				if ((*args->ppDynamicShadowTexture) && !(*args->ppDynamicShadowTexture)->IsReady())
-				{
-					r_draw_shadowview = true;
-					r_draw_multiview = true;
-					r_draw_lineardepth = true;
+                        if (args->sourceEntityIndex != 0)
+                        {
+                            r_draw_hide_entity       = true;
+                            r_draw_hide_entity_index = args->sourceEntityIndex;
+                        }
 
-					const auto& pCurrentShadowTexture = (*args->ppDynamicShadowTexture);
+                        R_RenderScene();
 
-					pCurrentShadowTexture->SetViewport(0, 0, pCurrentShadowTexture->GetTextureSize(), pCurrentShadowTexture->GetTextureSize());
+                        r_draw_hide_entity = false;
 
-					GL_BeginDebugGroup("DrawSpotlightDynamicShadowPass");
+                        r_draw_classify = old_draw_classify;
+                    }
+                    else
+                    {
+                        auto old_draw_classify = r_draw_classify;
+                        r_draw_classify        = DRAW_CLASSIFY_WORLD | DRAW_CLASSIFY_OPAQUE_ENTITIES;
 
-					GL_BindFrameBufferWithTextures(&s_ShadowFBO, 0, 0, pCurrentShadowTexture->GetDepthTexture(), pCurrentShadowTexture->GetTextureSize(), pCurrentShadowTexture->GetTextureSize());
-					glDrawBuffer(GL_NONE);
-					glReadBuffer(GL_NONE);
+                        R_RenderScene();
 
-					GL_ClearDepthStencil(1.0f, STENCIL_MASK_NONE, STENCIL_MASK_ALL);
+                        r_draw_classify = old_draw_classify;
+                    }
 
-					R_PushRefDef();
+                    R_PopRefDef();
 
-					VectorCopy(args->origin, (*r_refdef.vieworg));
-					VectorCopy(args->angles, (*r_refdef.viewangles));
-					R_UpdateRefDef();
+                    r_draw_shadowview    = false;
+                    r_draw_multiview     = false;
+                    r_draw_nofrustumcull = false;
+                    r_draw_lineardepth   = false;
 
-					R_SetViewport(
-						pCurrentShadowTexture->GetViewport()[0],
-						pCurrentShadowTexture->GetViewport()[1],
-						pCurrentShadowTexture->GetViewport()[2],
-						pCurrentShadowTexture->GetViewport()[3]);
+                    GL_EndDebugGroup();
 
-					R_LoadIdentityForWorldMatrix();
-					R_SetupPlayerViewWorldMatrix((*r_refdef.vieworg), (*r_refdef.viewangles));
+                    pCurrentShadowTexture->SetReady(true);
+                }
+            }
+        };
 
-					float cone_fov = args->coneAngle * 2 * 360 / (M_PI * 2);
+        const auto SpotLightCallback = [](SpotLightCallbackArgs* args, void* context) {
+            if (args->ppDynamicShadowTexture && args->dynamicShadowSize > 0)
+            {
+                if ((*args->ppDynamicShadowTexture) == nullptr ||
+                    (*args->ppDynamicShadowTexture)->IsSingleLayer() != true ||
+                    (*args->ppDynamicShadowTexture)->IsStatic() != false ||
+                    (*args->ppDynamicShadowTexture)->GetTextureSize() != args->dynamicShadowSize)
+                {
+                    (*args->ppDynamicShadowTexture) = R_CreateSingleShadowTexture(args->dynamicShadowSize, false);
+                }
 
-					R_LoadIdentityForProjectionMatrix();
-					R_SetupPerspective(cone_fov, cone_fov, 0.1f, args->distance);
+                if ((*args->ppDynamicShadowTexture) && !(*args->ppDynamicShadowTexture)->IsReady())
+                {
+                    r_draw_shadowview  = true;
+                    r_draw_multiview   = true;
+                    r_draw_lineardepth = true;
 
-					R_SetFrustum(r_xfov_currentpass, r_yfov_currentpass, r_frustum_right, r_frustum_top);
+                    const auto& pCurrentShadowTexture = (*args->ppDynamicShadowTexture);
 
-					auto worldMatrix = (float (*)[4][4])R_GetWorldMatrix();
-					auto projMatrix = (float (*)[4][4])R_GetProjectionMatrix();
+                    pCurrentShadowTexture->SetViewport(0, 0, pCurrentShadowTexture->GetTextureSize(), pCurrentShadowTexture->GetTextureSize());
 
-					mat4 shadowMatrix;
-					R_SetupShadowMatrix(shadowMatrix, (*worldMatrix), (*projMatrix));
+                    GL_BeginDebugGroup("DrawSpotlightDynamicShadowPass");
 
-					pCurrentShadowTexture->SetWorldMatrix(0, worldMatrix);
-					pCurrentShadowTexture->SetProjectionMatrix(0, projMatrix);
-					pCurrentShadowTexture->SetShadowMatrix(0, &shadowMatrix);
+                    GL_BindFrameBufferWithTextures(&s_ShadowFBO, 0, 0, pCurrentShadowTexture->GetDepthTexture(), pCurrentShadowTexture->GetTextureSize(), pCurrentShadowTexture->GetTextureSize());
+                    glDrawBuffer(GL_NONE);
+                    glReadBuffer(GL_NONE);
 
-					camera_ubo_t CameraUBO;
-					R_SetupCameraView(&CameraUBO.views[0]);
-					CameraUBO.numViews = 1;
-					GL_UploadSubDataToUBO(g_WorldSurfaceRenderer.hCameraUBO, 0, sizeof(CameraUBO), &CameraUBO);
+                    GL_ClearDepthStencil(1.0f, STENCIL_MASK_NONE, STENCIL_MASK_ALL);
 
-					{
-						auto old_draw_classify = r_draw_classify;
-						r_draw_classify &= ~DRAW_CLASSIFY_TRANS_ENTITIES;
-						r_draw_classify &= ~DRAW_CLASSIFY_PARTICLES;
-						r_draw_classify &= ~DRAW_CLASSIFY_DECAL;
-						r_draw_classify &= ~DRAW_CLASSIFY_WATER;
+                    R_PushRefDef();
 
-						if (args->sourceEntityIndex != 0)
-						{
-							r_draw_hide_entity = true;
-							r_draw_hide_entity_index = args->sourceEntityIndex;
-						}
+                    VectorCopy(args->origin, (*r_refdef.vieworg));
+                    VectorCopy(args->angles, (*r_refdef.viewangles));
+                    R_UpdateRefDef();
 
-						R_RenderScene();
+                    R_SetViewport(
+                        pCurrentShadowTexture->GetViewport()[0],
+                        pCurrentShadowTexture->GetViewport()[1],
+                        pCurrentShadowTexture->GetViewport()[2],
+                        pCurrentShadowTexture->GetViewport()[3]);
 
-						r_draw_hide_entity = false;
+                    R_LoadIdentityForWorldMatrix();
+                    R_SetupPlayerViewWorldMatrix((*r_refdef.vieworg), (*r_refdef.viewangles));
 
-						r_draw_classify = old_draw_classify;
-					}
+                    float cone_fov = args->coneAngle * 2 * 360 / (M_PI * 2);
 
-					R_PopRefDef();
+                    R_LoadIdentityForProjectionMatrix();
+                    R_SetupPerspective(cone_fov, cone_fov, 0.1f, args->distance);
 
-					r_draw_multiview = false;
-					r_draw_shadowview = false;
-					r_draw_lineardepth = false;
+                    R_SetFrustum(r_xfov_currentpass, r_yfov_currentpass, r_frustum_right, r_frustum_top);
 
-					GL_EndDebugGroup();
+                    auto worldMatrix = (float (*)[4][4])R_GetWorldMatrix();
+                    auto projMatrix  = (float (*)[4][4])R_GetProjectionMatrix();
 
-					pCurrentShadowTexture->SetReady(true);
-				}
-			}
-		};
+                    mat4 shadowMatrix;
+                    R_SetupShadowMatrix(shadowMatrix, (*worldMatrix), (*projMatrix));
 
-		const auto DirectionalLightCallback = [](DirectionalLightCallbackArgs* args, void* context)
-		{
-			if (args->ppStaticShadowTexture && args->staticShadowSize > 0)
-			{
-				if ((*args->ppStaticShadowTexture) == nullptr || 
-					(*args->ppStaticShadowTexture)->IsSingleLayer() != true || 
-					(*args->ppStaticShadowTexture)->IsStatic() != true ||
-					(*args->ppStaticShadowTexture)->GetTextureSize() != args->staticShadowSize)
-				{
-					(*args->ppStaticShadowTexture) = R_CreateSingleShadowTexture(args->staticShadowSize, true);
-				}
+                    pCurrentShadowTexture->SetWorldMatrix(0, worldMatrix);
+                    pCurrentShadowTexture->SetProjectionMatrix(0, projMatrix);
+                    pCurrentShadowTexture->SetShadowMatrix(0, &shadowMatrix);
 
-				if ((*args->ppStaticShadowTexture) && !(*args->ppStaticShadowTexture)->IsReady())
-				{
-					auto pWorldSurfaceModel = R_GetWorldSurfaceModel(*(cl_worldmodel));
+                    camera_ubo_t CameraUBO;
+                    R_SetupCameraView(&CameraUBO.views[0]);
+                    CameraUBO.numViews = 1;
+                    GL_UploadSubDataToUBO(g_WorldSurfaceRenderer.hCameraUBO, 0, sizeof(CameraUBO), &CameraUBO);
 
-					r_draw_shadowview = true;
-					r_draw_multiview = true;
-					r_draw_nofrustumcull = true;
+                    {
+                        auto old_draw_classify = r_draw_classify;
+                        r_draw_classify &= ~DRAW_CLASSIFY_TRANS_ENTITIES;
+                        r_draw_classify &= ~DRAW_CLASSIFY_PARTICLES;
+                        r_draw_classify &= ~DRAW_CLASSIFY_DECAL;
+                        r_draw_classify &= ~DRAW_CLASSIFY_WATER;
 
-					const auto& pCurrentShadowTexture = (*args->ppStaticShadowTexture);
+                        if (args->sourceEntityIndex != 0)
+                        {
+                            r_draw_hide_entity       = true;
+                            r_draw_hide_entity_index = args->sourceEntityIndex;
+                        }
 
-					pCurrentShadowTexture->SetViewport(0, 0, pCurrentShadowTexture->GetTextureSize(), pCurrentShadowTexture->GetTextureSize());
+                        R_RenderScene();
 
-					GL_BeginDebugGroup("DrawDirectionalLightStaticShadow");
+                        r_draw_hide_entity = false;
 
-					GL_BindFrameBufferWithTextures(&s_ShadowFBO, 0, 0, pCurrentShadowTexture->GetDepthTexture(), pCurrentShadowTexture->GetTextureSize(), pCurrentShadowTexture->GetTextureSize());
-					glDrawBuffer(GL_NONE);
-					glReadBuffer(GL_NONE);
+                        r_draw_classify = old_draw_classify;
+                    }
 
-					GL_ClearDepthStencil(1.0f, STENCIL_MASK_NONE, STENCIL_MASK_ALL);
+                    R_PopRefDef();
 
-					R_PushRefDef();
+                    r_draw_multiview   = false;
+                    r_draw_shadowview  = false;
+                    r_draw_lineardepth = false;
 
-					VectorCopy(args->origin, (*r_refdef.vieworg));
-					VectorCopy(args->angles, (*r_refdef.viewangles));
-					R_UpdateRefDef();
+                    GL_EndDebugGroup();
 
-					R_SetViewport(
-						pCurrentShadowTexture->GetViewport()[0],
-						pCurrentShadowTexture->GetViewport()[1],
-						pCurrentShadowTexture->GetViewport()[2],
-						pCurrentShadowTexture->GetViewport()[3]);
+                    pCurrentShadowTexture->SetReady(true);
+                }
+            }
+        };
 
-					R_LoadIdentityForWorldMatrix();
-					R_SetupPlayerViewWorldMatrix((*r_refdef.vieworg), (*r_refdef.viewangles));
+        const auto DirectionalLightCallback = [](DirectionalLightCallbackArgs* args, void* context) {
+            if (args->ppStaticShadowTexture && args->staticShadowSize > 0)
+            {
+                if ((*args->ppStaticShadowTexture) == nullptr ||
+                    (*args->ppStaticShadowTexture)->IsSingleLayer() != true ||
+                    (*args->ppStaticShadowTexture)->IsStatic() != true ||
+                    (*args->ppStaticShadowTexture)->GetTextureSize() != args->staticShadowSize)
+                {
+                    (*args->ppStaticShadowTexture) = R_CreateSingleShadowTexture(args->staticShadowSize, true);
+                }
 
-					// Set up orthographic projection for this cascade
-					float orthoSize = args->size; // Increase size for further cascades
+                if ((*args->ppStaticShadowTexture) && !(*args->ppStaticShadowTexture)->IsReady())
+                {
+                    auto pWorldSurfaceModel = R_GetWorldSurfaceModel(*(cl_worldmodel));
 
-					R_LoadIdentityForProjectionMatrix();
-					R_SetupOrthoProjectionMatrix(-orthoSize / 2, orthoSize / 2, -orthoSize / 2, orthoSize / 2, 2048, -2048, true);
+                    r_draw_shadowview    = true;
+                    r_draw_multiview     = true;
+                    r_draw_nofrustumcull = true;
 
-					r_ortho = true;
-					r_frustum_right = 0;
-					r_frustum_top = 0;
-					r_znear = 2048;
-					r_zfar = -2048;
-					r_xfov_currentpass = 0;
-					r_yfov_currentpass = 0;
+                    const auto& pCurrentShadowTexture = (*args->ppStaticShadowTexture);
 
-					auto worldMatrix = (float (*)[4][4])R_GetWorldMatrix();
-					auto projMatrix = (float (*)[4][4])R_GetProjectionMatrix();
+                    pCurrentShadowTexture->SetViewport(0, 0, pCurrentShadowTexture->GetTextureSize(), pCurrentShadowTexture->GetTextureSize());
 
-					mat4 shadowMatrix;
-					R_SetupShadowMatrix(shadowMatrix, (*worldMatrix), (*projMatrix));
+                    GL_BeginDebugGroup("DrawDirectionalLightStaticShadow");
 
-					pCurrentShadowTexture->SetWorldMatrix(0, worldMatrix);
-					pCurrentShadowTexture->SetProjectionMatrix(0, projMatrix);
-					pCurrentShadowTexture->SetShadowMatrix(0, &shadowMatrix);
+                    GL_BindFrameBufferWithTextures(&s_ShadowFBO, 0, 0, pCurrentShadowTexture->GetDepthTexture(), pCurrentShadowTexture->GetTextureSize(), pCurrentShadowTexture->GetTextureSize());
+                    glDrawBuffer(GL_NONE);
+                    glReadBuffer(GL_NONE);
 
-					camera_ubo_t CameraUBO;
-					R_SetupCameraView(&CameraUBO.views[0]);
-					CameraUBO.numViews = 1;
-					GL_UploadSubDataToUBO(g_WorldSurfaceRenderer.hCameraUBO, 0, sizeof(CameraUBO), &CameraUBO);
+                    GL_ClearDepthStencil(1.0f, STENCIL_MASK_NONE, STENCIL_MASK_ALL);
 
-					bool bAnyPolyRendered = false;
+                    R_PushRefDef();
 
-					{
-						auto old_brush_polys = (*c_brush_polys);
-						(*c_brush_polys) = 0;
+                    VectorCopy(args->origin, (*r_refdef.vieworg));
+                    VectorCopy(args->angles, (*r_refdef.viewangles));
+                    R_UpdateRefDef();
 
-						auto old_draw_classify = r_draw_classify;
-						r_draw_classify = DRAW_CLASSIFY_WORLD;
+                    R_SetViewport(
+                        pCurrentShadowTexture->GetViewport()[0],
+                        pCurrentShadowTexture->GetViewport()[1],
+                        pCurrentShadowTexture->GetViewport()[2],
+                        pCurrentShadowTexture->GetViewport()[3]);
 
-						R_RenderScene();
+                    R_LoadIdentityForWorldMatrix();
+                    R_SetupPlayerViewWorldMatrix((*r_refdef.vieworg), (*r_refdef.viewangles));
 
-						bAnyPolyRendered = (*c_brush_polys) > 0 ? true : false;
+                    // Set up orthographic projection for this cascade
+                    float orthoSize = args->size; // Increase size for further cascades
 
-						r_draw_classify = old_draw_classify;
-						(*c_brush_polys) = old_brush_polys;
-					}
+                    R_LoadIdentityForProjectionMatrix();
+                    R_SetupOrthoProjectionMatrix(-orthoSize / 2, orthoSize / 2, -orthoSize / 2, orthoSize / 2, 2048, -2048, true);
 
-					R_PopRefDef();
+                    r_ortho            = true;
+                    r_frustum_right    = 0;
+                    r_frustum_top      = 0;
+                    r_znear            = 2048;
+                    r_zfar             = -2048;
+                    r_xfov_currentpass = 0;
+                    r_yfov_currentpass = 0;
 
-					r_draw_shadowview = false;
-					r_draw_multiview = false;
-					r_draw_nofrustumcull = false;
+                    auto worldMatrix = (float (*)[4][4])R_GetWorldMatrix();
+                    auto projMatrix  = (float (*)[4][4])R_GetProjectionMatrix();
 
-					GL_EndDebugGroup();
+                    mat4 shadowMatrix;
+                    R_SetupShadowMatrix(shadowMatrix, (*worldMatrix), (*projMatrix));
 
-					pCurrentShadowTexture->SetReady(bAnyPolyRendered);
-				}
-			}
+                    pCurrentShadowTexture->SetWorldMatrix(0, worldMatrix);
+                    pCurrentShadowTexture->SetProjectionMatrix(0, projMatrix);
+                    pCurrentShadowTexture->SetShadowMatrix(0, &shadowMatrix);
 
-			if (args->ppDynamicShadowTexture)
-			{
-				// Allocate dynamicShadowSize x dynamicShadowSize CSM texture if not already allocated
-				if ((*args->ppDynamicShadowTexture) == nullptr || 
-					(*args->ppDynamicShadowTexture)->IsCascaded() != true ||
-					(*args->ppDynamicShadowTexture)->IsStatic() != false ||
-					(*args->ppDynamicShadowTexture)->GetTextureSize() != args->dynamicShadowSize)
-				{
-					(*args->ppDynamicShadowTexture) = R_CreateCascadedShadowTexture(args->dynamicShadowSize, false);
-				}
+                    camera_ubo_t CameraUBO;
+                    R_SetupCameraView(&CameraUBO.views[0]);
+                    CameraUBO.numViews = 1;
+                    GL_UploadSubDataToUBO(g_WorldSurfaceRenderer.hCameraUBO, 0, sizeof(CameraUBO), &CameraUBO);
 
-				if ((*args->ppDynamicShadowTexture) && !(*args->ppDynamicShadowTexture)->IsReady())
-				{
-					const auto& pCurrentShadowTexture = (*args->ppDynamicShadowTexture);
+                    bool bAnyPolyRendered = false;
 
-					r_draw_shadowview = true;
-					r_draw_multiview = true;
-					r_draw_nofrustumcull = true;
+                    {
+                        auto old_brush_polys = (*c_brush_polys);
+                        (*c_brush_polys)     = 0;
 
-					const float lambda = args->csmLambda; // 例如0.8，也可来自cvar
-					const float orthoMargin = 1.0f + args->csmMargin; // 外扩，避免裁边
+                        auto old_draw_classify = r_draw_classify;
+                        r_draw_classify        = DRAW_CLASSIFY_WORLD;
 
-					// Calculate cascade distances based on camera frustum
-					// These could be configurable via cvars in the future
-					float nearPlane = R_GetMainViewNearPlane();  // Should match r_nearclip or similar, 4.0 by default
-					float farPlane = R_GetMainViewFarPlane(); // Should match r_farclip or similar, 8192.0 by default
+                        R_RenderScene();
 
-					float xfov = 0, yfov = 0;
-					R_CalcMainViewFov(xfov, yfov);
+                        bAnyPolyRendered = (*c_brush_polys) > 0 ? true : false;
 
-					float tanHalfFovY = tanf(0.5f * yfov * (M_PI / 360.0));
-					float tanHalfFovX = tanf(0.5f * xfov * (M_PI / 360.0));
+                        r_draw_classify  = old_draw_classify;
+                        (*c_brush_polys) = old_brush_polys;
+                    }
 
-					float splits[CSM_LEVELS + 1]{};
-					splits[0] = nearPlane;
+                    R_PopRefDef();
 
-					// Use logarithmic distribution for cascades
-					for (int i = 1; i <= CSM_LEVELS; ++i)
-					{
-						float si = (float)i / (float)CSM_LEVELS; // [0,1]
-						float d_lin = nearPlane + (farPlane - nearPlane) * si;
-						float d_log = nearPlane * powf(farPlane / nearPlane, si);
-						splits[i] = d_lin * (1.0f - lambda) + d_log * lambda;
-					}
+                    r_draw_shadowview    = false;
+                    r_draw_multiview     = false;
+                    r_draw_nofrustumcull = false;
 
-					for (int i = 0; i < CSM_LEVELS; ++i)
-					{
-						float csmFar = splits[i + 1];
-						pCurrentShadowTexture->SetCSMDistance(i, csmFar);
-					}
+                    GL_EndDebugGroup();
 
-					pCurrentShadowTexture->SetViewport(0, 0, pCurrentShadowTexture->GetTextureSize(), pCurrentShadowTexture->GetTextureSize());
+                    pCurrentShadowTexture->SetReady(bAnyPolyRendered);
+                }
+            }
 
-					GL_BeginDebugGroup("DrawDirectionalLightDynamicCSM");
+            if (args->ppDynamicShadowTexture)
+            {
+                // Allocate dynamicShadowSize x dynamicShadowSize CSM texture if not already allocated
+                if ((*args->ppDynamicShadowTexture) == nullptr ||
+                    (*args->ppDynamicShadowTexture)->IsCascaded() != true ||
+                    (*args->ppDynamicShadowTexture)->IsStatic() != false ||
+                    (*args->ppDynamicShadowTexture)->GetTextureSize() != args->dynamicShadowSize)
+                {
+                    (*args->ppDynamicShadowTexture) = R_CreateCascadedShadowTexture(args->dynamicShadowSize, false);
+                }
 
-					GL_BindFrameBuffer(&s_ShadowFBO);
+                if ((*args->ppDynamicShadowTexture) && !(*args->ppDynamicShadowTexture)->IsReady())
+                {
+                    const auto& pCurrentShadowTexture = (*args->ppDynamicShadowTexture);
 
-					// Bind texture array layers to framebuffer - we'll use geometry shader to select layer
-					// Note: We can't use glFramebufferTexture because that requires all layers, 
-					// but clearing needs to be done per-layer in a loop
-					for (int i = 0; i < CSM_LEVELS; ++i)
-					{
-						glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, pCurrentShadowTexture->GetDepthTexture(), 0, i);
-						GL_ClearDepthStencil(1.0f, STENCIL_MASK_NONE, STENCIL_MASK_ALL);
-					}
+                    r_draw_shadowview    = true;
+                    r_draw_multiview     = true;
+                    r_draw_nofrustumcull = true;
 
-					// Now bind all layers for rendering
-					glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, pCurrentShadowTexture->GetDepthTexture(), 0);
+                    const float lambda      = args->csmLambda;        // 例如0.8，也可来自cvar
+                    const float orthoMargin = 1.0f + args->csmMargin; // 外扩，避免裁边
 
-					glDrawBuffer(GL_NONE);
-					glReadBuffer(GL_NONE);
+                    // Calculate cascade distances based on camera frustum
+                    // These could be configurable via cvars in the future
+                    float nearPlane = R_GetMainViewNearPlane(); // Should match r_nearclip or similar, 4.0 by default
+                    float farPlane  = R_GetMainViewFarPlane();  // Should match r_farclip or similar, 8192.0 by default
 
-					R_PushRefDef();
+                    float xfov = 0, yfov = 0;
+                    R_CalcMainViewFov(xfov, yfov);
 
-					// All cascades use same viewangles and vieworg
-					VectorCopy(args->angles, (*r_refdef.viewangles));
-					R_UpdateRefDef();
+                    float tanHalfFovY = tanf(0.5f * yfov * (M_PI / 360.0));
+                    float tanHalfFovX = tanf(0.5f * xfov * (M_PI / 360.0));
 
-					// All cascades use same worldmatrix
-					R_LoadIdentityForWorldMatrix();
-					R_SetupPlayerViewWorldMatrix((*r_refdef.vieworg), (*r_refdef.viewangles));
+                    float splits[CSM_LEVELS + 1]{};
+                    splits[0] = nearPlane;
 
-					R_SetViewport(
-						pCurrentShadowTexture->GetViewport()[0],
-						pCurrentShadowTexture->GetViewport()[1],
-						pCurrentShadowTexture->GetViewport()[2],
-						pCurrentShadowTexture->GetViewport()[3]);
+                    // Use logarithmic distribution for cascades
+                    for (int i = 1; i <= CSM_LEVELS; ++i)
+                    {
+                        float si    = (float)i / (float)CSM_LEVELS; // [0,1]
+                        float d_lin = nearPlane + (farPlane - nearPlane) * si;
+                        float d_log = nearPlane * powf(farPlane / nearPlane, si);
+                        splits[i]   = d_lin * (1.0f - lambda) + d_log * lambda;
+                    }
 
-					// Setup camera UBO with all cascade views
-					camera_ubo_t CameraUBO;
-					CameraUBO.numViews = CSM_LEVELS;
+                    for (int i = 0; i < CSM_LEVELS; ++i)
+                    {
+                        float csmFar = splits[i + 1];
+                        pCurrentShadowTexture->SetCSMDistance(i, csmFar);
+                    }
 
-					// Calculate projection matrices for all cascades and setup shadow matrices
-					for (int cascadeIndex = 0; cascadeIndex < CSM_LEVELS; ++cascadeIndex)
-					{
-						float splitNear = splits[cascadeIndex + 0];
-						float splitFar = splits[cascadeIndex + 1];
+                    pCurrentShadowTexture->SetViewport(0, 0, pCurrentShadowTexture->GetTextureSize(), pCurrentShadowTexture->GetTextureSize());
 
-						// 该级联在相机视锥上界面的半宽/半高（取far端，因为更大）
-						float halfW_far = splitFar * tanHalfFovX;
-						float halfH_far = splitFar * tanHalfFovY;
+                    GL_BeginDebugGroup("DrawDirectionalLightDynamicCSM");
 
-						// 该级联厚度的一半
-						float halfDepth = 0.5f * (splitFar - splitNear);
+                    GL_BindFrameBuffer(&s_ShadowFBO);
 
-						// 用包含该截头棱锥的最小球近似，半径为到far平面角点的最大距离
-						// 与光方向无关，稳定且不会裁边
-						float radius = sqrtf(halfW_far * halfW_far + halfH_far * halfH_far + halfDepth * halfDepth);
+                    // Bind texture array layers to framebuffer - we'll use geometry shader to select layer
+                    // Note: We can't use glFramebufferTexture because that requires all layers,
+                    // but clearing needs to be done per-layer in a loop
+                    for (int i = 0; i < CSM_LEVELS; ++i)
+                    {
+                        glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, pCurrentShadowTexture->GetDepthTexture(), 0, i);
+                        GL_ClearDepthStencil(1.0f, STENCIL_MASK_NONE, STENCIL_MASK_ALL);
+                    }
 
-						// 正交投影尺寸（正方形），加一点margin避免抖动时裁边
-						float orthoSize = radius * orthoMargin;
+                    // Now bind all layers for rendering
+                    glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, pCurrentShadowTexture->GetDepthTexture(), 0);
 
-						R_LoadIdentityForProjectionMatrix();
-						R_SetupOrthoProjectionMatrix(-orthoSize, orthoSize, -orthoSize, orthoSize, 2048, -2048, true);
+                    glDrawBuffer(GL_NONE);
+                    glReadBuffer(GL_NONE);
 
-						r_ortho = true;
-						r_frustum_right = 0;
-						r_frustum_top = 0;
-						r_znear = 2048;
-						r_zfar = -2048;
-						r_xfov_currentpass = 0;
-						r_yfov_currentpass = 0;
+                    R_PushRefDef();
 
-						auto worldMatrix = (float (*)[4][4])R_GetWorldMatrix();
-						auto projMatrix = (float (*)[4][4])R_GetProjectionMatrix();
+                    // All cascades use same viewangles and vieworg
+                    VectorCopy(args->angles, (*r_refdef.viewangles));
+                    R_UpdateRefDef();
 
-						mat4 shadowMatrix;
-						R_SetupShadowMatrix(shadowMatrix, (*worldMatrix), (*projMatrix));
+                    // All cascades use same worldmatrix
+                    R_LoadIdentityForWorldMatrix();
+                    R_SetupPlayerViewWorldMatrix((*r_refdef.vieworg), (*r_refdef.viewangles));
 
-						pCurrentShadowTexture->SetWorldMatrix(cascadeIndex, worldMatrix);
-						pCurrentShadowTexture->SetProjectionMatrix(cascadeIndex, projMatrix);
-						pCurrentShadowTexture->SetShadowMatrix(cascadeIndex, &shadowMatrix);
+                    R_SetViewport(
+                        pCurrentShadowTexture->GetViewport()[0],
+                        pCurrentShadowTexture->GetViewport()[1],
+                        pCurrentShadowTexture->GetViewport()[2],
+                        pCurrentShadowTexture->GetViewport()[3]);
 
-						// Setup camera view for this cascade in the UBO
-						R_SetupCameraView(&CameraUBO.views[cascadeIndex]);
-					}
+                    // Setup camera UBO with all cascade views
+                    camera_ubo_t CameraUBO;
+                    CameraUBO.numViews = CSM_LEVELS;
 
-					// Upload all views to UBO
-					GL_UploadSubDataToUBO(g_WorldSurfaceRenderer.hCameraUBO, 0, sizeof(CameraUBO), &CameraUBO);
+                    // Calculate projection matrices for all cascades and setup shadow matrices
+                    for (int cascadeIndex = 0; cascadeIndex < CSM_LEVELS; ++cascadeIndex)
+                    {
+                        float splitNear = splits[cascadeIndex + 0];
+                        float splitFar  = splits[cascadeIndex + 1];
 
-					{
-						auto old_draw_classify = r_draw_classify;
-						r_draw_classify = (DRAW_CLASSIFY_OPAQUE_ENTITIES);
+                        // 该级联在相机视锥上界面的半宽/半高（取far端，因为更大）
+                        float halfW_far = splitFar * tanHalfFovX;
+                        float halfH_far = splitFar * tanHalfFovY;
 
-						// Render all cascades in a single draw call using multiview geometry shader
-						R_RenderScene();
+                        // 该级联厚度的一半
+                        float halfDepth = 0.5f * (splitFar - splitNear);
 
-						r_draw_classify = old_draw_classify;
-					}
+                        // 用包含该截头棱锥的最小球近似，半径为到far平面角点的最大距离
+                        // 与光方向无关，稳定且不会裁边
+                        float radius = sqrtf(halfW_far * halfW_far + halfH_far * halfH_far + halfDepth * halfDepth);
 
-					R_PopRefDef();
+                        // 正交投影尺寸（正方形），加一点margin避免抖动时裁边
+                        float orthoSize = radius * orthoMargin;
 
-					r_draw_shadowview = false;
-					r_draw_multiview = false;
-					r_draw_nofrustumcull = false;
+                        R_LoadIdentityForProjectionMatrix();
+                        R_SetupOrthoProjectionMatrix(-orthoSize, orthoSize, -orthoSize, orthoSize, 2048, -2048, true);
 
-					GL_EndDebugGroup();
+                        r_ortho            = true;
+                        r_frustum_right    = 0;
+                        r_frustum_top      = 0;
+                        r_znear            = 2048;
+                        r_zfar             = -2048;
+                        r_xfov_currentpass = 0;
+                        r_yfov_currentpass = 0;
 
-					pCurrentShadowTexture->SetReady(true);
-				}
-			}
-		};
+                        auto worldMatrix = (float (*)[4][4])R_GetWorldMatrix();
+                        auto projMatrix  = (float (*)[4][4])R_GetProjectionMatrix();
 
-		R_IterateVisibleDynamicLights(PointLightCallback, SpotLightCallback, DirectionalLightCallback, nullptr);
+                        mat4 shadowMatrix;
+                        R_SetupShadowMatrix(shadowMatrix, (*worldMatrix), (*projMatrix));
 
-		GL_EndDebugGroup();
-	}
+                        pCurrentShadowTexture->SetWorldMatrix(cascadeIndex, worldMatrix);
+                        pCurrentShadowTexture->SetProjectionMatrix(cascadeIndex, projMatrix);
+                        pCurrentShadowTexture->SetShadowMatrix(cascadeIndex, &shadowMatrix);
+
+                        // Setup camera view for this cascade in the UBO
+                        R_SetupCameraView(&CameraUBO.views[cascadeIndex]);
+                    }
+
+                    // Upload all views to UBO
+                    GL_UploadSubDataToUBO(g_WorldSurfaceRenderer.hCameraUBO, 0, sizeof(CameraUBO), &CameraUBO);
+
+                    {
+                        auto old_draw_classify = r_draw_classify;
+                        r_draw_classify        = (DRAW_CLASSIFY_OPAQUE_ENTITIES);
+
+                        // Render all cascades in a single draw call using multiview geometry shader
+                        R_RenderScene();
+
+                        r_draw_classify = old_draw_classify;
+                    }
+
+                    R_PopRefDef();
+
+                    r_draw_shadowview    = false;
+                    r_draw_multiview     = false;
+                    r_draw_nofrustumcull = false;
+
+                    GL_EndDebugGroup();
+
+                    pCurrentShadowTexture->SetReady(true);
+                }
+            }
+        };
+
+        R_IterateVisibleDynamicLights(PointLightCallback, SpotLightCallback, DirectionalLightCallback, nullptr);
+
+        GL_EndDebugGroup();
+    }
 }
 
 /*
@@ -1045,15 +1037,15 @@ void R_RenderShadowmapForDynamicLights(void)
 
 void R_ResetShadowTextures(void)
 {
-	for (size_t i = 0; i < g_VisibleDynamicLights.size(); ++i)
-	{
-		auto& entry = g_VisibleDynamicLights[i];
+    for (size_t i = 0; i < g_VisibleDynamicLights.size(); ++i)
+    {
+        auto& entry = g_VisibleDynamicLights[i];
 
-		if (entry.m_pDynamicLight && entry.m_pDynamicLight->pDynamicShadowTexture)
-		{
-			entry.m_pDynamicLight->pDynamicShadowTexture->SetReady(false);
-		}
-	}
+        if (entry.m_pDynamicLight && entry.m_pDynamicLight->pDynamicShadowTexture)
+        {
+            entry.m_pDynamicLight->pDynamicShadowTexture->SetReady(false);
+        }
+    }
 }
 
 /*
@@ -1064,10 +1056,10 @@ void R_ResetShadowTextures(void)
 
 void R_RenderShadowMap(void)
 {
-	R_ResetShadowTextures();
+    R_ResetShadowTextures();
 
-	if ((int)r_shadow->value > 0)
-	{
-		R_RenderShadowmapForDynamicLights();
-	}
+    if ((int)r_shadow->value > 0)
+    {
+        R_RenderShadowmapForDynamicLights();
+    }
 }

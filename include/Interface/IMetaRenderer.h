@@ -1,16 +1,16 @@
 #pragma once
 
 #ifndef META_RENDERER_INTERFACE_H
-#define META_RENDERER_INTERFACE_H
+#    define META_RENDERER_INTERFACE_H
 
-#include <interface.h>
-#include <stdint.h>
+#    include <interface.h>
+#    include <stdint.h>
 
 //You should #include "gl_common.h" to get those type definitions
 typedef struct texturedrectvertex_s texturedrectvertex_t;
-typedef struct filledrectvertex_s filledrectvertex_t;
-typedef struct camera_view_s camera_view_t;
-typedef struct camera_ubo_s camera_ubo_t;
+typedef struct filledrectvertex_s   filledrectvertex_t;
+typedef struct camera_view_s        camera_view_t;
+typedef struct camera_ubo_s         camera_ubo_t;
 // "cl_entity.h"
 typedef struct cl_entity_s cl_entity_t;
 
@@ -78,7 +78,6 @@ public:
 class IMetaRenderer : public IBaseInterface
 {
 public:
-
     /*
         Counterpart of glwidth
     */
@@ -92,27 +91,27 @@ public:
     /*
         return s_FinalBufferFBO, which is RGBA8 D24S8, W x H = SwapChainWidth x SwapChainHeight
     */
-    virtual FBO_Container_t *GetFinalBufferFBO() const = 0;
+    virtual FBO_Container_t* GetFinalBufferFBO() const = 0;
 
     /*
         return s_BackBufferFBO, which is RGBA16F D24S8, W x H = SwapChainWidth x SwapChainHeight
     */
-    virtual FBO_Container_t *GetBackBufferFBO() const = 0;
+    virtual FBO_Container_t* GetBackBufferFBO() const = 0;
 
     /*
         return s_BackBufferFBO2, which is RGBA16F D24S8, W x H = SwapChainWidth x SwapChainHeight
     */
-    virtual FBO_Container_t *GetBackBufferFBO2() const = 0;
+    virtual FBO_Container_t* GetBackBufferFBO2() const = 0;
 
     /*
         return s_BackBufferFBO3, which is RGBA8 D24S8, W x H = SwapChainWidth x SwapChainHeight
     */
-    virtual FBO_Container_t *GetBackBufferFBO3() const = 0;
+    virtual FBO_Container_t* GetBackBufferFBO3() const = 0;
 
     /*
         return s_BackBufferFBO4, which is RGBA8 D24S8, W x H = SwapChainWidth x SwapChainHeight
     */
-    virtual FBO_Container_t *GetBackBufferFBO4() const = 0;
+    virtual FBO_Container_t* GetBackBufferFBO4() const = 0;
 
     /*
         return s_BlurPassFBO[passIndex][vertical], which is RGB16F, 
@@ -165,7 +164,7 @@ public:
         Purpose: Load and compile vertex and fragment shader from FileSystem, and link them into a OpenGL program.
     */
     virtual uint32_t CompileShaderFile(const char* vsfile, const char* fsfile, const char* vsdefine = nullptr, const char* fsdefine = nullptr) = 0;
-    
+
     /*
         Purpose: Load and compile vertex, fragment, and geometry shader (if specified) from FileSystem, and link them into a OpenGL program.
     */
@@ -701,7 +700,7 @@ public:
         Purpose: Enable/disable gamma blending
     */
     virtual void SetDrawGammaBlendEnabled(bool b) = 0;
-   
+
     /*
         Purpose: Check if gamma blending is enabled or not
     */
@@ -723,11 +722,10 @@ public:
         return s_BackBufferFBO5, which is RGBA8 D24S8, W x H = SwapChainWidth x SwapChainHeight
     */
     virtual FBO_Container_t* GetBackBufferFBO5() const = 0;
-
 };
 
 IMetaRenderer* MetaRenderer();
 
-#define METARENDERER_INTERFACE_VERSION "MetaRenderer_API_002"
+#    define METARENDERER_INTERFACE_VERSION "MetaRenderer_API_002"
 
 #endif //META_RENDERER_INTERFACE_H

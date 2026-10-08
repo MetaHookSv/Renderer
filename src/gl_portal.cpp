@@ -12,116 +12,113 @@ std::unordered_map<CPortalTextureCacheHash, std::shared_ptr<CPortalTextureCache>
 
 CWorldPortalModel::~CWorldPortalModel()
 {
-	if (hABO)
-	{
-		GL_DeleteBuffer(hABO);
-	}
+    if (hABO)
+    {
+        GL_DeleteBuffer(hABO);
+    }
 }
 
-void R_UsePortalProgram(program_state_t state, portal_program_t *progOutput)
+void R_UsePortalProgram(program_state_t state, portal_program_t* progOutput)
 {
-	portal_program_t prog = { 0 };
+    portal_program_t prog = {0};
 
-	auto itor = g_PortalProgramTable.find(state);
-	if (itor == g_PortalProgramTable.end())
-	{
-		std::stringstream defs;
+    auto itor = g_PortalProgramTable.find(state);
+    if (itor == g_PortalProgramTable.end())
+    {
+        std::stringstream defs;
 
-		if (state & PORTAL_OVERLAY_TEXTURE_ENABLED)
-			defs << "#define PORTAL_OVERLAY_TEXTURE_ENABLED\n";
+        if (state & PORTAL_OVERLAY_TEXTURE_ENABLED)
+            defs << "#define PORTAL_OVERLAY_TEXTURE_ENABLED\n";
 
-		if (state & PORTAL_TEXCOORD_ENABLED)
-			defs << "#define PORTAL_TEXCOORD_ENABLED\n";
+        if (state & PORTAL_TEXCOORD_ENABLED)
+            defs << "#define PORTAL_TEXCOORD_ENABLED\n";
 
-		if (state & PORTAL_REVERSE_TEXCOORD_ENABLED)
-			defs << "#define PORTAL_REVERSE_TEXCOORD_ENABLED\n";
+        if (state & PORTAL_REVERSE_TEXCOORD_ENABLED)
+            defs << "#define PORTAL_REVERSE_TEXCOORD_ENABLED\n";
 
-		if (state & PORTAL_GAMMA_BLEND_ENABLED)
-			defs << "#define GAMMA_BLEND_ENABLED\n";
+        if (state & PORTAL_GAMMA_BLEND_ENABLED)
+            defs << "#define GAMMA_BLEND_ENABLED\n";
 
-		auto def = defs.str();
+        auto def = defs.str();
 
-		CCompileShaderArgs args;
-		args.vsfile = "renderer\\shader\\portal_shader.vert.glsl";
-		args.fsfile = "renderer\\shader\\portal_shader.frag.glsl";
-		args.vsdefine = def.c_str();
-		args.fsdefine = def.c_str();
+        CCompileShaderArgs args;
+        args.vsfile   = "renderer\\shader\\portal_shader.vert.glsl";
+        args.fsfile   = "renderer\\shader\\portal_shader.frag.glsl";
+        args.vsdefine = def.c_str();
+        args.fsdefine = def.c_str();
 
-		prog.program = GL_CompileShaderFileEx(&args);
+        prog.program = GL_CompileShaderFileEx(&args);
 
-		if (prog.program)
-		{
-			SHADER_UNIFORM(prog, u_entityMatrix, "u_entityMatrix");
-		}
+        if (prog.program)
+        {
+            SHADER_UNIFORM(prog, u_entityMatrix, "u_entityMatrix");
+        }
 
-		g_PortalProgramTable[state] = prog;
-	}
-	else
-	{
-		prog = itor->second;
-	}
+        g_PortalProgramTable[state] = prog;
+    }
+    else
+    {
+        prog = itor->second;
+    }
 
-	if (prog.program)
-	{
-		GL_UseProgram(prog.program);
+    if (prog.program)
+    {
+        GL_UseProgram(prog.program);
 
-		if (prog.u_entityMatrix)
-		{
-			glUniformMatrix4fv(prog.u_entityMatrix, 1, true, (const GLfloat *)r_entity_matrix);
-		}
+        if (prog.u_entityMatrix)
+        {
+            glUniformMatrix4fv(prog.u_entityMatrix, 1, true, (const GLfloat*)r_entity_matrix);
+        }
 
-		if (progOutput)
-			*progOutput = prog;
-	}
-	else
-	{
-		g_pMetaHookAPI->SysError("R_UsePortalProgram: Failed to load program!");
-	}
+        if (progOutput)
+            *progOutput = prog;
+    }
+    else
+    {
+        g_pMetaHookAPI->SysError("R_UsePortalProgram: Failed to load program!");
+    }
 }
 
 const program_state_mapping_t s_PortalProgramStateName[] = {
-{ PORTAL_OVERLAY_TEXTURE_ENABLED			, "PORTAL_OVERLAY_TEXTURE_ENABLED"	 },
-{ PORTAL_TEXCOORD_ENABLED					, "PORTAL_TEXCOORD_ENABLED"			 },
-{ PORTAL_REVERSE_TEXCOORD_ENABLED			, "PORTAL_REVERSE_TEXCOORD_ENABLED"	 },
+    {PORTAL_OVERLAY_TEXTURE_ENABLED, "PORTAL_OVERLAY_TEXTURE_ENABLED"},
+    {PORTAL_TEXCOORD_ENABLED, "PORTAL_TEXCOORD_ENABLED"},
+    {PORTAL_REVERSE_TEXCOORD_ENABLED, "PORTAL_REVERSE_TEXCOORD_ENABLED"},
 };
 
 void R_SavePortalProgramStates(void)
 {
-	std::vector<program_state_t> states;
-	for (auto &p : g_PortalProgramTable)
-	{
-		states.emplace_back(p.first);
-	}
-	R_SaveProgramStatesCaches("renderer/shader/portal_cache.txt", states, s_PortalProgramStateName, _ARRAYSIZE(s_PortalProgramStateName));
+    std::vector<program_state_t> states;
+    for (auto& p : g_PortalProgramTable)
+    {
+        states.emplace_back(p.first);
+    }
+    R_SaveProgramStatesCaches("renderer/shader/portal_cache.txt", states, s_PortalProgramStateName, _ARRAYSIZE(s_PortalProgramStateName));
 }
 
 void R_LoadPortalProgramStates(void)
 {
-	R_LoadProgramStateCaches("renderer/shader/portal_cache.txt", s_PortalProgramStateName, _ARRAYSIZE(s_PortalProgramStateName), [](program_state_t state) {
-
-		R_UsePortalProgram(state, NULL);
-
-	});
+    R_LoadProgramStateCaches("renderer/shader/portal_cache.txt", s_PortalProgramStateName, _ARRAYSIZE(s_PortalProgramStateName), [](program_state_t state) {
+        R_UsePortalProgram(state, NULL);
+    });
 }
 
 void R_FreePortalResouces(void)
 {
-	g_PortalSurfaceModels.clear();
+    g_PortalSurfaceModels.clear();
 }
 
 void R_ShutdownPortal(void)
 {
-	g_PortalProgramTable.clear();
+    g_PortalProgramTable.clear();
 
-	R_FreePortalResouces();
+    R_FreePortalResouces();
 }
 
 void R_InitPortal(void)
 {
-	
 }
 
-void __fastcall ClientPortalManager_ResetAll(void * pthis, int)
+void __fastcall ClientPortalManager_ResetAll(void* pthis, int)
 {
 #if 0
 	portal_texture_t *ptextures = *(portal_texture_t **)((ULONG_PTR)pthis + 0x9C);
@@ -136,294 +133,294 @@ void __fastcall ClientPortalManager_ResetAll(void * pthis, int)
 	}
 #endif
 
-	gPrivateFuncs.ClientPortalManager_ResetAll(pthis, 0);
+    gPrivateFuncs.ClientPortalManager_ResetAll(pthis, 0);
 
-	g_PortalTextureCaches.clear();
+    g_PortalTextureCaches.clear();
 }
 
-mtexinfo_t * __fastcall ClientPortalManager_GetOriginalSurfaceTexture(void * pthis, int dummy, msurface_t *surf)
+mtexinfo_t* __fastcall ClientPortalManager_GetOriginalSurfaceTexture(void* pthis, int dummy, msurface_t* surf)
 {
-	return gPrivateFuncs.ClientPortalManager_GetOriginalSurfaceTexture(pthis, dummy, surf);
+    return gPrivateFuncs.ClientPortalManager_GetOriginalSurfaceTexture(pthis, dummy, surf);
 }
 
-std::shared_ptr<CWorldPortalModel> R_FindPortalSurfaceModel(void *ClientPortalManager, void * ClientPortal, msurface_t *surf, GLuint textureId)
+std::shared_ptr<CWorldPortalModel> R_FindPortalSurfaceModel(void* ClientPortalManager, void* ClientPortal, msurface_t* surf, GLuint textureId)
 {
-	CWorldPortalModelHash hash(ClientPortal, surf->texinfo->texture->name[0] == '{' ? surf->texinfo->texture->gl_texturenum : 0, textureId);
-	auto itor = g_PortalSurfaceModels.find(hash);
-	if (itor == g_PortalSurfaceModels.end())
-	{
-		return NULL;
-	}
+    CWorldPortalModelHash hash(ClientPortal, surf->texinfo->texture->name[0] == '{' ? surf->texinfo->texture->gl_texturenum : 0, textureId);
+    auto                  itor = g_PortalSurfaceModels.find(hash);
+    if (itor == g_PortalSurfaceModels.end())
+    {
+        return NULL;
+    }
 
-	return itor->second;
+    return itor->second;
 }
 
-std::shared_ptr<CWorldPortalModel> R_GetPortalSurfaceModel(void *ClientPortalManager, void * ClientPortal, msurface_t *surf, GLuint textureId)
+std::shared_ptr<CWorldPortalModel> R_GetPortalSurfaceModel(void* ClientPortalManager, void* ClientPortal, msurface_t* surf, GLuint textureId)
 {
-	auto worldmodel = R_FindWorldModelBySurface(surf);
+    auto worldmodel = R_FindWorldModelBySurface(surf);
 
-	if (!worldmodel)
-	{
-		Sys_Error("R_GetPortalSurfaceModel: Failed to find model by surface");
-		return nullptr;
-	}
+    if (!worldmodel)
+    {
+        Sys_Error("R_GetPortalSurfaceModel: Failed to find model by surface");
+        return nullptr;
+    }
 
-	auto pWorldModel = R_GetWorldSurfaceWorldModel(worldmodel);
+    auto pWorldModel = R_GetWorldSurfaceWorldModel(worldmodel);
 
-	if (!pWorldModel)
-	{
-		Sys_Error("R_GetPortalSurfaceModel: Failed to R_GetWorldSurfaceWorldModel!");
-		return nullptr;
-	}
+    if (!pWorldModel)
+    {
+        Sys_Error("R_GetPortalSurfaceModel: Failed to R_GetWorldSurfaceWorldModel!");
+        return nullptr;
+    }
 
-	auto surfIndex = R_GetWorldSurfaceIndex(worldmodel, surf);
+    auto surfIndex = R_GetWorldSurfaceIndex(worldmodel, surf);
 
-	if (surfIndex == -1)
-	{
-		Sys_Error("R_GetPortalSurfaceModel: invalid surfIndex!");
-		return nullptr;
-	}
+    if (surfIndex == -1)
+    {
+        Sys_Error("R_GetPortalSurfaceModel: invalid surfIndex!");
+        return nullptr;
+    }
 
-	auto pBrushFace = &pWorldModel->m_vFaceBuffer[surfIndex];
+    auto pBrushFace = &pWorldModel->m_vFaceBuffer[surfIndex];
 
-	auto pPortalModel = R_FindPortalSurfaceModel(ClientPortalManager, ClientPortal, surf, textureId);
+    auto pPortalModel = R_FindPortalSurfaceModel(ClientPortalManager, ClientPortal, surf, textureId);
 
-	if (!pPortalModel)
-	{
-		pPortalModel = std::make_shared<CWorldPortalModel>();
+    if (!pPortalModel)
+    {
+        pPortalModel = std::make_shared<CWorldPortalModel>();
 
-		pPortalModel->texinfo = ClientPortalManager_GetOriginalSurfaceTexture(ClientPortalManager, 0, surf);
-		
-		pPortalModel->SurfaceSet.emplace(surfIndex);
+        pPortalModel->texinfo = ClientPortalManager_GetOriginalSurfaceTexture(ClientPortalManager, 0, surf);
 
-		CDrawIndexAttrib drawAttrib;
-		drawAttrib.FirstIndexLocation = pBrushFace->start_index;
-		drawAttrib.NumIndices = pBrushFace->index_count;
-		drawAttrib.FirstInstanceLocation = pBrushFace->instance_index;
-		drawAttrib.NumInstances = pBrushFace->instance_count;
+        pPortalModel->SurfaceSet.emplace(surfIndex);
 
-		pPortalModel->vDrawAttribBuffer.emplace_back(drawAttrib);
+        CDrawIndexAttrib drawAttrib;
+        drawAttrib.FirstIndexLocation    = pBrushFace->start_index;
+        drawAttrib.NumIndices            = pBrushFace->index_count;
+        drawAttrib.FirstInstanceLocation = pBrushFace->instance_index;
+        drawAttrib.NumInstances          = pBrushFace->instance_count;
 
-		pPortalModel->hABO = GL_GenBuffer();
+        pPortalModel->vDrawAttribBuffer.emplace_back(drawAttrib);
 
-		GL_UploadDataToABODynamicDraw(pPortalModel->hABO, sizeof(CDrawIndexAttrib) * pPortalModel->vDrawAttribBuffer.size(), pPortalModel->vDrawAttribBuffer.data());
+        pPortalModel->hABO = GL_GenBuffer();
 
-		pPortalModel->drawCount = (uint32_t)pPortalModel->vDrawAttribBuffer.size();
+        GL_UploadDataToABODynamicDraw(pPortalModel->hABO, sizeof(CDrawIndexAttrib) * pPortalModel->vDrawAttribBuffer.size(), pPortalModel->vDrawAttribBuffer.data());
 
-		pPortalModel->polyCount += pBrushFace->poly_count;
+        pPortalModel->drawCount = (uint32_t)pPortalModel->vDrawAttribBuffer.size();
 
-		pPortalModel->m_pWorldModel = pWorldModel;
+        pPortalModel->polyCount += pBrushFace->poly_count;
 
-		CWorldPortalModelHash hash(ClientPortal, surf->texinfo->texture->name[0] == '{' ? surf->texinfo->texture->gl_texturenum : 0, textureId);
+        pPortalModel->m_pWorldModel = pWorldModel;
 
-		g_PortalSurfaceModels[hash] = pPortalModel;
-	}
-	else
-	{
-		auto itor = pPortalModel->SurfaceSet.find(surfIndex);
+        CWorldPortalModelHash hash(ClientPortal, surf->texinfo->texture->name[0] == '{' ? surf->texinfo->texture->gl_texturenum : 0, textureId);
 
-		if (itor == pPortalModel->SurfaceSet.end())
-		{
-			pPortalModel->SurfaceSet.emplace(surfIndex);
+        g_PortalSurfaceModels[hash] = pPortalModel;
+    }
+    else
+    {
+        auto itor = pPortalModel->SurfaceSet.find(surfIndex);
 
-			CDrawIndexAttrib drawAttrib;
-			drawAttrib.FirstIndexLocation = pBrushFace->start_index;
-			drawAttrib.NumIndices = pBrushFace->index_count;
-			drawAttrib.FirstInstanceLocation = pBrushFace->instance_index;
-			drawAttrib.NumInstances = pBrushFace->instance_count;
+        if (itor == pPortalModel->SurfaceSet.end())
+        {
+            pPortalModel->SurfaceSet.emplace(surfIndex);
 
-			pPortalModel->vDrawAttribBuffer.emplace_back(drawAttrib);
+            CDrawIndexAttrib drawAttrib;
+            drawAttrib.FirstIndexLocation    = pBrushFace->start_index;
+            drawAttrib.NumIndices            = pBrushFace->index_count;
+            drawAttrib.FirstInstanceLocation = pBrushFace->instance_index;
+            drawAttrib.NumInstances          = pBrushFace->instance_count;
 
-			GL_UploadDataToABODynamicDraw(pPortalModel->hABO, sizeof(CDrawIndexAttrib) * pPortalModel->vDrawAttribBuffer.size(), pPortalModel->vDrawAttribBuffer.data());
+            pPortalModel->vDrawAttribBuffer.emplace_back(drawAttrib);
 
-			pPortalModel->drawCount = (uint32_t)pPortalModel->vDrawAttribBuffer.size();
+            GL_UploadDataToABODynamicDraw(pPortalModel->hABO, sizeof(CDrawIndexAttrib) * pPortalModel->vDrawAttribBuffer.size(), pPortalModel->vDrawAttribBuffer.data());
 
-			pPortalModel->polyCount += pBrushFace->poly_count;
-		}
-	}
+            pPortalModel->drawCount = (uint32_t)pPortalModel->vDrawAttribBuffer.size();
 
-	return pPortalModel;
+            pPortalModel->polyCount += pBrushFace->poly_count;
+        }
+    }
+
+    return pPortalModel;
 }
 
 void R_DrawPortalSurfaceModelBegin(CWorldPortalModel* pPortalModel)
 {
-	auto pWorldModel = pPortalModel->m_pWorldModel.lock();
+    auto pWorldModel = pPortalModel->m_pWorldModel.lock();
 
-	GL_BindVAO(pWorldModel->hVAO);
-	GL_BindABO(pPortalModel->hABO);
+    GL_BindVAO(pWorldModel->hVAO);
+    GL_BindABO(pPortalModel->hABO);
 }
 
 void R_DrawPortalSurfaceModelEnd()
 {
-	GL_BindABO(0);
-	GL_BindVAO(0);
+    GL_BindABO(0);
+    GL_BindVAO(0);
 }
 
-void R_DrawPortal(void *ClientPortalManager, void * ClientPortal, msurface_t *surf, GLuint textureId, CWorldPortalModel* pPortalModel)
+void R_DrawPortal(void* ClientPortalManager, void* ClientPortal, msurface_t* surf, GLuint textureId, CWorldPortalModel* pPortalModel)
 {
-	program_state_t PortalProgramState = (ClientPortal_GetPortalMode(ClientPortal) == 0) ? PORTAL_REVERSE_TEXCOORD_ENABLED  : PORTAL_TEXCOORD_ENABLED;
+    program_state_t PortalProgramState = (ClientPortal_GetPortalMode(ClientPortal) == 0) ? PORTAL_REVERSE_TEXCOORD_ENABLED : PORTAL_TEXCOORD_ENABLED;
 
-	if (pPortalModel->texinfo->texture->name[0] == '{')
-	{
-		PortalProgramState |= PORTAL_OVERLAY_TEXTURE_ENABLED;
-	}
+    if (pPortalModel->texinfo->texture->name[0] == '{')
+    {
+        PortalProgramState |= PORTAL_OVERLAY_TEXTURE_ENABLED;
+    }
 
-	if (R_IsRenderingGammaBlending())
-	{
-		PortalProgramState |= PORTAL_GAMMA_BLEND_ENABLED;
-	}
+    if (R_IsRenderingGammaBlending())
+    {
+        PortalProgramState |= PORTAL_GAMMA_BLEND_ENABLED;
+    }
 
-	vec3_t origin{};
-	vec3_t angles{};
+    vec3_t origin{};
+    vec3_t angles{};
 
-	if (!ClientPortal_GetPortalTransform(ClientPortal, origin, angles))
-		return;
+    if (!ClientPortal_GetPortalTransform(ClientPortal, origin, angles))
+        return;
 
-	GL_BeginDebugGroup("R_DrawPortal");
+    GL_BeginDebugGroup("R_DrawPortal");
 
-	R_RotateForTransform(origin, angles, r_entity_matrix);
+    R_RotateForTransform(origin, angles, r_entity_matrix);
 
-	R_DrawPortalSurfaceModelBegin(pPortalModel);
+    R_DrawPortalSurfaceModelBegin(pPortalModel);
 
-	glEnable(GL_POLYGON_OFFSET_FILL);
-	glPolygonOffset(-1, -gl_polyoffset->value);
+    glEnable(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(-1, -gl_polyoffset->value);
 
-	portal_program_t prog = { 0 };
+    portal_program_t prog = {0};
 
-	R_UsePortalProgram(PortalProgramState, &prog);
+    R_UsePortalProgram(PortalProgramState, &prog);
 
-	GL_BindTextureUnit(0, GL_TEXTURE_2D, textureId);
+    GL_BindTextureUnit(0, GL_TEXTURE_2D, textureId);
 
-	GL_BindTextureUnit(1, GL_TEXTURE_2D, pPortalModel->texinfo->texture->gl_texturenum);
+    GL_BindTextureUnit(1, GL_TEXTURE_2D, pPortalModel->texinfo->texture->gl_texturenum);
 
-	glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, (void *)(0), pPortalModel->drawCount, 0);
+    glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(0), pPortalModel->drawCount, 0);
 
-	(*c_brush_polys) += pPortalModel->polyCount;
+    (*c_brush_polys) += pPortalModel->polyCount;
 
-	GL_BindTextureUnit(1, GL_TEXTURE_2D, 0);
+    GL_BindTextureUnit(1, GL_TEXTURE_2D, 0);
 
-	GL_BindTextureUnit(0, GL_TEXTURE_2D, 0);
+    GL_BindTextureUnit(0, GL_TEXTURE_2D, 0);
 
-	GL_UseProgram(0);
+    GL_UseProgram(0);
 
-	glDisable(GL_POLYGON_OFFSET_FILL);
+    glDisable(GL_POLYGON_OFFSET_FILL);
 
-	R_DrawPortalSurfaceModelEnd();
+    R_DrawPortalSurfaceModelEnd();
 
-	GL_EndDebugGroup();
+    GL_EndDebugGroup();
 }
 
-void R_DrawMonitor(void *ClientPortalManager, void * ClientPortal, msurface_t *surf, GLuint textureId, CWorldPortalModel* pPortalModel)
+void R_DrawMonitor(void* ClientPortalManager, void* ClientPortal, msurface_t* surf, GLuint textureId, CWorldPortalModel* pPortalModel)
 {
-	program_state_t PortalProgramState = 0;
+    program_state_t PortalProgramState = 0;
 
-	if (pPortalModel->texinfo->texture->name[0] == '{')
-	{
-		PortalProgramState |= PORTAL_OVERLAY_TEXTURE_ENABLED;
-	}
+    if (pPortalModel->texinfo->texture->name[0] == '{')
+    {
+        PortalProgramState |= PORTAL_OVERLAY_TEXTURE_ENABLED;
+    }
 
-	if (R_IsRenderingGammaBlending())
-	{
-		PortalProgramState |= PORTAL_GAMMA_BLEND_ENABLED;
-	}
+    if (R_IsRenderingGammaBlending())
+    {
+        PortalProgramState |= PORTAL_GAMMA_BLEND_ENABLED;
+    }
 
-	vec3_t origin{};
-	vec3_t angles{};
+    vec3_t origin{};
+    vec3_t angles{};
 
-	if (!ClientPortal_GetPortalTransform(ClientPortal, origin, angles))
-		return;
+    if (!ClientPortal_GetPortalTransform(ClientPortal, origin, angles))
+        return;
 
-	GL_BeginDebugGroup("R_DrawMonitor");
+    GL_BeginDebugGroup("R_DrawMonitor");
 
-	R_RotateForTransform(origin, angles, r_entity_matrix);
+    R_RotateForTransform(origin, angles, r_entity_matrix);
 
-	R_DrawPortalSurfaceModelBegin(pPortalModel);
+    R_DrawPortalSurfaceModelBegin(pPortalModel);
 
-	glEnable(GL_POLYGON_OFFSET_FILL);
-	glPolygonOffset(-1, -gl_polyoffset->value);
+    glEnable(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(-1, -gl_polyoffset->value);
 
-	portal_program_t prog = { 0 };
-	R_UsePortalProgram(PortalProgramState, &prog);
+    portal_program_t prog = {0};
+    R_UsePortalProgram(PortalProgramState, &prog);
 
-	GL_BindTextureUnit(0, GL_TEXTURE_2D, textureId);
+    GL_BindTextureUnit(0, GL_TEXTURE_2D, textureId);
 
-	GL_BindTextureUnit(1, GL_TEXTURE_2D, pPortalModel->texinfo->texture->gl_texturenum);
+    GL_BindTextureUnit(1, GL_TEXTURE_2D, pPortalModel->texinfo->texture->gl_texturenum);
 
-	glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(0), pPortalModel->drawCount, 0);
+    glMultiDrawElementsIndirect(GL_TRIANGLES, GL_UNSIGNED_INT, (void*)(0), pPortalModel->drawCount, 0);
 
-	(*c_brush_polys) += pPortalModel->polyCount;
+    (*c_brush_polys) += pPortalModel->polyCount;
 
-	GL_BindTextureUnit(1, GL_TEXTURE_2D, 0);
+    GL_BindTextureUnit(1, GL_TEXTURE_2D, 0);
 
-	GL_BindTextureUnit(0, GL_TEXTURE_2D, 0);
+    GL_BindTextureUnit(0, GL_TEXTURE_2D, 0);
 
-	GL_UseProgram(0);
+    GL_UseProgram(0);
 
-	glDisable(GL_POLYGON_OFFSET_FILL);
+    glDisable(GL_POLYGON_OFFSET_FILL);
 
-	R_DrawPortalSurfaceModelEnd();
+    R_DrawPortalSurfaceModelEnd();
 
-	GL_EndDebugGroup();
+    GL_EndDebugGroup();
 }
 
-void ClientPortalManager_AngleVectors(const float* a1, float *a2, float* a3, float* a4)
+void ClientPortalManager_AngleVectors(const float* a1, float* a2, float* a3, float* a4)
 {
-	g_pCurrentClientPortal = (void*)((ULONG_PTR)a1 - sizeof(vec3_t));
+    g_pCurrentClientPortal = (void*)((ULONG_PTR)a1 - sizeof(vec3_t));
 
-	AngleVectors(a1, a2, a3, a4);
+    AngleVectors(a1, a2, a3, a4);
 }
 
-void __fastcall ClientPortalManager_EnableClipPlane(void * pthis, int dummy, int index, vec3_t viewangles, vec3_t view, vec4_t plane)
+void __fastcall ClientPortalManager_EnableClipPlane(void* pthis, int dummy, int index, vec3_t viewangles, vec3_t view, vec4_t plane)
 {
-	g_PortalClipPlane[index][0] = plane[0];
-	g_PortalClipPlane[index][1] = plane[1];
-	g_PortalClipPlane[index][2] = plane[2];
-	g_PortalClipPlane[index][3] = plane[3];
-	g_bPortalClipPlaneEnabled[index] = true;
+    g_PortalClipPlane[index][0]      = plane[0];
+    g_PortalClipPlane[index][1]      = plane[1];
+    g_PortalClipPlane[index][2]      = plane[2];
+    g_PortalClipPlane[index][3]      = plane[3];
+    g_bPortalClipPlaneEnabled[index] = true;
 }
 
-void __fastcall ClientPortalManager_DrawPortalSurface(void *ClientPortalManager, int dummy, void *ClientPortal, msurface_t *surf, GLuint textureId)
+void __fastcall ClientPortalManager_DrawPortalSurface(void* ClientPortalManager, int dummy, void* ClientPortal, msurface_t* surf, GLuint textureId)
 {
-	GL_BeginDebugGroup("ClientPortalManager_DrawPortalSurface");
+    GL_BeginDebugGroup("ClientPortalManager_DrawPortalSurface");
 
-	auto pPortalModel = R_GetPortalSurfaceModel(ClientPortalManager, ClientPortal, surf, textureId);
+    auto pPortalModel = R_GetPortalSurfaceModel(ClientPortalManager, ClientPortal, surf, textureId);
 
-	if (pPortalModel)
-	{
-		auto mode = ClientPortal_GetPortalMode(ClientPortal);
+    if (pPortalModel)
+    {
+        auto mode = ClientPortal_GetPortalMode(ClientPortal);
 
-		if (mode != -1)
-		{
-			if (mode == 1)
-			{
-				R_DrawMonitor(ClientPortalManager, ClientPortal, surf, textureId, pPortalModel.get());
-			}
-			else
-			{
-				R_DrawPortal(ClientPortalManager, ClientPortal, surf, textureId, pPortalModel.get());
-			}
-		}
-	}
+        if (mode != -1)
+        {
+            if (mode == 1)
+            {
+                R_DrawMonitor(ClientPortalManager, ClientPortal, surf, textureId, pPortalModel.get());
+            }
+            else
+            {
+                R_DrawPortal(ClientPortalManager, ClientPortal, surf, textureId, pPortalModel.get());
+            }
+        }
+    }
 
-	GL_EndDebugGroup();
+    GL_EndDebugGroup();
 }
 
-std::shared_ptr<CPortalTextureCache> R_GetTextureCacheForPortalTexture(void *pClientPortal, int width, int height)
+std::shared_ptr<CPortalTextureCache> R_GetTextureCacheForPortalTexture(void* pClientPortal, int width, int height)
 {
-	CPortalTextureCacheHash hash(pClientPortal, width, height);
+    CPortalTextureCacheHash hash(pClientPortal, width, height);
 
-	auto it = g_PortalTextureCaches.find(hash);
+    auto it = g_PortalTextureCaches.find(hash);
 
-	if (it != g_PortalTextureCaches.end())
-		return it->second;
+    if (it != g_PortalTextureCaches.end())
+        return it->second;
 
-	auto pTextureCache = std::make_shared<CPortalTextureCache>();
-	//pTextureCache->color = GL_GenTextureColorFormat(width, height, GL_RGBA8, true, nullptr, true);
-	pTextureCache->depth_stencil = GL_GenDepthStencilTexture(width, height, true);
-	pTextureCache->width = width;
-	pTextureCache->height = height;
+    auto pTextureCache = std::make_shared<CPortalTextureCache>();
+    //pTextureCache->color = GL_GenTextureColorFormat(width, height, GL_RGBA8, true, nullptr, true);
+    pTextureCache->depth_stencil = GL_GenDepthStencilTexture(width, height, true);
+    pTextureCache->width         = width;
+    pTextureCache->height        = height;
 
-	g_PortalTextureCaches[hash] = pTextureCache;
+    g_PortalTextureCaches[hash] = pTextureCache;
 
-	return pTextureCache;
+    return pTextureCache;
 }
