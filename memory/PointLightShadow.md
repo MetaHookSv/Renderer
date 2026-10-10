@@ -74,6 +74,10 @@ M --> N["CalcCubemapShadowIntensity"]
 - The point-light shadow branch and cubemap-shadow sampler in the deferred-lighting shader.
 
 ## Notes
+- Issue #807 implementation: `r_shadow_cache` defaults to 1; 0 restores uncached local-light rendering, and 2 prints per-view cache/CPU-preparation diagnostics about once a second. `shadow_cache.h` owns the engine-independent conservative membership/invalidation policy.
+- A persistent per-light caster-depth image excludes `ClientDLL_DrawNormalTriangles`. Before that callback, dirty entity depth is saved, or cached depth is restored; client-owned geometry is still drawn every frame. A cache hit skips ordinary world/entity submissions but does not eliminate scene setup, texture copying or client drawing. CSM retains its original update policy.
+- Studio local vertex AABBs are computed once per bone and owned by `CStudioModelRenderData`. A pose-only preparation invokes Studio without events and intercepts RenderFinal; current bone matrices transform the cached boxes' eight corners. Unknown bounds, follow entities and special render effects use unbounded fallback. Studio/brush casters remain volatile; currently the main reuse benefit is lights without intersecting ordinary casters.
+- GLFW regression and manual game acceptance are documented in `tests/shadow_cache.md`. The GPU harness uses the cs_assault OBJ/light configuration, shared cache/copy code and an uncached depth oracle; it does not execute GoldSrc Studio hooks or BulletPhysics.
 - Ordinary engine point lights from `cl_dlights` default to `shadow = 0` in `R_ProcessEngineDynamicLights()`, so they normally do not use PointLightShadow; this topic mainly covers point-light shadows for map `light_dynamic` entities.
 - Dynamic point-light shadows enable `r_draw_lineardepth`, so the shader uses linear-depth comparison consistent with distance to the light source.
 - If a point light is bound to `source_entity_index`, that entity is hidden in the shadow pass to prevent self-projection from contaminating the shadow.

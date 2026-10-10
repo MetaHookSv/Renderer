@@ -68,3 +68,7 @@ bool R_ShouldRenderShadow(void);
 void R_RenderShadowMap(void);
 void R_InitShadow(void);
 void R_ShutdownShadow(void);
+bool R_IsCollectingShadowCasters();
+void R_CollectStudioShadowBounds();
+bool R_ShouldDrawCachedShadowEntity(cl_entity_t* ent);
+void R_FinishShadowCasterPass();

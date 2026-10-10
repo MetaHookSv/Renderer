@@ -1,9 +1,225 @@
 #include "gl_local.h"
 #include <sstream>
 #include <math.h>
+#include "shadow_cache_gl.h"
+#include <chrono>
 
 //cvar
-cvar_t* r_shadow = NULL;
+cvar_t*                                 r_shadow      = NULL;
+static cvar_t*                          s_shadowCache = nullptr;
+static std::vector<ShadowCache::Caster> s_shadowCasters;
+static ShadowCache::Caster*             s_collectingCaster       = nullptr;
+static bool                             s_collectingBoundsFailed = false;
+static CDynamicLight*                   s_activeShadowCache      = nullptr;
+static struct
+{
+    int    updates = 0, reused = 0, submissions = 0, boneBoxes = 0;
+    double prepareMilliseconds = 0;
+} s_shadowCacheStats;
+
+bool R_IsCollectingShadowCasters()
+{
+    return s_collectingCaster != nullptr;
+}
+
+// Called instead of StudioRenderFinal during a pose-only preparation pass.
+// Include every bodygroup: changing body/skin or a merged weapon cannot shrink
+// the bound below the actual mesh. Never infer bounds from the collision hull.
+static void R_BuildStudioShadowBounds(CStudioModelRenderData* renderData)
+{
+    auto hdr = (*pstudiohdr);
+    if (!s_collectingCaster || !hdr || hdr->numbones <= 0 || hdr->numbones > 128)
+    {
+        s_collectingBoundsFailed = true;
+        return;
+    }
+    auto range = [hdr](int offset, int count, size_t stride) {
+        return offset >= 0 && count >= 0 && static_cast<size_t>(offset) <= static_cast<size_t>(hdr->length) &&
+            static_cast<size_t>(count) <= (static_cast<size_t>(hdr->length) - offset) / stride;
+    };
+    if (hdr->length < static_cast<int>(sizeof(studiohdr_t)) || !range(hdr->bodypartindex, hdr->numbodyparts, sizeof(mstudiobodyparts_t)))
+    {
+        s_collectingBoundsFailed = true;
+        return;
+    }
+    auto parts = reinterpret_cast<mstudiobodyparts_t*>(reinterpret_cast<byte*>(hdr) + hdr->bodypartindex);
+    for (int part = 0; part < hdr->numbodyparts; ++part)
+    {
+        if (!range(parts[part].modelindex, parts[part].nummodels, sizeof(mstudiomodel_t)))
+        {
+            s_collectingBoundsFailed = true;
+            return;
+        }
+        auto models = reinterpret_cast<mstudiomodel_t*>(reinterpret_cast<byte*>(hdr) + parts[part].modelindex);
+        for (int model = 0; model < parts[part].nummodels; ++model)
+        {
+            const auto& mesh = models[model];
+            if (!range(mesh.vertindex, mesh.numverts, sizeof(vec3_t)) || !range(mesh.vertinfoindex, mesh.numverts, sizeof(byte)))
+            {
+                s_collectingBoundsFailed = true;
+                return;
+            }
+            auto vertices = reinterpret_cast<vec3_t*>(reinterpret_cast<byte*>(hdr) + mesh.vertindex);
+            auto bones    = reinterpret_cast<byte*>(hdr) + mesh.vertinfoindex;
+            for (int vertex = 0; vertex < mesh.numverts; ++vertex)
+            {
+                if (bones[vertex] >= hdr->numbones)
+                {
+                    s_collectingBoundsFailed = true;
+                    return;
+                }
+                for (int axis = 0; axis < 3; ++axis)
+                    if (!std::isfinite(vertices[vertex][axis]))
+                    {
+                        s_collectingBoundsFailed = true;
+                        return;
+                    }
+                renderData->shadowBoneBounds[bones[vertex]].Add({vertices[vertex][0], vertices[vertex][1], vertices[vertex][2]});
+            }
+        }
+    }
+    renderData->shadowBoneBoundsValid = true;
+}
+
+void R_CollectStudioShadowBounds()
+{
+    auto hdr  = (*pstudiohdr);
+    auto data = hdr ? R_GetStudioRenderDataFromStudioHeaderFast(hdr) : nullptr;
+    if (!data && hdr)
+        data = R_GetStudioRenderDataFromStudioHeaderSlow(hdr);
+    if (!s_collectingCaster || !data || hdr->numbones <= 0 || hdr->numbones > 128)
+    {
+        s_collectingBoundsFailed = true;
+        return;
+    }
+    if (!data->shadowBoneBoundsPrepared)
+    {
+        data->shadowBoneBoundsPrepared = true;
+        R_BuildStudioShadowBounds(data.get());
+    }
+    if (!data->shadowBoneBoundsValid)
+    {
+        s_collectingBoundsFailed = true;
+        return;
+    }
+    for (int bone = 0; bone < hdr->numbones; ++bone)
+    {
+        const auto& bounds = data->shadowBoneBounds[bone];
+        if (!bounds.valid)
+            continue;
+        ++s_shadowCacheStats.boneBoxes;
+        const auto& matrix      = (*pbonetransform)[bone];
+        auto        transformed = ShadowCache::TransformBounds(bounds, &matrix[0][0]);
+        if (!transformed.valid)
+        {
+            s_collectingBoundsFailed = true;
+            return;
+        }
+        s_collectingCaster->bounds.Add(transformed.mins);
+        s_collectingCaster->bounds.Add(transformed.maxs);
+    }
+}
+
+static void R_PrepareShadowCasters()
+{
+    s_shadowCasters.clear();
+    if (!r_drawentities->value || (*r_refdef.onlyClientDraws))
+        return;
+
+    const auto savedEntity   = (*currententity);
+    const auto savedHeader   = (*pstudiohdr);
+    const auto savedSubmodel = (*psubmodel);
+    const auto savedShadow   = r_draw_shadowview;
+    const auto savedCull     = r_draw_nofrustumcull;
+    r_draw_shadowview        = true;
+    r_draw_nofrustumcull     = true;
+    for (int i = 0; i < (*cl_numvisedicts); ++i)
+    {
+        auto ent = cl_visedicts[i];
+        if (!ent || !ent->model || ent->curstate.rendermode != kRenderNormal ||
+            ent->model->type == mod_sprite || R_IsViewmodelAttachment(ent))
+            continue;
+        ShadowCache::Caster caster;
+        caster.id    = reinterpret_cast<uintptr_t>(ent);
+        caster.model = reinterpret_cast<uintptr_t>(ent->model);
+        caster.body  = ent->curstate.body;
+        caster.skin  = ent->curstate.skin;
+        // Both Studio poses and brush alpha textures may animate without any
+        // network field changing. Keep them volatile in this first version.
+        if (ent->model->type == mod_brush)
+        {
+            float matrix[4][4];
+            R_RotateForEntity(ent, matrix);
+            memcpy(caster.transform.data(), matrix, sizeof(matrix));
+            auto model = R_GetWorldSurfaceModel(ent->model);
+            if (model && model->m_pShadowProxyDraws.empty())
+            {
+                ShadowCache::Bounds local;
+                local.Add({ent->model->mins[0], ent->model->mins[1], ent->model->mins[2]});
+                local.Add({ent->model->maxs[0], ent->model->maxs[1], ent->model->maxs[2]});
+                caster.bounds = ShadowCache::TransformBounds(local, &matrix[0][0]);
+            }
+        }
+        else if (ent->model->type == mod_studio && ent->curstate.movetype != MOVETYPE_FOLLOW && ent->curstate.renderfx == 0)
+        {
+            // Use the normal Studio dispatch and bone cache, but suppress events
+            // and intercept RenderFinal before any GPU drawing. Attachments and
+            // unusual render effects deliberately retain unbounded fallback.
+            (*currententity)         = ent;
+            s_collectingCaster       = &caster;
+            s_collectingBoundsFailed = false;
+            R_DrawCurrentEntity(false);
+            s_collectingCaster = nullptr;
+            if (s_collectingBoundsFailed)
+                caster.bounds.valid = false;
+        }
+        if (caster.bounds.valid)
+        {
+            // Cover floating-point differences between CPU and shader skinning.
+            constexpr float boundsMargin = 1.0f;
+            for (int axis = 0; axis < 3; ++axis)
+            {
+                caster.bounds.mins[axis] -= boundsMargin;
+                caster.bounds.maxs[axis] += boundsMargin;
+            }
+        }
+        s_shadowCasters.push_back(caster);
+    }
+    (*currententity)     = savedEntity;
+    (*pstudiohdr)        = savedHeader;
+    (*psubmodel)         = savedSubmodel;
+    r_draw_shadowview    = savedShadow;
+    r_draw_nofrustumcull = savedCull;
+}
+
+bool R_ShouldDrawCachedShadowEntity(cl_entity_t* ent)
+{
+    if (!s_activeShadowCache)
+        return true;
+    const bool draw = s_activeShadowCache->shadowCache.Dirty() && s_activeShadowCache->shadowCache.Contains(reinterpret_cast<uintptr_t>(ent));
+    if (draw)
+        ++s_shadowCacheStats.submissions;
+    return draw;
+}
+
+// R_RenderScene invokes this immediately before the client-owned opaque draw.
+// Restoring the entity-only image also removes last frame's custom geometry.
+void R_FinishShadowCasterPass()
+{
+    if (!s_activeShadowCache)
+        return;
+    auto& light  = *s_activeShadowCache;
+    auto  output = light.pDynamicShadowTexture;
+    auto  cached = light.pShadowCasterCache;
+    if (light.shadowCache.Dirty())
+        ++s_shadowCacheStats.updates;
+    else
+        ++s_shadowCacheStats.reused;
+    ShadowCache::FinishCasterDepth(light.shadowCache, output->GetDepthTexture(), cached->GetDepthTexture(),
+                                   output->IsCubemap(), output->GetTextureSize());
+    // Do not filter entities submitted by the opaque client callback itself.
+    s_activeShadowCache = nullptr;
+}
 
 class CBaseShadowTexture : public IShadowTexture
 {
@@ -302,7 +518,8 @@ std::shared_ptr<IShadowTexture> R_CreateCubemapShadowTexture(uint32_t size, bool
 
 void R_InitShadow(void)
 {
-    r_shadow = gEngfuncs.pfnRegisterVariable("r_shadow", "1", FCVAR_ARCHIVE | FCVAR_CLIENTDLL);
+    r_shadow      = gEngfuncs.pfnRegisterVariable("r_shadow", "1", FCVAR_ARCHIVE | FCVAR_CLIENTDLL);
+    s_shadowCache = gEngfuncs.pfnRegisterVariable("r_shadow_cache", "1", FCVAR_ARCHIVE | FCVAR_CLIENTDLL);
 }
 
 void R_ShutdownShadow(void)
@@ -405,6 +622,45 @@ void R_SetupShadowMatrix(float out[4][4], const float worldMatrix[4][4], const f
 
     // Then multiply bias matrix with the result
     Matrix4x4_Multiply(out, projWorldMatrix, (const float (*)[4])bias);
+}
+
+static ShadowCache::Light R_ShadowCacheKey(const CDynamicLight& light)
+{
+    ShadowCache::Light key;
+    key.origin       = {light.origin[0], light.origin[1], light.origin[2]};
+    key.spot         = light.type == DynamicLightType_Spot;
+    key.range        = key.spot ? light.distance : light.size;
+    key.size         = light.dynamic_shadow_size;
+    key.staticSize   = light.static_shadow_size;
+    key.worldEnabled = !(*r_refdef.onlyClientDraws);
+    if (key.spot)
+    {
+        AngleVectors(light.angles, key.forward.data(), key.right.data(), key.up.data());
+        key.coneTangent = tanf(light.coneAngle);
+    }
+    if (light.source_entity_index && (key.spot || key.staticSize > 0))
+        key.source = reinterpret_cast<uintptr_t>(gEngfuncs.GetEntityByIndex(light.source_entity_index));
+    return key;
+}
+
+static void R_BeginShadowCasterCache(CDynamicLight* light)
+{
+    s_activeShadowCache = nullptr;
+    if (!light || !s_shadowCache->value || !glCopyImageSubData)
+        return;
+    auto  output = light->pDynamicShadowTexture;
+    auto& cached = light->pShadowCasterCache;
+    if (!cached || cached->IsCubemap() != output->IsCubemap() || cached->GetTextureSize() != output->GetTextureSize())
+    {
+        cached = output->IsCubemap() ? R_CreateCubemapShadowTexture(output->GetTextureSize(), false) :
+                                       R_CreateSingleShadowTexture(output->GetTextureSize(), false);
+        light->shadowCache.Invalidate();
+        // Allocation follows Prepare; recompute so an uninitialized cache is
+        // never copied to the live shadow image.
+        light->shadowCache.Prepare(R_ShadowCacheKey(*light), s_shadowCasters, true);
+    }
+    if (cached)
+        s_activeShadowCache = light;
 }
 
 void R_RenderShadowmapForDynamicLights(void)
@@ -554,6 +810,8 @@ void R_RenderShadowmapForDynamicLights(void)
 
                     const auto& pCurrentShadowTexture = (*args->ppDynamicShadowTexture);
 
+                    R_BeginShadowCasterCache(args->light);
+
                     pCurrentShadowTexture->SetViewport(0, 0, pCurrentShadowTexture->GetTextureSize(), pCurrentShadowTexture->GetTextureSize());
 
                     GL_BeginDebugGroup("PointlightDynamicShadowPass");
@@ -638,6 +896,8 @@ void R_RenderShadowmapForDynamicLights(void)
                     {
                         auto old_draw_classify = r_draw_classify;
                         r_draw_classify        = DRAW_CLASSIFY_WORLD | DRAW_CLASSIFY_OPAQUE_ENTITIES;
+                        if (s_activeShadowCache && !s_activeShadowCache->shadowCache.Dirty())
+                            r_draw_classify &= ~DRAW_CLASSIFY_WORLD;
 
                         R_RenderScene();
 
@@ -676,6 +936,8 @@ void R_RenderShadowmapForDynamicLights(void)
                     r_draw_lineardepth = true;
 
                     const auto& pCurrentShadowTexture = (*args->ppDynamicShadowTexture);
+
+                    R_BeginShadowCasterCache(args->light);
 
                     pCurrentShadowTexture->SetViewport(0, 0, pCurrentShadowTexture->GetTextureSize(), pCurrentShadowTexture->GetTextureSize());
 
@@ -730,6 +992,8 @@ void R_RenderShadowmapForDynamicLights(void)
                         r_draw_classify &= ~DRAW_CLASSIFY_PARTICLES;
                         r_draw_classify &= ~DRAW_CLASSIFY_DECAL;
                         r_draw_classify &= ~DRAW_CLASSIFY_WATER;
+                        if (s_activeShadowCache && !s_activeShadowCache->shadowCache.Dirty())
+                            r_draw_classify &= ~DRAW_CLASSIFY_WORLD;
 
                         if (args->sourceEntityIndex != 0)
                         {
@@ -1037,15 +1301,43 @@ void R_RenderShadowmapForDynamicLights(void)
 
 void R_ResetShadowTextures(void)
 {
+    s_shadowCacheStats         = {};
+    const auto prepareStart    = std::chrono::steady_clock::now();
+    const bool cacheEnabled    = s_shadowCache->value && glCopyImageSubData;
+    const bool hasLocalShadows = std::any_of(g_VisibleDynamicLights.begin(), g_VisibleDynamicLights.end(), [](const auto& entry) {
+        return entry.m_pDynamicLight && entry.m_pDynamicLight->type != DynamicLightType_Directional &&
+            entry.m_pDynamicLight->shadow > 0 && entry.m_pDynamicLight->dynamic_shadow_size > 0;
+    });
+    if (cacheEnabled && hasLocalShadows)
+        R_PrepareShadowCasters();
+    bool animatedWorld = false;
+    if ((*cl_worldmodel))
+        for (int i = 0; i < (*cl_worldmodel)->numtextures; ++i)
+            if ((*cl_worldmodel)->textures[i] && (*cl_worldmodel)->textures[i]->anim_total)
+                animatedWorld = true;
     for (size_t i = 0; i < g_VisibleDynamicLights.size(); ++i)
     {
         auto& entry = g_VisibleDynamicLights[i];
+
+        if (entry.m_pDynamicLight && entry.m_pDynamicLight->type != DynamicLightType_Directional)
+        {
+            auto& light = *entry.m_pDynamicLight;
+            auto  key   = R_ShadowCacheKey(light);
+            if ((!light.shadowProjectionValid || !(light.shadowProjection == key)) && light.pStaticShadowTexture)
+                light.pStaticShadowTexture->SetReady(false);
+            light.shadowProjection      = key;
+            light.shadowProjectionValid = true;
+            light.shadowCache.Prepare(key, s_shadowCasters, !cacheEnabled || (*r_refdef.onlyClientDraws) || (animatedWorld && (key.spot || key.staticSize == 0)));
+            if (!cacheEnabled)
+                light.shadowCache.Invalidate();
+        }
 
         if (entry.m_pDynamicLight && entry.m_pDynamicLight->pDynamicShadowTexture)
         {
             entry.m_pDynamicLight->pDynamicShadowTexture->SetReady(false);
         }
     }
+    s_shadowCacheStats.prepareMilliseconds = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - prepareStart).count();
 }
 
 /*
@@ -1056,10 +1348,20 @@ void R_ResetShadowTextures(void)
 
 void R_RenderShadowMap(void)
 {
-    R_ResetShadowTextures();
-
-    if ((int)r_shadow->value > 0)
+    if (R_ShouldRenderShadow() && R_CanRenderGBuffer())
     {
+        R_ResetShadowTextures();
         R_RenderShadowmapForDynamicLights();
+        if (s_shadowCache->value >= 2)
+        {
+            static double lastReport = -1;
+            if ((*cl_time) < lastReport || (*cl_time) - lastReport >= 1)
+            {
+                lastReport = (*cl_time);
+                gEngfuncs.Con_Printf("Shadow cache: updated %d, reused %d, caster submissions %d, bone boxes %d, prepare %.3f ms\n",
+                                     s_shadowCacheStats.updates, s_shadowCacheStats.reused, s_shadowCacheStats.submissions,
+                                     s_shadowCacheStats.boneBoxes, s_shadowCacheStats.prepareMilliseconds);
+            }
+        }
     }
 }

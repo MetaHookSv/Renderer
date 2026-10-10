@@ -47,3 +47,13 @@ add_test(NAME gl_parallel_shader_compile_tests COMMAND gl_parallel_shader_compil
 # (WGL reports no OpenGL support, e.g. headless CI) exit with this code so CTest
 # marks the test skipped instead of failing the build.
 set_tests_properties(gl_parallel_shader_compile_tests PROPERTIES SKIP_RETURN_CODE 2)
+
+# Real cs_assault geometry and lights, comparing cached depth with an uncached
+# oracle on the GPU. No engine ABI stubs or test copies of the cache policy.
+add_executable(gl_shadow_cache_tests gl_shadow_cache_tests.cpp "${TINYOBJLOADER_SOURCE_PATH}/tiny_obj_loader.cc")
+target_compile_definitions(gl_shadow_cache_tests PRIVATE GLEW_STATIC GLFW_INCLUDE_NONE)
+target_link_libraries(gl_shadow_cache_tests PRIVATE renderer_settings libglew_static glfw)
+add_test(NAME gl_shadow_cache_tests COMMAND gl_shadow_cache_tests
+    "${PROJECT_SOURCE_DIR}/assets/cstrike/maps/cs_assault_shadow.obj"
+    "${PROJECT_SOURCE_DIR}/assets/cstrike/maps/cs_assault_entity.txt")
+set_tests_properties(gl_shadow_cache_tests PROPERTIES SKIP_RETURN_CODE 2 TIMEOUT 180)

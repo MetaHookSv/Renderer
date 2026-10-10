@@ -5,6 +5,7 @@
 
 #    include "gl_cvar.h"
 #    include "gl_draw.h"
+#    include "shadow_cache.h"
 #    include <vector>
 #    include <set>
 #    include <unordered_map>
@@ -145,6 +146,11 @@ public:
 class CStudioModelRenderData
 {
 public:
+    // Local-space vertex bounds per bone, built once and owned by the same
+    // resource as the meshes (including model reload/eviction lifetime).
+    std::array<ShadowCache::Bounds, 128> shadowBoneBounds;
+    bool                                 shadowBoneBoundsPrepared = false;
+    bool                                 shadowBoneBoundsValid    = false;
     CStudioModelRenderData(model_t* mod) : BodyModel(mod)
     {
     }
@@ -205,6 +211,9 @@ class CStudioSkinCache
 public:
     skin_t skins[MAX_SKINS];
 };
+
+std::shared_ptr<CStudioModelRenderData> R_GetStudioRenderDataFromStudioHeaderFast(studiohdr_t* studiohdr);
+std::shared_ptr<CStudioModelRenderData> R_GetStudioRenderDataFromStudioHeaderSlow(studiohdr_t* studiohdr);
 
 class CStudioBoneCacheHandle
 {

@@ -66,6 +66,7 @@ K --> L["CalcShadowIntensityLinear"]
 - `R_SetupPerspective()`, `R_SetupShadowMatrix()`, and the spotlight branch in the deferred-lighting shader.
 
 ## Notes
+- Local-light cache support shares the conservative policy with point lights (`src/shadow_cache.h`). The key includes origin, cone orientation/angle, distance and texture settings. World/entity depth is cached together; client opaque drawing is replayed over restored depth every frame. World texture animation forces conservative refresh. See `tests/shadow_cache.md` for automated and manual coverage.
 - Spotlights currently implement only dynamic single-layer shadows. Although the parameter structure contains `ppStaticShadowTexture`, the generation and shading paths do not actually use static spotlight shadows.
 - Spotlight shadow comparison uses `CalcShadowIntensityLinear()`, unlike directional-light nonlinear projected sampling.
 - In the local player's first-person view, the flashlight first tries the weapon attachment, then falls back to the view origin plus left/right-hand offsets.

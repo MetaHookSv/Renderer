@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include "shadow_cache.h"
 
 enum DynamicLightType
 {
@@ -34,6 +35,12 @@ public:
     std::shared_ptr<IShadowTexture> pStaticShadowTexture;
     std::shared_ptr<IShadowTexture> pDynamicShadowTexture;
     int                             source_entity_index{};
+    // The cached image excludes client DrawNormalTriangles, which is replayed
+    // over a fresh copy every frame because it has no invalidation contract.
+    ShadowCache::Cache              shadowCache;
+    std::shared_ptr<IShadowTexture> pShadowCasterCache;
+    ShadowCache::Light              shadowProjection;
+    bool                            shadowProjectionValid = false;
 };
 
 class CVisibleDynamicLightEntry
@@ -87,8 +94,9 @@ extern bool r_draw_gbuffer;
 
 typedef struct PointLightCallbackArgs_s
 {
-    vec3_t origin{};
-    float  radius{};
+    CDynamicLight* light{};
+    vec3_t         origin{};
+    float          radius{};
 
     vec3_t color{};
     float  ambient{};
@@ -110,11 +118,12 @@ typedef void (*fnPointLightCallback)(PointLightCallbackArgs* args, void* context
 
 typedef struct SpotLightCallbackArgs_s
 {
-    vec3_t origin{};
-    vec3_t angles{};
-    float  radius{};
-    float  distance{};
-    float  coneAngle{};
+    CDynamicLight* light{};
+    vec3_t         origin{};
+    vec3_t         angles{};
+    float          radius{};
+    float          distance{};
+    float          coneAngle{};
 
     vec3_t color{};
     float  ambient{};
