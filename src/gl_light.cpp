@@ -817,6 +817,7 @@ void R_IterateVisibleDynamicLights(
         if (dynamicLight->type == DynamicLightType_Point)
         {
             PointLightCallbackArgs args{};
+            args.light = dynamicLight.get();
 
             args.radius = dynamicLight->size;
             VectorCopy(dynamicLight->origin, args.origin);
@@ -843,6 +844,7 @@ void R_IterateVisibleDynamicLights(
         else if (dynamicLight->type == DynamicLightType_Spot)
         {
             SpotLightCallbackArgs args{};
+            args.light = dynamicLight.get();
 
             args.radius    = dynamicLight->size;
             args.distance  = dynamicLight->distance;

@@ -3375,6 +3375,8 @@ void studioapi_RestoreRenderer(void)
 
 qboolean studioapi_StudioCheckBBox(void)
 {
+    if (R_IsCollectingShadowCasters())
+        return true;
     if (!g_bIsSvenCoop)
     {
         return gPrivateFuncs.studioapi_StudioCheckBBox();
@@ -3540,6 +3542,11 @@ void studioapi_StudioDynamicLight(cl_entity_t* ent, alight_t* plight)
 template <typename CallType>
 __forceinline void StudioRenderFinal_Template(CallType pfnRenderFinal, void* pthis = nullptr, int dummy = 0)
 {
+    if (R_IsCollectingShadowCasters())
+    {
+        R_CollectStudioShadowBounds();
+        return;
+    }
     pfnRenderFinal(pthis, 0);
 }
 

@@ -2233,6 +2233,7 @@ void R_DrawBrushEntity(bool bTransparent)
 
 void R_DrawStudioEntity(bool bTransparent)
 {
+    const int studioFlags = STUDIO_RENDER | (R_IsCollectingShadowCasters() ? 0 : STUDIO_EVENTS);
     if ((*currententity)->player)
     {
         auto state = R_GetPlayerState((*currententity)->index - 1);
@@ -2250,7 +2251,7 @@ void R_DrawStudioEntity(bool bTransparent)
         }
         else
         {
-            (*gpStudioInterface)->StudioDrawPlayer(STUDIO_RENDER | STUDIO_EVENTS, state);
+            (*gpStudioInterface)->StudioDrawPlayer(studioFlags, state);
         }
     }
     else
@@ -2331,20 +2332,20 @@ void R_DrawStudioEntity(bool bTransparent)
                     return;
 
                 GL_BeginDebugGroupFormat("StudioDrawPlayer - %s", (*currententity)->model->name);
-                (*gpStudioInterface)->StudioDrawPlayer(STUDIO_RENDER | STUDIO_EVENTS, state);
+                (*gpStudioInterface)->StudioDrawPlayer(studioFlags, state);
                 GL_EndDebugGroup();
             }
             else
             {
                 GL_BeginDebugGroupFormat("StudioDrawModel - %s", (*currententity)->model->name);
-                (*gpStudioInterface)->StudioDrawModel(STUDIO_RENDER | STUDIO_EVENTS);
+                (*gpStudioInterface)->StudioDrawModel(studioFlags);
                 GL_EndDebugGroup();
             }
         }
         else
         {
             GL_BeginDebugGroupFormat("StudioDrawModel - %s", (*currententity)->model->name);
-            (*gpStudioInterface)->StudioDrawModel(STUDIO_RENDER | STUDIO_EVENTS);
+            (*gpStudioInterface)->StudioDrawModel(studioFlags);
             GL_EndDebugGroup();
         }
     }
@@ -4525,7 +4526,8 @@ void R_DrawEntitiesOnList(void)
         if ((*currententity)->model &&
             (*currententity)->model->type != mod_sprite)
         {
-            R_DrawCurrentEntity(false);
+            if (R_ShouldDrawCachedShadowEntity((*currententity)))
+                R_DrawCurrentEntity(false);
         }
 
         if (r_draw_deferredtrans)
@@ -4641,6 +4643,7 @@ void R_EndRenderOpaque(void)
 
 void ClientDLL_DrawNormalTriangles(void)
 {
+    R_FinishShadowCasterPass();
     GL_BeginDebugGroup("ClientDLL_DrawNormalTriangles");
     //Good news: Stencil write has been completely removed from portal code.
 
