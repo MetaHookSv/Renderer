@@ -99,6 +99,12 @@ void IPluginsV4::LoadEngine(cl_enginefunc_t* pEngfuncs)
 
 void IPluginsV4::LoadClient(cl_exportfuncs_t* pExportFunc)
 {
+    if (!strcmp(gEngfuncs.pfnGetGameDirectory(), "cryoffear"))
+    {
+        Sys_Error("Renderer does not support Cry of Fear.\nPlease disable Renderer.dll in the MetaHook plugin list.");
+        return;
+    }
+
     int bbp        = 0;
     int iVideoMode = g_pMetaHookAPI->GetVideoMode(&glwidth, &glheight, &bbp, NULL);
 
