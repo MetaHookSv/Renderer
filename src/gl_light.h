@@ -35,12 +35,16 @@ public:
     std::shared_ptr<IShadowTexture> pStaticShadowTexture;
     std::shared_ptr<IShadowTexture> pDynamicShadowTexture;
     int                             source_entity_index{};
-    // The cached image excludes client DrawNormalTriangles, which is replayed
-    // over a fresh copy every frame because it has no invalidation contract.
+
+    // Local light shadow cache, see gl_shadow.cpp.
+    // pShadowCasterCache keeps the world + entity depth of the last redraw.
+    // Client triangles are never part of it, they are drawn again every frame.
     ShadowCache::Cache              shadowCache;
     std::shared_ptr<IShadowTexture> pShadowCasterCache;
-    ShadowCache::Light              shadowProjection;
-    bool                            shadowProjectionValid = false;
+
+    // Light parameters of the last frame, used to invalidate the static layer.
+    ShadowCache::Light shadowProjection;
+    bool               shadowProjectionValid = false;
 };
 
 class CVisibleDynamicLightEntry

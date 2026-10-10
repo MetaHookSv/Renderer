@@ -1,224 +1,326 @@
 #include "gl_local.h"
 #include <sstream>
 #include <math.h>
-#include "shadow_cache_gl.h"
 #include <chrono>
+#include "shadow_cache_gl.h"
 
 //cvar
-cvar_t*                                 r_shadow      = NULL;
-static cvar_t*                          s_shadowCache = nullptr;
-static std::vector<ShadowCache::Caster> s_shadowCasters;
-static ShadowCache::Caster*             s_collectingCaster       = nullptr;
-static bool                             s_collectingBoundsFailed = false;
-static CDynamicLight*                   s_activeShadowCache      = nullptr;
-static struct
-{
-    int    updates = 0, reused = 0, submissions = 0, boneBoxes = 0;
-    double prepareMilliseconds = 0;
-} s_shadowCacheStats;
+cvar_t*        r_shadow       = NULL;
+static cvar_t* r_shadow_cache = NULL;
 
-bool R_IsCollectingShadowCasters()
+// Studio and brush casters around the camera, rebuilt once per frame.
+static std::vector<ShadowCache::Caster> s_shadowCasters;
+
+// Set while R_PrepareShadowCasters runs a Studio model through the normal
+// draw path only to compute its bounds.
+static ShadowCache::Caster* s_pCollectingCaster       = nullptr;
+static bool                 s_bCollectingBoundsFailed = false;
+
+// Light whose dynamic shadow pass is currently drawing with the cache.
+static CDynamicLight* s_pCachedShadowLight = nullptr;
+
+// Expanded on all sides of a caster's bounds, so that small differences
+// between CPU and GPU skinning never cull a caster that is actually visible.
+static constexpr float SHADOW_CASTER_BOUNDS_MARGIN = 1.0f;
+
+struct ShadowCacheStats_t
 {
-    return s_collectingCaster != nullptr;
+    int    updates             = 0;
+    int    reused              = 0;
+    int    submissions         = 0;
+    int    boneBoxes           = 0;
+    double prepareMilliseconds = 0;
+};
+
+static ShadowCacheStats_t s_ShadowCacheStats;
+
+bool R_IsCollectingShadowCasters(void)
+{
+    return s_pCollectingCaster != nullptr;
 }
 
-// Called instead of StudioRenderFinal during a pose-only preparation pass.
-// Include every bodygroup: changing body/skin or a merged weapon cannot shrink
-// the bound below the actual mesh. Never infer bounds from the collision hull.
-static void R_BuildStudioShadowBounds(CStudioModelRenderData* renderData)
+static bool R_IsStudioRangeValid(const studiohdr_t* hdr, int offset, int count, size_t stride)
+{
+    if (offset < 0 || count < 0)
+        return false;
+
+    const auto length = static_cast<size_t>(hdr->length);
+    if (static_cast<size_t>(offset) > length)
+        return false;
+
+    return static_cast<size_t>(count) <= (length - offset) / stride;
+}
+
+/*
+    Build the local-space bounds of the vertices skinned to each bone.
+
+    All bodygroups are included, so switching body/skin can never make the
+    bounds smaller than the mesh actually drawn. The collision hull is not used.
+*/
+static bool R_BuildStudioShadowBounds(studiohdr_t* hdr, CStudioModelRenderData* pRenderData)
+{
+    if (hdr->length < static_cast<int>(sizeof(studiohdr_t)))
+        return false;
+
+    if (!R_IsStudioRangeValid(hdr, hdr->bodypartindex, hdr->numbodyparts, sizeof(mstudiobodyparts_t)))
+        return false;
+
+    auto base  = reinterpret_cast<byte*>(hdr);
+    auto parts = reinterpret_cast<mstudiobodyparts_t*>(base + hdr->bodypartindex);
+
+    for (int i = 0; i < hdr->numbodyparts; ++i)
+    {
+        const auto& part = parts[i];
+
+        if (!R_IsStudioRangeValid(hdr, part.modelindex, part.nummodels, sizeof(mstudiomodel_t)))
+            return false;
+
+        auto models = reinterpret_cast<mstudiomodel_t*>(base + part.modelindex);
+
+        for (int j = 0; j < part.nummodels; ++j)
+        {
+            const auto& model = models[j];
+
+            if (!R_IsStudioRangeValid(hdr, model.vertindex, model.numverts, sizeof(vec3_t)))
+                return false;
+
+            if (!R_IsStudioRangeValid(hdr, model.vertinfoindex, model.numverts, sizeof(byte)))
+                return false;
+
+            auto vertices    = reinterpret_cast<vec3_t*>(base + model.vertindex);
+            auto vertexBones = base + model.vertinfoindex;
+
+            for (int k = 0; k < model.numverts; ++k)
+            {
+                const auto& v    = vertices[k];
+                const int   bone = vertexBones[k];
+
+                if (bone >= hdr->numbones)
+                    return false;
+
+                if (!std::isfinite(v[0]) || !std::isfinite(v[1]) || !std::isfinite(v[2]))
+                    return false;
+
+                pRenderData->shadowBoneBounds[bone].Add({v[0], v[1], v[2]});
+            }
+        }
+    }
+
+    return true;
+}
+
+static bool R_AddStudioShadowBounds(ShadowCache::Bounds& bounds)
 {
     auto hdr = (*pstudiohdr);
-    if (!s_collectingCaster || !hdr || hdr->numbones <= 0 || hdr->numbones > 128)
-    {
-        s_collectingBoundsFailed = true;
-        return;
-    }
-    auto range = [hdr](int offset, int count, size_t stride) {
-        return offset >= 0 && count >= 0 && static_cast<size_t>(offset) <= static_cast<size_t>(hdr->length) &&
-            static_cast<size_t>(count) <= (static_cast<size_t>(hdr->length) - offset) / stride;
-    };
-    if (hdr->length < static_cast<int>(sizeof(studiohdr_t)) || !range(hdr->bodypartindex, hdr->numbodyparts, sizeof(mstudiobodyparts_t)))
-    {
-        s_collectingBoundsFailed = true;
-        return;
-    }
-    auto parts = reinterpret_cast<mstudiobodyparts_t*>(reinterpret_cast<byte*>(hdr) + hdr->bodypartindex);
-    for (int part = 0; part < hdr->numbodyparts; ++part)
-    {
-        if (!range(parts[part].modelindex, parts[part].nummodels, sizeof(mstudiomodel_t)))
-        {
-            s_collectingBoundsFailed = true;
-            return;
-        }
-        auto models = reinterpret_cast<mstudiomodel_t*>(reinterpret_cast<byte*>(hdr) + parts[part].modelindex);
-        for (int model = 0; model < parts[part].nummodels; ++model)
-        {
-            const auto& mesh = models[model];
-            if (!range(mesh.vertindex, mesh.numverts, sizeof(vec3_t)) || !range(mesh.vertinfoindex, mesh.numverts, sizeof(byte)))
-            {
-                s_collectingBoundsFailed = true;
-                return;
-            }
-            auto vertices = reinterpret_cast<vec3_t*>(reinterpret_cast<byte*>(hdr) + mesh.vertindex);
-            auto bones    = reinterpret_cast<byte*>(hdr) + mesh.vertinfoindex;
-            for (int vertex = 0; vertex < mesh.numverts; ++vertex)
-            {
-                if (bones[vertex] >= hdr->numbones)
-                {
-                    s_collectingBoundsFailed = true;
-                    return;
-                }
-                for (int axis = 0; axis < 3; ++axis)
-                    if (!std::isfinite(vertices[vertex][axis]))
-                    {
-                        s_collectingBoundsFailed = true;
-                        return;
-                    }
-                renderData->shadowBoneBounds[bones[vertex]].Add({vertices[vertex][0], vertices[vertex][1], vertices[vertex][2]});
-            }
-        }
-    }
-    renderData->shadowBoneBoundsValid = true;
-}
+    if (!hdr)
+        return false;
 
-void R_CollectStudioShadowBounds()
-{
-    auto hdr  = (*pstudiohdr);
-    auto data = hdr ? R_GetStudioRenderDataFromStudioHeaderFast(hdr) : nullptr;
-    if (!data && hdr)
-        data = R_GetStudioRenderDataFromStudioHeaderSlow(hdr);
-    if (!s_collectingCaster || !data || hdr->numbones <= 0 || hdr->numbones > 128)
+    auto pRenderData = R_GetStudioRenderDataFromStudioHeaderFast(hdr);
+    if (!pRenderData)
+        pRenderData = R_GetStudioRenderDataFromStudioHeaderSlow(hdr);
+    if (!pRenderData)
+        return false;
+
+    if (hdr->numbones <= 0 || hdr->numbones > MAXSTUDIOBONES)
+        return false;
+
+    // Per-bone bounds only depend on the model, so build them once.
+    if (!pRenderData->shadowBoneBoundsPrepared)
     {
-        s_collectingBoundsFailed = true;
-        return;
+        pRenderData->shadowBoneBoundsPrepared = true;
+        pRenderData->shadowBoneBoundsValid    = R_BuildStudioShadowBounds(hdr, pRenderData.get());
     }
-    if (!data->shadowBoneBoundsPrepared)
-    {
-        data->shadowBoneBoundsPrepared = true;
-        R_BuildStudioShadowBounds(data.get());
-    }
-    if (!data->shadowBoneBoundsValid)
-    {
-        s_collectingBoundsFailed = true;
-        return;
-    }
+
+    if (!pRenderData->shadowBoneBoundsValid)
+        return false;
+
     for (int bone = 0; bone < hdr->numbones; ++bone)
     {
-        const auto& bounds = data->shadowBoneBounds[bone];
-        if (!bounds.valid)
+        const auto& boneBounds = pRenderData->shadowBoneBounds[bone];
+        if (!boneBounds.valid)
             continue;
-        ++s_shadowCacheStats.boneBoxes;
+
+        ++s_ShadowCacheStats.boneBoxes;
+
         const auto& matrix      = (*pbonetransform)[bone];
-        auto        transformed = ShadowCache::TransformBounds(bounds, &matrix[0][0]);
+        auto        transformed = ShadowCache::TransformBounds(boneBounds, &matrix[0][0]);
         if (!transformed.valid)
-        {
-            s_collectingBoundsFailed = true;
-            return;
-        }
-        s_collectingCaster->bounds.Add(transformed.mins);
-        s_collectingCaster->bounds.Add(transformed.maxs);
+            return false;
+
+        bounds.Add(transformed.mins);
+        bounds.Add(transformed.maxs);
     }
+
+    return true;
+}
+
+// Replaces StudioRenderFinal while collecting casters. By this point the bone
+// transforms are set up, so no drawing is needed to get the posed bounds.
+void R_CollectStudioShadowBounds(void)
+{
+    if (!s_pCollectingCaster || !R_AddStudioShadowBounds(s_pCollectingCaster->bounds))
+        s_bCollectingBoundsFailed = true;
+}
+
+static void R_ComputeBrushCasterBounds(cl_entity_t* ent, ShadowCache::Caster& caster)
+{
+    float matrix[4][4];
+    R_RotateForEntity(ent, matrix);
+    memcpy(caster.transform.data(), matrix, sizeof(matrix));
+
+    // Leave the bounds unknown if the model is drawn through shadow proxies.
+    auto pWorldModel = R_GetWorldSurfaceModel(ent->model);
+    if (!pWorldModel || !pWorldModel->m_pShadowProxyDraws.empty())
+        return;
+
+    ShadowCache::Bounds local;
+    local.Add({ent->model->mins[0], ent->model->mins[1], ent->model->mins[2]});
+    local.Add({ent->model->maxs[0], ent->model->maxs[1], ent->model->maxs[2]});
+    caster.bounds = ShadowCache::TransformBounds(local, &matrix[0][0]);
+}
+
+static void R_ComputeStudioCasterBounds(cl_entity_t* ent, ShadowCache::Caster& caster)
+{
+    // Run the normal Studio draw path so the bone cache is used as usual.
+    // Events are suppressed and StudioRenderFinal is replaced by
+    // R_CollectStudioShadowBounds, so nothing is drawn.
+    (*currententity)          = ent;
+    s_pCollectingCaster       = &caster;
+    s_bCollectingBoundsFailed = false;
+
+    R_DrawCurrentEntity(false);
+
+    s_pCollectingCaster = nullptr;
+
+    if (s_bCollectingBoundsFailed)
+        caster.bounds.valid = false;
 }
 
 static void R_PrepareShadowCasters()
 {
     s_shadowCasters.clear();
+
     if (!r_drawentities->value || (*r_refdef.onlyClientDraws))
         return;
 
-    const auto savedEntity   = (*currententity);
-    const auto savedHeader   = (*pstudiohdr);
-    const auto savedSubmodel = (*psubmodel);
-    const auto savedShadow   = r_draw_shadowview;
-    const auto savedCull     = r_draw_nofrustumcull;
-    r_draw_shadowview        = true;
-    r_draw_nofrustumcull     = true;
+    const auto savedEntity        = (*currententity);
+    const auto savedStudioHeader  = (*pstudiohdr);
+    const auto savedSubmodel      = (*psubmodel);
+    const auto savedShadowView    = r_draw_shadowview;
+    const auto savedNoFrustumCull = r_draw_nofrustumcull;
+
+    r_draw_shadowview    = true;
+    r_draw_nofrustumcull = true;
+
     for (int i = 0; i < (*cl_numvisedicts); ++i)
     {
         auto ent = cl_visedicts[i];
-        if (!ent || !ent->model || ent->curstate.rendermode != kRenderNormal ||
-            ent->model->type == mod_sprite || R_IsViewmodelAttachment(ent))
+
+        if (!ent || !ent->model)
             continue;
+
+        if (ent->curstate.rendermode != kRenderNormal)
+            continue;
+
+        if (ent->model->type == mod_sprite)
+            continue;
+
+        if (R_IsViewmodelAttachment(ent))
+            continue;
+
         ShadowCache::Caster caster;
         caster.id    = reinterpret_cast<uintptr_t>(ent);
         caster.model = reinterpret_cast<uintptr_t>(ent->model);
         caster.body  = ent->curstate.body;
         caster.skin  = ent->curstate.skin;
-        // Both Studio poses and brush alpha textures may animate without any
-        // network field changing. Keep them volatile in this first version.
+
+        // Studio poses and animated brush textures can change without any
+        // entity state changing, so every caster stays volatile for now
+        // (volatileGeometry defaults to true).
         if (ent->model->type == mod_brush)
         {
-            float matrix[4][4];
-            R_RotateForEntity(ent, matrix);
-            memcpy(caster.transform.data(), matrix, sizeof(matrix));
-            auto model = R_GetWorldSurfaceModel(ent->model);
-            if (model && model->m_pShadowProxyDraws.empty())
-            {
-                ShadowCache::Bounds local;
-                local.Add({ent->model->mins[0], ent->model->mins[1], ent->model->mins[2]});
-                local.Add({ent->model->maxs[0], ent->model->maxs[1], ent->model->maxs[2]});
-                caster.bounds = ShadowCache::TransformBounds(local, &matrix[0][0]);
-            }
+            R_ComputeBrushCasterBounds(ent, caster);
         }
-        else if (ent->model->type == mod_studio && ent->curstate.movetype != MOVETYPE_FOLLOW && ent->curstate.renderfx == 0)
+        else if (ent->model->type == mod_studio)
         {
-            // Use the normal Studio dispatch and bone cache, but suppress events
-            // and intercept RenderFinal before any GPU drawing. Attachments and
-            // unusual render effects deliberately retain unbounded fallback.
-            (*currententity)         = ent;
-            s_collectingCaster       = &caster;
-            s_collectingBoundsFailed = false;
-            R_DrawCurrentEntity(false);
-            s_collectingCaster = nullptr;
-            if (s_collectingBoundsFailed)
-                caster.bounds.valid = false;
+            // Followers (attached models) and entities with renderfx keep
+            // unknown bounds, which are never culled.
+            if (ent->curstate.movetype != MOVETYPE_FOLLOW && ent->curstate.renderfx == 0)
+                R_ComputeStudioCasterBounds(ent, caster);
         }
+
         if (caster.bounds.valid)
         {
-            // Cover floating-point differences between CPU and shader skinning.
-            constexpr float boundsMargin = 1.0f;
             for (int axis = 0; axis < 3; ++axis)
             {
-                caster.bounds.mins[axis] -= boundsMargin;
-                caster.bounds.maxs[axis] += boundsMargin;
+                caster.bounds.mins[axis] -= SHADOW_CASTER_BOUNDS_MARGIN;
+                caster.bounds.maxs[axis] += SHADOW_CASTER_BOUNDS_MARGIN;
             }
         }
+
         s_shadowCasters.push_back(caster);
     }
+
     (*currententity)     = savedEntity;
-    (*pstudiohdr)        = savedHeader;
+    (*pstudiohdr)        = savedStudioHeader;
     (*psubmodel)         = savedSubmodel;
-    r_draw_shadowview    = savedShadow;
-    r_draw_nofrustumcull = savedCull;
+    r_draw_shadowview    = savedShadowView;
+    r_draw_nofrustumcull = savedNoFrustumCull;
+}
+
+// True when the current shadow pass reuses cached depth, so the world and
+// cached entities do not need to be drawn.
+static bool R_IsReusingCachedShadow()
+{
+    return s_pCachedShadowLight && !s_pCachedShadowLight->shadowCache.Dirty();
 }
 
 bool R_ShouldDrawCachedShadowEntity(cl_entity_t* ent)
 {
-    if (!s_activeShadowCache)
+    if (!s_pCachedShadowLight)
         return true;
-    const bool draw = s_activeShadowCache->shadowCache.Dirty() && s_activeShadowCache->shadowCache.Contains(reinterpret_cast<uintptr_t>(ent));
-    if (draw)
-        ++s_shadowCacheStats.submissions;
-    return draw;
+
+    const auto& cache = s_pCachedShadowLight->shadowCache;
+    if (!cache.Dirty())
+        return false;
+
+    if (!cache.Contains(reinterpret_cast<uintptr_t>(ent)))
+        return false;
+
+    ++s_ShadowCacheStats.submissions;
+    return true;
 }
 
-// R_RenderScene invokes this immediately before the client-owned opaque draw.
-// Restoring the entity-only image also removes last frame's custom geometry.
-void R_FinishShadowCasterPass()
+/*
+    Called right before ClientDLL_DrawNormalTriangles in the shadow pass.
+
+    Client triangles are not cached because there is no way to tell when they
+    change. The cache texture only ever holds world + entity depth, and the
+    client draws on top of it every frame. Copying the cache back also clears
+    whatever the client drew in the previous frame.
+*/
+void R_FinishShadowCasterPass(void)
 {
-    if (!s_activeShadowCache)
+    if (!s_pCachedShadowLight)
         return;
-    auto& light  = *s_activeShadowCache;
-    auto  output = light.pDynamicShadowTexture;
-    auto  cached = light.pShadowCasterCache;
+
+    auto& light   = *s_pCachedShadowLight;
+    auto  pOutput = light.pDynamicShadowTexture;
+    auto  pCached = light.pShadowCasterCache;
+
     if (light.shadowCache.Dirty())
-        ++s_shadowCacheStats.updates;
+        ++s_ShadowCacheStats.updates;
     else
-        ++s_shadowCacheStats.reused;
-    ShadowCache::FinishCasterDepth(light.shadowCache, output->GetDepthTexture(), cached->GetDepthTexture(),
-                                   output->IsCubemap(), output->GetTextureSize());
-    // Do not filter entities submitted by the opaque client callback itself.
-    s_activeShadowCache = nullptr;
+        ++s_ShadowCacheStats.reused;
+
+    ShadowCache::FinishCasterDepth(light.shadowCache,
+                                   pOutput->GetDepthTexture(),
+                                   pCached->GetDepthTexture(),
+                                   pOutput->IsCubemap(),
+                                   pOutput->GetTextureSize());
+
+    // Entities drawn by the client callback itself must not be filtered.
+    s_pCachedShadowLight = nullptr;
 }
 
 class CBaseShadowTexture : public IShadowTexture
@@ -518,8 +620,10 @@ std::shared_ptr<IShadowTexture> R_CreateCubemapShadowTexture(uint32_t size, bool
 
 void R_InitShadow(void)
 {
-    r_shadow      = gEngfuncs.pfnRegisterVariable("r_shadow", "1", FCVAR_ARCHIVE | FCVAR_CLIENTDLL);
-    s_shadowCache = gEngfuncs.pfnRegisterVariable("r_shadow_cache", "1", FCVAR_ARCHIVE | FCVAR_CLIENTDLL);
+    r_shadow = gEngfuncs.pfnRegisterVariable("r_shadow", "1", FCVAR_ARCHIVE | FCVAR_CLIENTDLL);
+
+    // 0 = off, 1 = on, 2 = on and print statistics about once a second
+    r_shadow_cache = gEngfuncs.pfnRegisterVariable("r_shadow_cache", "1", FCVAR_ARCHIVE | FCVAR_CLIENTDLL);
 }
 
 void R_ShutdownShadow(void)
@@ -624,43 +728,67 @@ void R_SetupShadowMatrix(float out[4][4], const float worldMatrix[4][4], const f
     Matrix4x4_Multiply(out, projWorldMatrix, (const float (*)[4])bias);
 }
 
-static ShadowCache::Light R_ShadowCacheKey(const CDynamicLight& light)
+static ShadowCache::Light R_GetShadowCacheKey(const CDynamicLight& light)
 {
     ShadowCache::Light key;
+
     key.origin       = {light.origin[0], light.origin[1], light.origin[2]};
-    key.spot         = light.type == DynamicLightType_Spot;
+    key.spot         = (light.type == DynamicLightType_Spot);
     key.range        = key.spot ? light.distance : light.size;
     key.size         = light.dynamic_shadow_size;
     key.staticSize   = light.static_shadow_size;
     key.worldEnabled = !(*r_refdef.onlyClientDraws);
+
     if (key.spot)
     {
         AngleVectors(light.angles, key.forward.data(), key.right.data(), key.up.data());
         key.coneTangent = tanf(light.coneAngle);
     }
+
+    // The source entity is hidden only in the spotlight pass and in the point
+    // light pass that has a static layer, see R_RenderShadowmapForDynamicLights.
     if (light.source_entity_index && (key.spot || key.staticSize > 0))
-        key.source = reinterpret_cast<uintptr_t>(gEngfuncs.GetEntityByIndex(light.source_entity_index));
+    {
+        auto sourceEntity = gEngfuncs.GetEntityByIndex(light.source_entity_index);
+        key.source        = reinterpret_cast<uintptr_t>(sourceEntity);
+    }
+
     return key;
+}
+
+static bool R_IsShadowCacheEnabled()
+{
+    return r_shadow_cache->value && glCopyImageSubData;
 }
 
 static void R_BeginShadowCasterCache(CDynamicLight* light)
 {
-    s_activeShadowCache = nullptr;
-    if (!light || !s_shadowCache->value || !glCopyImageSubData)
+    s_pCachedShadowLight = nullptr;
+
+    if (!light || !R_IsShadowCacheEnabled())
         return;
-    auto  output = light->pDynamicShadowTexture;
-    auto& cached = light->pShadowCasterCache;
-    if (!cached || cached->IsCubemap() != output->IsCubemap() || cached->GetTextureSize() != output->GetTextureSize())
+
+    auto  pOutput = light->pDynamicShadowTexture;
+    auto& pCached = light->pShadowCasterCache;
+
+    const bool bCubemap = pOutput->IsCubemap();
+    const auto size     = pOutput->GetTextureSize();
+
+    if (!pCached || pCached->IsCubemap() != bCubemap || pCached->GetTextureSize() != size)
     {
-        cached = output->IsCubemap() ? R_CreateCubemapShadowTexture(output->GetTextureSize(), false) :
-                                       R_CreateSingleShadowTexture(output->GetTextureSize(), false);
+        if (bCubemap)
+            pCached = R_CreateCubemapShadowTexture(size, false);
+        else
+            pCached = R_CreateSingleShadowTexture(size, false);
+
+        // The new texture holds no depth yet. Prepare() already ran this frame
+        // and may have decided to reuse the cache, so force a redraw.
         light->shadowCache.Invalidate();
-        // Allocation follows Prepare; recompute so an uninitialized cache is
-        // never copied to the live shadow image.
-        light->shadowCache.Prepare(R_ShadowCacheKey(*light), s_shadowCasters, true);
+        light->shadowCache.Prepare(R_GetShadowCacheKey(*light), s_shadowCasters, true);
     }
-    if (cached)
-        s_activeShadowCache = light;
+
+    if (pCached)
+        s_pCachedShadowLight = light;
 }
 
 void R_RenderShadowmapForDynamicLights(void)
@@ -896,7 +1024,7 @@ void R_RenderShadowmapForDynamicLights(void)
                     {
                         auto old_draw_classify = r_draw_classify;
                         r_draw_classify        = DRAW_CLASSIFY_WORLD | DRAW_CLASSIFY_OPAQUE_ENTITIES;
-                        if (s_activeShadowCache && !s_activeShadowCache->shadowCache.Dirty())
+                        if (R_IsReusingCachedShadow())
                             r_draw_classify &= ~DRAW_CLASSIFY_WORLD;
 
                         R_RenderScene();
@@ -992,7 +1120,7 @@ void R_RenderShadowmapForDynamicLights(void)
                         r_draw_classify &= ~DRAW_CLASSIFY_PARTICLES;
                         r_draw_classify &= ~DRAW_CLASSIFY_DECAL;
                         r_draw_classify &= ~DRAW_CLASSIFY_WATER;
-                        if (s_activeShadowCache && !s_activeShadowCache->shadowCache.Dirty())
+                        if (R_IsReusingCachedShadow())
                             r_draw_classify &= ~DRAW_CLASSIFY_WORLD;
 
                         if (args->sourceEntityIndex != 0)
@@ -1299,37 +1427,86 @@ void R_RenderShadowmapForDynamicLights(void)
 	Purpose : Reset shadow textures as unprepared so we will clear and render it this frame later.
 */
 
+static bool R_HasVisibleLocalShadowLight()
+{
+    for (const auto& entry : g_VisibleDynamicLights)
+    {
+        const auto& light = entry.m_pDynamicLight;
+
+        if (light && light->type != DynamicLightType_Directional && light->shadow > 0 && light->dynamic_shadow_size > 0)
+            return true;
+    }
+
+    return false;
+}
+
+static bool R_WorldHasAnimatedTextures()
+{
+    auto worldmodel = (*cl_worldmodel);
+    if (!worldmodel)
+        return false;
+
+    for (int i = 0; i < worldmodel->numtextures; ++i)
+    {
+        auto texture = worldmodel->textures[i];
+
+        if (texture && texture->anim_total)
+            return true;
+    }
+
+    return false;
+}
+
+static void R_PrepareShadowCacheForLight(CDynamicLight& light, bool bCacheEnabled, bool bAnimatedWorld)
+{
+    auto key = R_GetShadowCacheKey(light);
+
+    // The static shadow layer has no cache of its own, but it also has to be
+    // redrawn whenever the light moves or changes shape.
+    const bool bProjectionChanged = !light.shadowProjectionValid || !(light.shadowProjection == key);
+    if (bProjectionChanged && light.pStaticShadowTexture)
+        light.pStaticShadowTexture->SetReady(false);
+
+    light.shadowProjection      = key;
+    light.shadowProjectionValid = true;
+
+    // World depth is cached together with entities unless a static layer
+    // holds it, so animated world textures force a redraw in that case.
+    const bool bWorldInCache = key.spot || key.staticSize == 0;
+
+    bool bForceUpdate = false;
+    if (!bCacheEnabled)
+        bForceUpdate = true;
+    else if ((*r_refdef.onlyClientDraws))
+        bForceUpdate = true;
+    else if (bAnimatedWorld && bWorldInCache)
+        bForceUpdate = true;
+
+    light.shadowCache.Prepare(key, s_shadowCasters, bForceUpdate);
+
+    if (!bCacheEnabled)
+        light.shadowCache.Invalidate();
+}
+
 void R_ResetShadowTextures(void)
 {
-    s_shadowCacheStats         = {};
-    const auto prepareStart    = std::chrono::steady_clock::now();
-    const bool cacheEnabled    = s_shadowCache->value && glCopyImageSubData;
-    const bool hasLocalShadows = std::any_of(g_VisibleDynamicLights.begin(), g_VisibleDynamicLights.end(), [](const auto& entry) {
-        return entry.m_pDynamicLight && entry.m_pDynamicLight->type != DynamicLightType_Directional &&
-            entry.m_pDynamicLight->shadow > 0 && entry.m_pDynamicLight->dynamic_shadow_size > 0;
-    });
-    if (cacheEnabled && hasLocalShadows)
+    s_ShadowCacheStats = {};
+
+    const auto prepareStart  = std::chrono::steady_clock::now();
+    const bool bCacheEnabled = R_IsShadowCacheEnabled();
+
+    if (bCacheEnabled && R_HasVisibleLocalShadowLight())
         R_PrepareShadowCasters();
-    bool animatedWorld = false;
-    if ((*cl_worldmodel))
-        for (int i = 0; i < (*cl_worldmodel)->numtextures; ++i)
-            if ((*cl_worldmodel)->textures[i] && (*cl_worldmodel)->textures[i]->anim_total)
-                animatedWorld = true;
+
+    const bool bAnimatedWorld = R_WorldHasAnimatedTextures();
+
     for (size_t i = 0; i < g_VisibleDynamicLights.size(); ++i)
     {
         auto& entry = g_VisibleDynamicLights[i];
 
         if (entry.m_pDynamicLight && entry.m_pDynamicLight->type != DynamicLightType_Directional)
         {
-            auto& light = *entry.m_pDynamicLight;
-            auto  key   = R_ShadowCacheKey(light);
-            if ((!light.shadowProjectionValid || !(light.shadowProjection == key)) && light.pStaticShadowTexture)
-                light.pStaticShadowTexture->SetReady(false);
-            light.shadowProjection      = key;
-            light.shadowProjectionValid = true;
-            light.shadowCache.Prepare(key, s_shadowCasters, !cacheEnabled || (*r_refdef.onlyClientDraws) || (animatedWorld && (key.spot || key.staticSize == 0)));
-            if (!cacheEnabled)
-                light.shadowCache.Invalidate();
+            R_PrepareShadowCacheForLight(*entry.m_pDynamicLight, bCacheEnabled, bAnimatedWorld);
         }
 
         if (entry.m_pDynamicLight && entry.m_pDynamicLight->pDynamicShadowTexture)
@@ -1337,7 +1514,27 @@ void R_ResetShadowTextures(void)
             entry.m_pDynamicLight->pDynamicShadowTexture->SetReady(false);
         }
     }
-    s_shadowCacheStats.prepareMilliseconds = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - prepareStart).count();
+
+    const auto prepareTime                 = std::chrono::steady_clock::now() - prepareStart;
+    s_ShadowCacheStats.prepareMilliseconds = std::chrono::duration<double, std::milli>(prepareTime).count();
+}
+
+static void R_ReportShadowCacheStats()
+{
+    static double lastReportTime = -1;
+
+    // cl_time can go backwards, e.g. after a level change.
+    if ((*cl_time) >= lastReportTime && (*cl_time) - lastReportTime < 1)
+        return;
+
+    lastReportTime = (*cl_time);
+
+    gEngfuncs.Con_Printf("Shadow cache: updated %d, reused %d, caster submissions %d, bone boxes %d, prepare %.3f ms\n",
+                         s_ShadowCacheStats.updates,
+                         s_ShadowCacheStats.reused,
+                         s_ShadowCacheStats.submissions,
+                         s_ShadowCacheStats.boneBoxes,
+                         s_ShadowCacheStats.prepareMilliseconds);
 }
 
 /*
@@ -1352,16 +1549,8 @@ void R_RenderShadowMap(void)
     {
         R_ResetShadowTextures();
         R_RenderShadowmapForDynamicLights();
-        if (s_shadowCache->value >= 2)
-        {
-            static double lastReport = -1;
-            if ((*cl_time) < lastReport || (*cl_time) - lastReport >= 1)
-            {
-                lastReport = (*cl_time);
-                gEngfuncs.Con_Printf("Shadow cache: updated %d, reused %d, caster submissions %d, bone boxes %d, prepare %.3f ms\n",
-                                     s_shadowCacheStats.updates, s_shadowCacheStats.reused, s_shadowCacheStats.submissions,
-                                     s_shadowCacheStats.boneBoxes, s_shadowCacheStats.prepareMilliseconds);
-            }
-        }
+
+        if (r_shadow_cache->value >= 2)
+            R_ReportShadowCacheStats();
     }
 }

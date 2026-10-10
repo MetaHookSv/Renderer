@@ -146,11 +146,6 @@ public:
 class CStudioModelRenderData
 {
 public:
-    // Local-space vertex bounds per bone, built once and owned by the same
-    // resource as the meshes (including model reload/eviction lifetime).
-    std::array<ShadowCache::Bounds, 128> shadowBoneBounds;
-    bool                                 shadowBoneBoundsPrepared = false;
-    bool                                 shadowBoneBoundsValid    = false;
     CStudioModelRenderData(model_t* mod) : BodyModel(mod)
     {
     }
@@ -204,6 +199,12 @@ public:
     std::shared_ptr<CGameResourceAsyncLoadTask> m_pGameResourceAsyncLoadTask;
 
     uint32_t m_StudioHeaderHash{};
+
+    //Local-space bounds of the vertices skinned to each bone, used by the shadow cache.
+    //Built on first use and released together with the rest of the render data.
+    std::array<ShadowCache::Bounds, MAXSTUDIOBONES> shadowBoneBounds;
+    bool                                            shadowBoneBoundsPrepared{};
+    bool                                            shadowBoneBoundsValid{};
 };
 
 class CStudioSkinCache

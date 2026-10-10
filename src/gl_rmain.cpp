@@ -2233,7 +2233,9 @@ void R_DrawBrushEntity(bool bTransparent)
 
 void R_DrawStudioEntity(bool bTransparent)
 {
-    const int studioFlags = STUDIO_RENDER | (R_IsCollectingShadowCasters() ? 0 : STUDIO_EVENTS);
+    //Do not fire model events (sounds, muzzle flashes...) when the shadow cache only wants the bone setup.
+    const int studioFlags = R_IsCollectingShadowCasters() ? STUDIO_RENDER : (STUDIO_RENDER | STUDIO_EVENTS);
+
     if ((*currententity)->player)
     {
         auto state = R_GetPlayerState((*currententity)->index - 1);
@@ -4526,7 +4528,7 @@ void R_DrawEntitiesOnList(void)
         if ((*currententity)->model &&
             (*currententity)->model->type != mod_sprite)
         {
-            if (R_ShouldDrawCachedShadowEntity((*currententity)))
+            if (R_ShouldDrawCachedShadowEntity(*currententity))
                 R_DrawCurrentEntity(false);
         }
 
