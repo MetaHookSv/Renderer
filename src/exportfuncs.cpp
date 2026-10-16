@@ -1,6 +1,7 @@
 #include <metahook.h>
 #include "exportfuncs.h"
 #include "gl_local.h"
+#include "entity_view.h"
 #include "parsemsg.h"
 #include "qgl.h"
 
@@ -249,6 +250,7 @@ int HUD_GetStudioModelInterface(int version, struct r_studio_interface_s** ppint
     gPrivateFuncs.studioapi_StudioCheckBBox    = pstudio->StudioCheckBBox;
 
     EngineStudio_InstalHooks();
+    EntityView_InstallHooks(pstudio);
 
     pbonetransform  = (decltype(pbonetransform))pstudio->StudioGetBoneTransform();
     plighttransform = (decltype(plighttransform))pstudio->StudioGetLightTransform();
@@ -333,6 +335,7 @@ void HUD_Shutdown(void)
     ClientStudio_UninstallHooks();
     Client_UninstallHooks();
     EngineStudio_UninstallHooks();
+    EntityView_UninstallHooks();
 
     R_Shutdown();
 

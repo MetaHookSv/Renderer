@@ -1,4 +1,5 @@
 #include "gl_local.h"
+#include "entity_view.h"
 #include "studio_model_validation.h"
 #include "triangleapi.h"
 #include "mathlib2.h"
@@ -1519,6 +1520,7 @@ void R_LoadStudioProgramStates(void)
 
 void R_ShutdownStudio(void)
 {
+    EntityView_FreeBuffers();
     g_StudioProgramTable.clear();
 
     R_StudioFlushAllSkins();
@@ -3104,6 +3106,13 @@ void R_StudioDrawMesh_DrawPass(
         glUniform2f(prog.r_nearplaneclip, r_drawlowerbodyclipnear->value, r_drawlowerbodyclipfar->value);
     }
 
+    if (EntityView_IsActive())
+    {
+        if (StudioProgramState & STUDIO_ADDITIVE_BLEND_ENABLED)
+            glBlendFuncSeparate(GL_ONE, GL_ONE, GL_ZERO, GL_ONE);
+        else if (StudioProgramState & STUDIO_ALPHA_BLEND_ENABLED)
+            glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    }
     glDrawElements(GL_TRIANGLES, pRenderMesh->iIndiceCount, GL_UNSIGNED_INT, BUFFER_OFFSET(pRenderMesh->iStartIndex));
 
     GL_UseProgram(0);
@@ -3375,6 +3384,8 @@ void studioapi_RestoreRenderer(void)
 
 qboolean studioapi_StudioCheckBBox(void)
 {
+    if (EntityView_IsActive())
+        return true;
     if (R_IsCollectingShadowCasters())
         return true;
     if (!g_bIsSvenCoop)
@@ -3494,6 +3505,8 @@ qboolean studioapi_StudioCheckBBox(void)
 
 void studioapi_StudioDynamicLight(cl_entity_t* ent, alight_t* plight)
 {
+    if (EntityView_ApplyLight(plight))
+        return;
     float dies[256];
 
     if ((int)r_studio_legacy_dlight->value == 0)
@@ -3553,6 +3566,12 @@ __forceinline void StudioRenderFinal_Template(CallType pfnRenderFinal, void* pth
 template <typename CallType>
 __forceinline void StudioRenderModel_Template(CallType pfnRenderModel, CallType pfnRenderFinal, void* pthis = nullptr, int dummy = 0)
 {
+    if (EntityView_IsActive())
+    {
+        // A view must not schedule scene deferred/outline/hair passes.
+        pfnRenderModel(pthis, dummy);
+        return;
+    }
     if (R_IsRenderingShadowView())
     {
         pfnRenderModel(pthis, dummy);

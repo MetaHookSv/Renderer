@@ -108,6 +108,7 @@ set(RENDERER_SOURCES
     "${PROJECT_SOURCE_DIR}/src/BaseUI.cpp"
     "${PROJECT_SOURCE_DIR}/src/CounterStrike.cpp"
     "${PROJECT_SOURCE_DIR}/src/EngineSurfaceHook.cpp"
+    "${PROJECT_SOURCE_DIR}/src/entity_view.cpp"
     "${PROJECT_SOURCE_DIR}/src/exportfuncs.cpp"
     "${PROJECT_SOURCE_DIR}/src/GameUI.cpp"
     "${PROJECT_SOURCE_DIR}/src/gl_cvar.cpp"
