@@ -6118,7 +6118,13 @@ void GL_Shutdown(void* window, HDC pmaindc, HGLRC pbaseRC)
     GL_FreeShaders();
     GL_FreeFrameBuffers();
 
-    if (!gPrivateFuncs.SDL_GL_SetAttribute)
+    if (gPrivateFuncs.SDL_GL_SetAttribute)
+    {
+        // Preserve the engine entry point and its hooks (ThreadGuard shuts down
+        // Steam here). SDL engines release their own FBOs in GL_Shutdown.
+        gPrivateFuncs.GL_Shutdown(window, pmaindc, pbaseRC);
+    }
+    else
     {
         wglMakeCurrent(pmaindc, nullptr);
         wglDeleteContext(pbaseRC);
