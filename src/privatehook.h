@@ -41,6 +41,7 @@ typedef struct
     qboolean (*GL_SetModeLegacy)(void* window, HDC* pmaindc, HGLRC* pbaseRC, int fD3D, const char* pszDriver, const char* pszCmdLine);
     qboolean (*GL_SelectPixelFormat)(HDC hDC);
     void* Sys_ShutdownGame_call_GL_Shutdown;
+    void (*GL_Shutdown)(void* window, HDC pmaindc, HGLRC pbaseRC);
     void (*GL_Set2D)(void);
     void (*GL_Finish2D)(void);
     void (*GL_BeginRendering)(int* x, int* y, int* width, int* height);

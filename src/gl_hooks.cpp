@@ -1157,7 +1157,7 @@ void Engine_InstallHooks(void)
         Install_InlineHook(GL_SetMode_SvEngine);
     }
 
-    g_pMetaHookAPI->InlinePatchRedirectBranch(gPrivateFuncs.Sys_ShutdownGame_call_GL_Shutdown, GL_Shutdown, NULL);
+    g_pMetaHookAPI->InlinePatchRedirectBranch(gPrivateFuncs.Sys_ShutdownGame_call_GL_Shutdown, GL_Shutdown, (void**)&gPrivateFuncs.GL_Shutdown);
 
     Install_InlineHook(GL_Bind);
     Install_InlineHook(GL_Set2D);

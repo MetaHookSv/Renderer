@@ -6,6 +6,26 @@ permalink: renderer/build-and-verification
 
 # 构建与验证
 
+## 2026-10-16：恢复 SDL GL_Shutdown 调用链（ThreadGuard #10）
+
+- 触发信号：Sven 10257 同时加载 Renderer 与 ThreadGuard，quit 时出现
+  `Illegal termination of worker thread 'SocketThread'` 和 `0xC0000409`。
+- 根因：Renderer 重定向 GL_Shutdown 调用点后未调用原目标，绕过 ThreadGuard
+  的函数入口 hook；ThreadGuard 又屏蔽引擎较晚的 SteamAPI_Shutdown 调用。
+- 做法：通过 InlinePatchRedirectBranch 的 original 输出保存原调用目标，SDL
+  路径释放 Renderer 自有 GL 资源后调用它，保留入口 hook。旧 WGL 路径保持原行为，
+  避免未经验证地叠加 context/DC 销毁；未新增 gamedata 符号。
+- 验证：原部署 DLL 连续 3/3 次 quit 断言并返回 0xC0000409；部署修改版后
+  5/5 次独立启动、quit 返回 0 且无断言。另一次加载 osprey、_restart、quit
+  返回 0；WinDbg 确认两代引擎均经过 Renderer → ThreadGuard → SteamAPI_Shutdown，
+  最终较晚 shutdown hook 的 g_bSteamShutdown 为 true。
+- 构建与检查：MSVC x86 Debug Renderer / Renderer_AVX2 构建成功，格式检查
+  87 文件无差异，现有 Debug CTest 10/10 通过。两种 DLL/PDB 均部署到本机
+  Sven Co-op；只替换 Renderer，ThreadGuard 和插件配置未修改。
+- 适用范围：本次实机仅验证 Sven 10257；Release、其他 SDL 引擎及 WGL 引擎
+  未进行本次运行验证。测试证据位于 D:/halflife-cli/build/issue10-*.json、
+  issue10-fixed-callchain.txt，原部署文件备份在 issue10-renderer-backup/。
+
 本笔记记录 Renderer 的构建入口、依赖解析规则、gamedata 同步与验证状态。命令与参数的完整说明见
 [README](../README.md) 及 `docs/en/build-instruction.md`、`docs/zh-CN/build-instruction.md`。
 
