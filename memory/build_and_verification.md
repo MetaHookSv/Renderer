@@ -6,6 +6,21 @@ permalink: renderer/build-and-verification
 
 # 构建与验证
 
+## 2026-10-17：Studio 换色缓存索引边界（Renderer #20）
+
+- 触发信号：实际 mesh 选择编号 >=32 的 DM_Base / Remap 纹理并进入换色分支。
+- 根因：`R_StudioGetSkin` 把非法缓存索引映射为 0，调用方仍把原索引传给
+  `R_StudioReloadSkin`，后者在检查文件内容之前越界访问固定缓存。
+- 做法：两个缓存入口均拒绝负数和 >=`MAX_SKINS` 的索引，返回空指针；调用方
+  沿用原纹理路径。32 是换色缓存容量，不能用它限制 MDL / T.mdl 的纹理总数。
+  缓存实现移至内部 `src/studio_skin_cache.inl`，供生产代码和 CPU 测试共同编译。
+- 验证：测试先后捕获索引映射和未检查缓存访问，修复后 Debug / Release 均通过。
+  合成数据覆盖 32/33/34/99 张纹理、编号 31/32/98、负数及 `index == numtextures`，
+  并验证槽位 0 隔离、低索引缓存重建与命中。MSVC x86 Debug Renderer / Renderer_AVX2
+  构建及 gamedata 校验成功，Renderer Debug CTest 10/10 通过，格式检查 88 文件无差异。
+- 适用范围：本次为缓存函数及引用校验的模拟回归；未进行真实游戏、外置 T.mdl
+  加载或纹理绘制验收，也未构建 Release 插件 DLL。
+
 ## 2026-10-16：恢复 SDL GL_Shutdown 调用链（ThreadGuard #10）
 
 - 触发信号：Sven 10257 同时加载 Renderer 与 ThreadGuard，quit 时出现
