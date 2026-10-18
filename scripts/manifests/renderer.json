@@ -3,6 +3,8 @@
   "name": "renderer",
   "indexUrl": "https://hlnd2t.github.io/GoldSrc_VibeSignatures/gamesymbols/index.json",
   "gameVersions": [
+    "bshift-10210",
+    "bshift-8684",
     "cof-5936",
     "cstrike-3248",
     "cstrike-3647",
@@ -447,6 +449,8 @@
     {
       "when": [
         "svencoop-10257",
+        "bshift-8684",
+        "bshift-10210",
         "hl-8684",
         "hl-10210",
         "cof-5936",

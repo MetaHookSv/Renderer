@@ -6,6 +6,29 @@ permalink: renderer/build-and-verification
 
 # 构建与验证
 
+## 2026-10-18：资料片 Studio 接口与 gamedata（MetaHookSv #934）
+
+- 触发信号：Blue Shift build 10210 加载 Renderer 时，
+  `GameStudioRenderer_StudioRenderModel` 报 matched snapshot 中没有符号；Opposing Force 也无法启动。
+- 根因：Renderer manifest 未选择 bshift 客户端；其他插件的裁剪 catalog 只提供部分 Studio 符号。
+  另一个独立约束是 gearbox Windows 客户端不导出 HUD_GetStudioModelInterface，
+  使用引擎默认 Studio 接口，不能强制要求客户端 CGameStudioRenderer。
+- 做法：manifest 为 bshift-8684 / bshift-10210 打包七个必需 Studio 虚函数。
+  `src/studio_interface.inl` 根据返回接口的 StudioDrawModel 是否位于引擎映像判断渲染路径；
+  引擎路径清空客户端入口并保留引擎 hooks，客户端路径仍严格要求完整 gamedata。
+  不需要为 gearbox Windows 打包不存在的客户端 Studio 符号，也不引入扫描回退。
+- 验证：MSVC x86 Debug Renderer / Renderer_AVX2 与 Release Renderer 构建成功，
+  manifest 同步及校验覆盖 23 个快照；Debug CTest 11/11、新增 Release CTest 1/1 通过，
+  clang-format 23.1.3 检查 90 文件无差异。新增测试直接编译生产解析代码，覆盖客户端解析、
+  引擎映像首尾、旧入口清理及引擎范围外缺符号仍然报错。
+- 实机：HL25 10210，单独启用新 Debug Renderer_AVX2，Blue Shift 进入 ba_security1，
+  WinDbg 确认客户端 RenderModel hook 非空；Opposing Force 进入 of1a1，
+  客户端 RenderModel 为空、引擎 RenderModel hook 非空。日志位于聚合树
+  `build/issue934-{bshift,gearbox}-debug.txt`。测试前补齐了缺失依赖和配套 shader，
+  测试后恢复原 DLL、资源、插件列表及 config.cfg，文件恢复做了 hash 比对。
+- 适用范围：本次验证启动、地图加载和 hook 路由；未验证完整画面或所有插件组合。
+  用户确认本机未复现鼠标转视角问题，本次仅修复启动崩溃；8684 和 Release 未做实机验收。
+
 ## 2026-10-17：Studio 换色缓存索引边界（Renderer #20）
 
 - 触发信号：实际 mesh 选择编号 >=32 的 DM_Base / Remap 纹理并进入换色分支。

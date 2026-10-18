@@ -75,7 +75,7 @@ All engine locators live in `src/gl_hooks.cpp` and are named `Engine_FillAddress
 Studio one-shot locators are `Engine_FillAddress_Studio*`. They are dispatched, in a fixed
 order, by `Engine_FillAddress` (`src/gl_hooks.cpp:909`). Client locators are
 `Client_FillAddress_*` in `gl_hooks.cpp` (dispatched by `Client_FillAddress`, `:1569`); the
-client Studio fill is `ClientStudio_FillAddress` (`src/exportfuncs.cpp:150`). Two EngineSurface
+client Studio fill is `ClientStudio_FillAddress` (`src/studio_interface.inl`, included by `src/exportfuncs.cpp`). Two EngineSurface
 locators are `Engine_FillAddress_EngineSurface_*` (`src/EngineSurfaceHook.cpp:44`, `:50`).
 
 Dispatch order is observable only if two locators fill the same field; it is kept stable so the
@@ -284,7 +284,12 @@ real client module.
 | `GameStudioRenderer_StudioSaveBones` | virtualFunction | same | inline-hooked |
 | `GameStudioRenderer_StudioMergeBones` | virtualFunction | same | inline-hooked |
 
-The engine-side Studio render pipeline is resolved in the same `ClientStudio_FillAddress` call
+The client Studio virtuals above are required only when the returned interface's
+`StudioDrawModel` lies outside the engine image. Blue Shift (8684/10210) publishes
+these virtuals and is selected by the manifest. Opposing Force on Windows keeps
+the engine interface, so its client entry points stay null without a client query.
+
+The engine-side Studio render pipeline is always resolved in the same `ClientStudio_FillAddress` call
 against the engine module: `R_StudioDrawModel`, `R_StudioDrawPlayer`, `R_StudioRenderModel`,
 `R_StudioRenderFinal`, `R_StudioSetupBones`, `R_StudioMergeBones`, `R_StudioSaveBones`
 (all `function`). `R_StudioDrawModel` is resolved only; the other six are inline-hooked.
