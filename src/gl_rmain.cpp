@@ -6255,6 +6255,9 @@ void __fastcall CVideoMode_Common_DrawStartupGraphic(void* pthis, int dummy, voi
         glClearColor(0, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
 
+        // Startup drawing runs before the regular Renderer frame callbacks.
+        R_BeginRingBufferFrame();
+
         for (int i = 0; i < m_ImageID->Size(); ++i)
         {
             const auto& bimage = m_ImageID->Element(i);
@@ -6322,6 +6325,8 @@ void __fastcall CVideoMode_Common_DrawStartupGraphic(void* pthis, int dummy, voi
                 R_DrawTexturedRect(gltexturenum, vertices, _countof(vertices), indices, _countof(indices), 0, "DrawStartupGraphic");
             }
         }
+
+        R_EndRingBufferFrame();
 
         if (gPrivateFuncs.SDL_GL_SwapWindow)
         {
