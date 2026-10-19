@@ -191,3 +191,13 @@ permalink: renderer/build-and-verification
 
 增补 `UTILTHREADTASK_SOURCE_PATH`（2026-10-03，Release 单配置）：显式路径配置·编译·安装退出 0，CTest 4/4；
 无效显式路径在配置期 FATAL；空值 FetchContent 拉取固定提交 `8d36bef6…` 成功。Debug 未本次复测。
+
+
+## 2026-10-19：最终场景 alpha 重复混合（MetaHookSv #937）
+
+- 触发信号：czero / engine 10210，关闭 HDR 和 FXAA 后烟雾变黑，开枪与烟雾重叠出现灰色矩形。
+- 根因：透明绘制后的场景 RGB 已完成混合，alpha 却仍含烟雾衰减和加法精灵累加值；最终 `R_CopyColor` 再次按该 alpha 混到黑底。FXAA 输出 alpha=1，掩盖了错误。用户抓取的 frame 2685 中矩形实际对应 `wall_puff*.spr` 弹着烟尘，不能将该帧归因为 muzzleflash 材质本身。
+- 做法：`R_RenderView_SvEngine` 对普通世界视图使用 `GL_BlitSceneViewport` 覆盖当前 viewport 的颜色并重新绑定 FinalBuffer；viewport 外画面保留。`onlyClientDraws` 仍使用原透明合成；公开 `R_CopyColor` 语义和 portal FBO 路径未改变。
+- 验证：MSVC x86 Debug / Release Renderer 构建及 23 个 gamedata 快照校验成功；两种配置 CTest 各 12/12 通过；clang-format 23.1.3 检查 92 文件无差异。新增真实 GL GPU 回归直接调用生产 helper，从 RGBA16F 拷贝到 RGBA8，覆盖 alpha 0 / 0.2323 / 0.4402 / 1 / 5、完整 viewport、偏移 inset、空 viewport 和区外保留像素。
+- 证据：用户原始四帧及离线 shader 替换验证位于聚合树 `build/issue937/`；frame 2000 最终 RGB 从 0.668 降到 0.153，离线不透明拷贝恢复至 0.667，并消除 2439 / 2685 的矩形。
+- 适用范围与状态：修复版 Debug `Renderer.dll` / PDB 已部署到本机 czero，DLL SHA-256 为 `E04CB9BCC0B819D94E9D0EBAFAD694A9A1BB720991B0BB16B296C99330A58AAC`。用户已于 2026-10-19 确认修复版实机手动验收通过（本次黑烟和开枪灰色矩形）。inset / onlyClientDraws / portal 场景未进行本次实机验收，GPU viewport 回归不能代替这些路径的完整游戏兼容性验证。
