@@ -6,6 +6,26 @@ permalink: renderer/build-and-verification
 
 # 构建与验证
 
+## 2026-10-20：启动静态图 ringbuffer 帧生命周期
+
+- 触发信号：启动时出现 `[TexturedRectVertexBuffer] Warning: Allocate called outside frame`。
+- 根因：`CVideoMode_Common_DrawStartupGraphic` 在正常 Renderer 帧回调之前调用
+  `R_DrawTexturedRect`，没有开启 ringbuffer 帧；分配器拒绝申请，导致启动图片绘制被跳过。
+  本机 WinDbg 原版对照确认申请 128 字节时 `m_InFrame=false`、`m_UsedSize=0`，并捕获完整警告。
+- 做法：在启动静态图绘制循环前调用 `R_BeginRingBufferFrame`，循环后、窗口交换前调用
+  `R_EndRingBufferFrame`；沿用现有惰性创建和 GPU fence 机制，保留帧外分配保护。
+- 验证：MSVC x86 Debug Renderer / Renderer_AVX2、Release Renderer 构建成功；Debug CTest
+  12/12、Release ringbuffer_tests 1/1 通过；clang-format 23.1.3 检查 92 文件无差异。
+  复用现有生产分配器测试覆盖惰性创建、帧外拒绝和 GPU 未完成帧的区域隔离。
+- 实机：Sven Co-op Debug Renderer，WinDbg 确认启动时三种分配均 valid，大小依次为
+  128/64/24 字节；绘制结束后 frame-active 与 m_InFrame 均为 false，顶点缓冲有一个
+  已提交帧，三个缓冲的帧外警告标志均为 false。随后独立启动、进入 osprey，截图确认
+  世界、武器及 HUD 可见，退出码为 0。证据位于聚合树
+  `build/startup-ringbuffer-{baseline-trace,fixed-trace}.txt` 与 `build/startup-ringbuffer-fixed-game.log`。
+  验收后恢复原部署的四个 Renderer DLL/PDB，SHA-256 均与备份一致。
+- 适用范围：本次实机验证 Sven Co-op 的 SDL 启动路径与 Debug 普通版；未覆盖 WGL、其他游戏、
+  Release/AVX2 实机及启动图片完整视觉对比。2026-10-11 记录的同类启动静态图警告由本次修复。
+
 ## 2026-10-18：资料片 Studio 接口与 gamedata（MetaHookSv #934）
 
 - 触发信号：Blue Shift build 10210 加载 Renderer 时，
