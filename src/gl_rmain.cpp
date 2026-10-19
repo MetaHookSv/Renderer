@@ -1,5 +1,6 @@
 #include "gl_local.h"
 #include "gl_common.h"
+#include "gl_scene_copy.h"
 #include "gl_startupvideo.h"
 #include "graphic_engine_initialization.h"
 #include <ScopeExit/ScopeExit.h>
@@ -3452,7 +3453,15 @@ void R_RenderView_SvEngine(int viewIdx)
         //This will switch to final framebuffer (RGBA8)
         if (GL_GetCurrentSceneFBO() == &s_BackBufferFBO)
         {
-            R_CopyColor(&s_BackBufferFBO, &s_FinalBufferFBO);
+            if ((*r_refdef.onlyClientDraws))
+            {
+                R_CopyColor(&s_BackBufferFBO, &s_FinalBufferFBO);
+            }
+            else
+            {
+                GL_BlitSceneViewport(s_BackBufferFBO.s_hBackBufferFBO, s_FinalBufferFBO.s_hBackBufferFBO, r_viewport);
+                GL_BindFrameBuffer(&s_FinalBufferFBO);
+            }
             GL_SetCurrentSceneFBO(NULL);
         }
 

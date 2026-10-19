@@ -48,6 +48,13 @@ add_test(NAME gl_parallel_shader_compile_tests COMMAND gl_parallel_shader_compil
 # marks the test skipped instead of failing the build.
 set_tests_properties(gl_parallel_shader_compile_tests PROPERTIES SKIP_RETURN_CODE 2)
 
+add_executable(gl_scene_copy_tests gl_scene_copy_tests.cpp)
+target_compile_definitions(gl_scene_copy_tests PRIVATE GLEW_STATIC GLFW_INCLUDE_NONE)
+target_compile_options(gl_scene_copy_tests PRIVATE /UNDEBUG)
+target_link_libraries(gl_scene_copy_tests PRIVATE renderer_settings libglew_static glfw)
+add_test(NAME gl_scene_copy_tests COMMAND gl_scene_copy_tests)
+set_tests_properties(gl_scene_copy_tests PROPERTIES SKIP_RETURN_CODE 2)
+
 # Real cs_assault geometry and lights, comparing cached depth with an uncached
 # oracle on the GPU. No engine ABI stubs or test copies of the cache policy.
 add_executable(gl_shadow_cache_tests gl_shadow_cache_tests.cpp "${TINYOBJLOADER_SOURCE_PATH}/tiny_obj_loader.cc")
