@@ -26,7 +26,7 @@ if(NOT TARGET glfw)
     add_subdirectory("${GLFW_SOURCE_PATH}" "${CMAKE_CURRENT_BINARY_DIR}/glfw" EXCLUDE_FROM_ALL)
 endif()
 
-foreach(test studio_model_validation_tests studio_model_load_tests ringbuffer_tests sc_client_tests graphic_engine_initialization_tests studio_interface_tests)
+foreach(test studio_model_validation_tests studio_model_load_tests ringbuffer_tests sc_client_tests graphic_engine_initialization_tests studio_interface_tests triapi_tests)
     add_executable(${test} "${CMAKE_CURRENT_SOURCE_DIR}/${test}.cpp")
     target_link_libraries(${test} PRIVATE renderer_settings)
     # These tests include production translation units and discard unused handlers.
@@ -35,6 +35,7 @@ foreach(test studio_model_validation_tests studio_model_load_tests ringbuffer_te
     target_link_options(${test} PRIVATE /OPT:REF /INCREMENTAL:NO)
     add_test(NAME ${test} COMMAND ${test})
 endforeach()
+target_link_libraries(triapi_tests PRIVATE libglew_static)
 
 # Unlike the CPU regression suites above nothing here is patched out: the probe
 # opens a real GL context through GLFW, so it links the vendored GLEW and GLFW
@@ -54,6 +55,14 @@ target_compile_options(gl_scene_copy_tests PRIVATE /UNDEBUG)
 target_link_libraries(gl_scene_copy_tests PRIVATE renderer_settings libglew_static glfw)
 add_test(NAME gl_scene_copy_tests COMMAND gl_scene_copy_tests)
 set_tests_properties(gl_scene_copy_tests PROPERTIES SKIP_RETURN_CODE 2)
+
+add_executable(triapi_shader_tests triapi_shader_tests.cpp)
+target_compile_definitions(triapi_shader_tests PRIVATE GLEW_STATIC GLFW_INCLUDE_NONE)
+target_compile_options(triapi_shader_tests PRIVATE /UNDEBUG)
+target_link_libraries(triapi_shader_tests PRIVATE renderer_settings libglew_static glfw)
+add_test(NAME triapi_shader_tests COMMAND triapi_shader_tests
+    "${PROJECT_SOURCE_DIR}/assets/svencoop/renderer/shader")
+set_tests_properties(triapi_shader_tests PROPERTIES SKIP_RETURN_CODE 2)
 
 # Real cs_assault geometry and lights, comparing cached depth with an uncached
 # oracle on the GPU. No engine ABI stubs or test copies of the cache policy.

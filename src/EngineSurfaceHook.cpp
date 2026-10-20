@@ -41,6 +41,14 @@ static void(__fastcall* m_pfnEngineSurface_drawSetTextureBGRA)(void* pthis, int,
 static void(__fastcall* m_pfnEngineSurface_drawUpdateRegionTextureBGRA)(void* pthis, int, int textureID, int x, int y, const unsigned char* pchData, int wide, int tall)                    = NULL;
 static void(__fastcall* m_pfnBaseUISurface_DrawSetTexture)(void* pthis, int, int textureID);
 
+void EngineSurface_ResetCurrentTexture()
+{
+    // Native TriAPI uses DrawSetTexture(0). Call the saved engine entry so its
+    // own cache can skip a redundant reset without unbinding SpriteTexture.
+    if (g_pBaseUISurface && m_pfnBaseUISurface_DrawSetTexture)
+        m_pfnBaseUISurface_DrawSetTexture(g_pBaseUISurface, 0, 0);
+}
+
 void Engine_FillAddress_EngineSurface_drawFlushText(const mh_dll_info_t& RealDllInfo)
 {
     g_VertexBuffer             = (decltype(g_VertexBuffer))GamedataResolvePtr(RealDllInfo.ImageBase, "engine", "g_VertexBuffer", MH_GAMESYMBOL_KIND_GLOBAL);

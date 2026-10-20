@@ -223,6 +223,7 @@ void VideoMode_FillAddress(const mh_dll_info_t& DllInfo, const mh_dll_info_t& Re
 void Engine_InstallHooks();
 void Engine_UninstallHooks();
 void EngineSurface_InstallHooks();
+void EngineSurface_ResetCurrentTexture();
 void VideoMode_InstallHooks();
 
 void ClientStudio_UninstallHooks();

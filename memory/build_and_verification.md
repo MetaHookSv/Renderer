@@ -6,6 +6,33 @@ permalink: renderer/build-and-verification
 
 # 构建与验证
 
+## 2026-10-20：TriAPI 原生行为对齐
+
+- 触发信号：renderer-triapi 运行 `39359243122` 的原生对照与上游 oracle 不一致，普通模式
+  的渐变/纯色色块和 world 混合结果不同。任务要求原生行为，不能用旧 Renderer 行为反推规范。
+- 参考：`D:/HLND2T_official/engine/r_triangle.c` 与
+  `D:/goldsrc-reverse/src/svencoop/engine/consolidated/r_triangle.cpp`。
+  `Color4fRendermode` 按 Sven 的显式模式参数判断；HLND2T 的对应函数看全局模式，是已知差别。
+- 做法：TriAPI handler 集中到 `src/gl_triapi.inl`，由 `gl_rmain.cpp` 和真实 handler 回归共同包含。
+  Normal 使用 flat colour；quads、quad strip、polygon 拆分后保留原图元的 provoking colour。
+  TransColor/TransTexture 继承当前 depth mask，RenderMode 即时设置状态，End 不重置 blend/depth。
+  Color4f 的 TransAlpha 分支执行字节截断/低字节转换，顶点输入时夹取颜色；保留独立的 saved RGBA
+  供 Brightness 使用。Begin 复用已保存的 BaseUISurface DrawSetTexture 回调执行原生纹理状态重置，
+  不新增 gamedata 或扫描回退。
+- Shader：先按原生顺序做纹理与顶点色调制、眼空间 Z 雾，再为 linear scene target 解码；
+  TriAPI 不再使用 texture-only gamma remap、linear blend/fog shift 或 additive fog 黑色替换。
+  现有 Renderer 的场景目标、后处理和 OIT 集成继续生效，不能据此声称全场景像素等同原生引擎。
+- 回归证据：旧 handler 在颜色量化断言失败；旧 shader 对输入样本输出 0.041826，目标为
+  0.055189。新增 CPU 回归直接调用生产 handler；GPU 回归编译真实 shader，读回 HUD/world ×
+  gamma/linear × opaque/alpha/additive × off/linear/exp/exp2 fog 的 48 组输出。
+- 验证：MSVC x86 Debug Renderer / Renderer_AVX2 与 Release Renderer 构建成功，gamedata
+  校验覆盖 23 个快照；Debug / Release CTest 各 14/14 通过，clang-format 23.1.3 检查
+  95 文件无差异，两个仓库的 git diff --check 均通过。LLMBenchmark 基础检查共 246 项，
+  其中 22 项因当前 uv 环境缺少 pywin32 跳过；剥离补丁正向应用、反向还原及重复应用拒绝均已验证。
+- 发布与实机边界：本次不部署游戏、不提交或发布二进制，不更新 LLMBenchmark 的旧 oracle。
+  新 oracle 必须在新的 upstream revision 上重生成剥离补丁，并重新执行真实游戏 qualify；
+  完整游戏、UI 缓存交互、OIT 与其他引擎版本仍需实机验收。
+
 ## 2026-10-20：启动静态图 ringbuffer 帧生命周期
 
 - 触发信号：启动时出现 `[TexturedRectVertexBuffer] Warning: Allocate called outside frame`。
