@@ -36,8 +36,6 @@ void main()
             discard;
 	#endif
 
-	baseColor = ProcessDiffuseColor(baseColor);
-
 	vec4 lightmapColor = v_color;
 
 	lightmapColor.r = clamp(lightmapColor.r, 0.0, 1.0);
@@ -45,14 +43,21 @@ void main()
 	lightmapColor.b = clamp(lightmapColor.b, 0.0, 1.0);
 	lightmapColor.a = clamp(lightmapColor.a, 0.0, 1.0);
 	
-	lightmapColor = ProcessOtherGammaColor(lightmapColor);
-
-	float flDistanceToFragment = distance(v_worldpos.xyz, GetCameraViewPos( GetCameraViewIndex() ));
-
-	vec4 finalColor = CalcFog(
-		ProcessLinearBlendShift(baseColor * lightmapColor),
-		flDistanceToFragment
-	);
+	// Native texture modulation and fog precede framebuffer encoding.
+	vec4 modulatedColor = baseColor * lightmapColor;
+	float flDistanceToFragment = abs((GetCameraWorldMatrix(0) * vec4(v_worldpos, 1.0)).z);
+	float fogFactor = 1.0;
+	#if defined(LINEAR_FOG_ENABLED)
+		fogFactor = (SceneUBO.fogEnd - flDistanceToFragment) / (SceneUBO.fogEnd - SceneUBO.fogStart);
+	#elif defined(EXP_FOG_ENABLED)
+		fogFactor = exp(-SceneUBO.fogDensity * flDistanceToFragment);
+	#elif defined(EXP2_FOG_ENABLED)
+		fogFactor = exp(-pow(SceneUBO.fogDensity * flDistanceToFragment, 2.0));
+	#endif
+	modulatedColor.rgb = mix(SceneUBO.fogColor.rgb, modulatedColor.rgb, clamp(fogFactor, 0.0, 1.0));
+	// Linear scene targets still need decoding, without the Renderer's
+	// optional blend/fog shifts or texture-only gamma remapping.
+	vec4 finalColor = ProcessOtherGammaColor(modulatedColor);
 
 	#if defined(OIT_BLEND_ENABLED)
 
