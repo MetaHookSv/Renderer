@@ -248,3 +248,12 @@ permalink: renderer/build-and-verification
 - 验证：MSVC x86 Debug / Release Renderer 构建及 23 个 gamedata 快照校验成功；两种配置 CTest 各 12/12 通过；clang-format 23.1.3 检查 92 文件无差异。新增真实 GL GPU 回归直接调用生产 helper，从 RGBA16F 拷贝到 RGBA8，覆盖 alpha 0 / 0.2323 / 0.4402 / 1 / 5、完整 viewport、偏移 inset、空 viewport 和区外保留像素。
 - 证据：用户原始四帧及离线 shader 替换验证位于聚合树 `build/issue937/`；frame 2000 最终 RGB 从 0.668 降到 0.153，离线不透明拷贝恢复至 0.667，并消除 2439 / 2685 的矩形。
 - 适用范围与状态：修复版 Debug `Renderer.dll` / PDB 已部署到本机 czero，DLL SHA-256 为 `E04CB9BCC0B819D94E9D0EBAFAD694A9A1BB720991B0BB16B296C99330A58AAC`。用户已于 2026-10-19 确认修复版实机手动验收通过（本次黑烟和开枪灰色矩形）。inset / onlyClientDraws / portal 场景未进行本次实机验收，GPU viewport 回归不能代替这些路径的完整游戏兼容性验证。
+
+
+## 2026-10-21：onlyClientDraws 视图跳过水面 pass（MetaHookSv #942 / StandaloneView）
+
+- 触发信号：StandaloneView 在主菜单为独立视图安装内存中的空 worldmodel，并以 `onlyClientDraw = 1` 调用 `V_RenderView`。
+- 根因：`R_RenderWaterPass` 不检查 `onlyClientDraws`。空世界不在 `mod_known` 中，`R_GetWorldSurfaceModel` 返回 NULL 后被解引用；真实世界下，每个 client-only 视图还会向世界实体容器重复追加水面引用。
+- 做法：`src/gl_water.cpp` 的 `R_RenderWaterPass` 在 `R_IsRenderingWaterView` 判断之后对 `(*r_refdef.onlyClientDraws)` 直接返回。client-only 视图本来就不绘制世界，也就不需要水面反射。
+- 验证：聚合树 Debug Renderer / Renderer_AVX2 构建通过，`RENDERER_BUILD_TESTS=ON` 时 CTest 14/14 通过。Sven Co-op 10257 实机（StandaloneView + 临时消费者插件）：主菜单空世界 pass 正常合成、可回读；`stadium4` 中独立视图与主视图正常，载入、断开、重进均未崩溃。
+- 适用范围与状态：分支 `fix/onlyclientdraws-water-pass`，经 PR 合入。HL25、inset 视图及其他 `onlyClientDraws` 消费者未做实机验证。
