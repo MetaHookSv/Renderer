@@ -22,6 +22,7 @@ This file provides guidance and important rules working with code in this reposi
 - Build commands, dependency pinning, gamedata sync, verification status: `build_and_verification`
 - Engine-private symbol inventory: `PrivateSymbols.md`
 - Coding conventions: `CodeStyles`
+- C/C++ formatting toolchain, commands and check scope: `CppFormatting`
 
 #### When notes are insufficient: source entry points (query and read on demand)
 
