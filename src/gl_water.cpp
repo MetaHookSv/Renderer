@@ -1032,6 +1032,11 @@ void R_RenderWaterPass(void)
     if (R_IsRenderingWaterView())
         return;
 
+    // Client-only views (inset/overview views, StandaloneView passes) draw no world, so no water.
+    // Their worldmodel may also be a placeholder without a world surface model.
+    if ((*r_refdef.onlyClientDraws))
+        return;
+
     GL_BeginDebugGroup("R_RenderWaterPass");
 
     g_VisibleWaterSurfaceModels.clear();

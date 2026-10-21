@@ -71,6 +71,7 @@ T["CL_FxBlend()"] --> U["Check DeferredStudioPasses and return 255 when pending"
 Specific subflows are as follows:
 - Decal path: `R_PrepareDecals` iterates the engine decal list, finds each entity by `decal->entityIndex`, and writes it to `Decals`; `R_DrawDecals` then reads and draws from that entity's container.
 - Water path: `R_RenderWaterPass` writes `RenderWaterModels` and corresponding `ReflectCaches` for visible water-surface entities; `R_DrawWaters` reads these two arrays in pairs at matching indices.
+  `R_RenderWaterPass` returns early for `onlyClientDraws` views (inset views, StandaloneView passes): they draw no world, and their worldmodel may be a placeholder without a world surface model.
 - Studio path: when `StudioRenderModel_Template` detects alpha/additive/glowshell during opaque analysis, it records the matching `renderfx` in `DeferredStudioPasses`; the transparent phase then replays them one by one and clears the array afterward. `CL_FxBlend` also reads it and directly returns `255` if a deferred studio pass is pending.
 
 ## Dependencies
