@@ -138,6 +138,7 @@ resolution sequence does not churn.
 | `r_playerViewportAngles` | global | same | `_V_RenderView` | |
 | `R_NewMap` | function | `R_NewMap` | `_R_NewMap` | inline-hooked |
 | `R_CullBox` | function | `R_CullBox` | `_R_CullBox` | inline-hooked |
+| `R_DrawBrushModel`, `R_DrawSpriteModel` | function | same | `_R_DrawEntityModels` | inline-hooked to the plugin's reimplementations; the plugin replaced every engine caller, but other plugins (StandaloneView's `IStandaloneViewDrawfuncs`) draw single entities through the engine entry points |
 | `frustum`, `vpn`, `vup`, `vright` | global | same | `_R_CullBox` | |
 | `R_ForceCVars`, `R_CheckVariables`, `R_AnimateLight` | function | same | `_R_ForceCVars` | `R_ForceCVars` is inline-hooked (full reimplementation); the other two are resolved only |
 | `r_world_matrix`, `gProjectionMatrix` | global | `r_world_matrix`, `r_projection_matrix` | `_R_SetupGL` | the locator is named for `R_SetupGL`, which itself is not resolved |
@@ -405,7 +406,7 @@ private inventory:
   client `_glewInit@0` export.
 - **Publishing ≠ consuming.** A catalog record is a reason to *re-check* a locator, not a reason
   to wire it into the plugin or the release gate. Symbols published upstream but not consumed
-  here stay ungated (e.g. `R_DrawSpriteModel`, `R_DrawWorld`, `R_DrawViewModel`,
+  here stay ungated (e.g. `R_DrawWorld`, `R_DrawViewModel`,
   `R_RecursiveWorldNode`, `CGame_DrawStartupVideo`'s siblings, the retired `NET_DrawRect`).
   Conversely, do not add a gate entry for something nothing reads — that converts dead code
   into a release-blocking dependency.

@@ -92,6 +92,8 @@
           "R_BeamDrawList": "function",
           "R_CheckVariables": "function",
           "R_CullBox": "function",
+          "R_DrawBrushModel": "function",
+          "R_DrawSpriteModel": "function",
           "R_FreeDeadParticles": "function",
           "R_GLStudioDrawPoints": "function",
           "R_GetSpriteFrame": "function",

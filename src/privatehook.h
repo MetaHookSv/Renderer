@@ -33,6 +33,8 @@ typedef struct
     void (*R_FreeDeadParticles)(particle_t**);
     void (*ClientDLL_DrawTransparentTriangles)(void);
     qboolean (*R_CullBox)(vec3_t mins, vec3_t maxs);
+    void (*R_DrawBrushModel)(cl_entity_t* e);
+    void (*R_DrawSpriteModel)(cl_entity_t* e);
     void (*GL_Bind)(int texnum);
     void (*GL_SelectTexture)(GLenum target);
     void (*GL_Init)(void);
