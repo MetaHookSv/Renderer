@@ -6,6 +6,29 @@ permalink: renderer/build-and-verification
 
 # 构建与验证
 
+## 2026-10-22：缺失 UI 图片重载后残留旧纹理（MetaHookSv #936）
+
+- 触发信号：czero 10210 任期界面中，候选 Gus 的武器为空白，选入曾显示 Stanley / Quincy
+  的槽位后却显示 P90 / UMP45；图标随槽位历史变化。
+- 根因：`enginesurface_drawSetTextureFile` 在 DDS/TGA/BMP 全部失败后仍保留旧缓存和 GPU
+  内容；候选卡没有旧缓存，已选卡则复用已有 texture ID。原版 `WeaponPreference = none`
+  会清空偏好数量，本次以运行时 count=1、ID=0 构造 `640_none` 缺失路径，未确认报告者的
+  自定义 BotProfile 如何产生缺失图标。
+- 做法：加载失败或空路径清图时先提交待绘制文字，再移除该 ID 的缓存并同步当前指针及绑定。
+  未缓存的 surface ID 绑定 0，纹理绘制跳过；保留 GL texture name 供后续成功重载。
+  成功加载后统一绑定新缓存，覆盖首次加载；加法字符绘制也检查失效状态。
+- 验证：新增测试直接编译生产 `EngineSurfaceHook.cpp`，旧实现因重载失败后 ID 仍有效而
+  断言失败；修复后覆盖缺失图、重复失败、空/空指针路径清图、同 ID 恢复、DDS/TGA、缓存命中
+  和待绘制文字提交。MSVC x86 Debug Renderer / Renderer_AVX2、Release Renderer 构建成功，
+  gamedata 校验 23 个快照，Debug / Release CTest 各 15/15 通过，clang-format 23.1.3
+  检查 96 文件无差异，git diff --check 通过。
+- 实机：czero 10210 Debug Renderer_AVX2，重放 P90→缺失图和 UMP45→缺失图后 Gus 均为空白，
+  再选 Stanley 可正常显示 P90。仅对 BotProfile 做运行时条件构造，未对 bitmap 参数施加修补。
+  当前插件需配套新 gamedata，旧部署首次启动缺少 `R_DrawBrushModel`，临时同步后正常运行。
+  游戏退出码 0，测试 DLL/PDB 和 24 个 catalog 文件随后恢复，原文件逐项校验 SHA-256。
+- 适用范围：修复共享 surface 文件加载失败路径；其他游戏/引擎及 Release 实机未本次验证。
+  聚合树证据在 `build/issue936/fixed-verification.md`，不覆盖同 Issue 的 Esc 胜利界面问题。
+
 ## 2026-10-20：TriAPI 原生行为对齐
 
 - 触发信号：renderer-triapi 运行 `39359243122` 的原生对照与上游 oracle 不一致，普通模式
