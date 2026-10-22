@@ -146,6 +146,11 @@ void staticFreeTextureId(int id)
     {
         EngineSurfaceTexture* pNewEntry = it->second;
 
+        if (staticTextureCurrent == pNewEntry)
+            staticTextureCurrent = nullptr;
+        if ((*currenttexture) == id)
+            (*currenttexture) = -1;
+
         delete pNewEntry;
 
         g_VGuiSurfaceTextures.erase(it);
@@ -406,16 +411,28 @@ void __fastcall enginesurface_drawSetTextureRGBA(void* pthis, int, int textureId
 
 void __fastcall enginesurface_drawSetTexture(void* pthis, int, int textureId)
 {
-    if (textureId != (*currenttexture))
+    auto texture = staticGetTextureById(textureId);
+    // Failed surface loads must not bind the previous GPU contents of this ID.
+    const int boundTextureId = texture ? textureId : 0;
+
+    if (boundTextureId != (*currenttexture))
     {
         enginesurface_drawFlushText(pthis, 0);
 
-        (*currenttexture) = textureId;
+        (*currenttexture) = boundTextureId;
     }
 
-    staticTextureCurrent = staticGetTextureById(textureId);
+    staticTextureCurrent = texture;
 
-    glBindTexture(GL_TEXTURE_2D, textureId);
+    glBindTexture(GL_TEXTURE_2D, boundTextureId);
+}
+
+static void staticInvalidateTexture(void* pthis, int textureId)
+{
+    enginesurface_drawFlushText(pthis, 0);
+    // Keep the GL texture name allocated so the caller can reload the same ID.
+    staticFreeTextureId(textureId);
+    enginesurface_drawSetTexture(pthis, 0, textureId);
 }
 
 void __fastcall enginesurface_drawTexturedRect(void* pthis, int, int x0, int y0, int x1, int y1)
@@ -596,6 +613,9 @@ void __fastcall enginesurface_drawTexturedPolygon(void* pthis, int, vgui::VGuiVe
 
 void __fastcall enginesurface_drawPrintCharAdd(void* pthis, int, int x, int y, int wide, int tall, float s0, float t0, float s1, float t1)
 {
+    if (!staticTextureCurrent)
+        return;
+
     int (*_drawTextColor)[4] = (decltype(_drawTextColor))((ULONG_PTR)pthis + gPrivateFuncs.offset_enginesurface_drawTextColor);
 
     if ((*_drawTextColor)[3] == 255)
@@ -659,9 +679,18 @@ void __fastcall enginesurface_drawSetTextureFile(void* pthis, int dummy, int tex
 
     auto texture = staticGetTextureById(textureId);
 
-    if (texture && !forceReload)
+    if (filename && filename[0] && texture && !forceReload)
     {
         enginesurface_drawSetTexture(pthis, dummy, textureId);
+        return;
+    }
+
+    // Submit queued text before replacing or invalidating its texture contents.
+    enginesurface_drawFlushText(pthis, 0);
+
+    if (!filename || !filename[0])
+    {
+        staticInvalidateTexture(pthis, textureId);
         return;
     }
 
@@ -784,10 +813,13 @@ void __fastcall enginesurface_drawSetTextureFile(void* pthis, int dummy, int tex
         }
     }
 
-    if (texture)
+    if (!bLoaded)
     {
-        enginesurface_drawSetTexture(pthis, 0, textureId);
+        staticInvalidateTexture(pthis, textureId);
+        return;
     }
+
+    enginesurface_drawSetTexture(pthis, 0, textureId);
 }
 
 void __fastcall enginesurface_drawGetTextureSize(void* pthis, int, int textureId, int& wide, int& tall)
