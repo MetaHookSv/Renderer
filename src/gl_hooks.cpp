@@ -20,6 +20,8 @@ static hook_t* g_phook_R_LoadSkyBox_SvEngine                = NULL;
 static hook_t* g_phook_R_LoadSkys                           = NULL;
 static hook_t* g_phook_R_NewMap                             = NULL;
 static hook_t* g_phook_R_CullBox                            = NULL;
+static hook_t* g_phook_R_DrawBrushModel                     = NULL;
+static hook_t* g_phook_R_DrawSpriteModel                    = NULL;
 static hook_t* g_phook_R_ForceCVars                         = NULL;
 static hook_t* g_phook_Mod_PointInLeaf                      = NULL;
 static hook_t* g_phook_R_GLStudioDrawPoints                 = NULL;
@@ -168,6 +170,14 @@ void Engine_FillAddress_R_CullBox(const mh_dll_info_t& RealDllInfo)
     vpn                     = (decltype(vpn))GamedataResolvePtr(RealDllInfo.ImageBase, "engine", "vpn", MH_GAMESYMBOL_KIND_GLOBAL);
     vup                     = (decltype(vup))GamedataResolvePtr(RealDllInfo.ImageBase, "engine", "vup", MH_GAMESYMBOL_KIND_GLOBAL);
     vright                  = (decltype(vright))GamedataResolvePtr(RealDllInfo.ImageBase, "engine", "vright", MH_GAMESYMBOL_KIND_GLOBAL);
+}
+
+// Renderer replaces every engine caller, but other plugins (StandaloneView) draw single
+// entities through the engine entry points; route them to Renderer's implementations.
+void Engine_FillAddress_R_DrawEntityModels(const mh_dll_info_t& RealDllInfo)
+{
+    gPrivateFuncs.R_DrawBrushModel  = (decltype(gPrivateFuncs.R_DrawBrushModel))GamedataResolvePtr(RealDllInfo.ImageBase, "engine", "R_DrawBrushModel", MH_GAMESYMBOL_KIND_FUNCTION);
+    gPrivateFuncs.R_DrawSpriteModel = (decltype(gPrivateFuncs.R_DrawSpriteModel))GamedataResolvePtr(RealDllInfo.ImageBase, "engine", "R_DrawSpriteModel", MH_GAMESYMBOL_KIND_FUNCTION);
 }
 
 void Engine_FillAddress_R_SetupGL(const mh_dll_info_t& RealDllInfo)
@@ -968,6 +978,8 @@ void Engine_FillAddress(const mh_dll_info_t& DllInfo, const mh_dll_info_t& RealD
 
     Engine_FillAddress_R_CullBox(RealDllInfo);
 
+    Engine_FillAddress_R_DrawEntityModels(RealDllInfo);
+
     Engine_FillAddress_R_ForceCVars(RealDllInfo);
 
     Engine_FillAddress_R_SetupGL(RealDllInfo);
@@ -1212,6 +1224,8 @@ void Engine_InstallHooks(void)
 
     Install_InlineHook(BuildGammaTable);
     Install_InlineHook(R_CullBox);
+    Install_InlineHook(R_DrawBrushModel);
+    Install_InlineHook(R_DrawSpriteModel);
     Install_InlineHook(PVSNode);
     Install_InlineHook(Host_ClearMemory);
     Install_InlineHook(CVideoMode_Common_DrawStartupGraphic);
@@ -1283,6 +1297,8 @@ void Engine_UninstallHooks(void)
     Uninstall_Hook(Mod_UnloadSpriteTextures);
     Uninstall_Hook(BuildGammaTable);
     Uninstall_Hook(R_CullBox);
+    Uninstall_Hook(R_DrawBrushModel);
+    Uninstall_Hook(R_DrawSpriteModel);
     Uninstall_Hook(PVSNode);
     Uninstall_Hook(Host_ClearMemory);
     Uninstall_Hook(CVideoMode_Common_DrawStartupGraphic);
