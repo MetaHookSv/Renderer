@@ -6,6 +6,26 @@ permalink: renderer/build-and-verification
 
 # 构建与验证
 
+## 2026-10-23：Sven 粒子透明状态被提前恢复（MetaHookSv #946）
+
+- 触发信号：在 `6doors.bsp` 对地板开枪，smoke puff 显示为实心方块，M16 枪口火焰带黑底。
+  Issue 中写作 `6door.bsp`，本机实际地图位于 `svencoop_downloads/maps/6doors.bsp`。
+- 根因：Sven 5.26 / engine 10257 的 `CParticleSystem::ParticleDraw` 在 `glBegin` 后、
+  `glEnd` 前调用 `RenderMode(kRenderNormal)`。WinDbg 反汇编确认客户端偏移
+  `0x49d75` 调用 glBegin，`0x4a14a` 调用 RenderMode(0)，`0x4a14f` 才调用 glEnd。
+  原生 GL 忽略 Begin/End 内的 blend/depth-mask/shade-model 修改；Renderer 延迟提交
+  图元，却即时关闭了 blend、开启深度写入并改为 flat shading。
+- 正确做法：两个 Begin 入口记录图元收集区间；区间内 RenderMode 仍更新逻辑模式，
+  但不修改 GL 状态及 smooth shading。End 在所有提前返回之前结束区间，后续合法状态设置
+  继续生效。直接 glShadeModel 入口遵循同一限制，不在 End 补做被原生 GL 忽略的状态修改。
+- 验证：真实 handler 回归在旧代码上因 blend/depth 断言失败；覆盖 TriAPI/legacy Begin、
+  alpha/additive、空/不足/完整图元及 End 后恢复。Debug Renderer/Renderer_AVX2 与
+  Release Renderer 构建成功；Debug Renderer CTest 15/15 通过，Release TriAPI 两项通过。
+- 实机：halflife-mcp 驱动 Debug Renderer_AVX2，在 `6doors` 复现旧版方块并确认新版
+  手枪/霰弹枪弹着烟雾透明，M16 枪口火焰无黑底。霰弹枪枪口闪光未单独截获。
+  证据位于聚合树忽略目录 `build/issue946/`；测试退出码 0，临时 DLL/PDB 已恢复并核对 SHA-256。
+- 适用范围：共享 TriAPI handler；本次实机只覆盖上述 Sven 版本，未验证其他游戏。
+
 ## 2026-10-22：缺失 UI 图片重载后残留旧纹理（MetaHookSv #936）
 
 - 触发信号：czero 10210 任期界面中，候选 Gus 的武器为空白，选入曾显示 Stanley / Quincy
