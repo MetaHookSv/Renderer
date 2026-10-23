@@ -157,7 +157,7 @@ static void TestColorEntries()
     const auto& vertex = gTriAPICommand.Vertices.back();
     assert(1 == vertex.color[0] && 0 == vertex.color[1]);
     assert(0.375f == vertex.color[2] && 1 == vertex.color[3]);
-    triapi_EndClear();
+    triapi_End();
 }
 
 static void TestRenderModes()
@@ -214,10 +214,54 @@ static void TestPrimitive(int primitive, int count, const std::vector<int>& prov
     gTriAPICommand.hVAO                        = 0;
 }
 
+static void TestParticleRenderModeReset(bool legacyBegin, int count, int mode)
+{
+    CaptureBuffer vertices, indices;
+    g_TriAPIVertexBuffer = &vertices;
+    g_TriAPIIndexBuffer  = &indices;
+    gTriAPICommand.hVAO  = 1;
+    triapi_RenderMode(mode);
+    if (legacyBegin)
+        triapi_glBegin(GL_TRIANGLE_FAN);
+    else
+        triapi_Begin(TRI_TRIANGLE_FAN);
+    for (int i = 0; i < count; ++i)
+    {
+        CoreProfile_glColor4f(i / 4.0f, 0, 0, 0.5f);
+        triapi_Vertex3f(float(i), 0, 0);
+    }
+
+    // Sven resets the mode before glEnd: native GL ignores these state changes.
+    triapi_RenderMode(kRenderNormal);
+    assert(kRenderNormal == gTriAPICommand.RenderMode);
+    assert(blendEnabled && !depthWrite);
+    assert((mode == kRenderTransAdd ? GL_ONE : GL_SRC_ALPHA) == blendSource);
+    assert((mode == kRenderTransAdd ? GL_ONE : GL_ONE_MINUS_SRC_ALPHA) == blendDestination);
+    CoreProfile_glShadeModel(GL_FLAT);
+    assert(gTriAPICommand.SmoothShading);
+    triapi_glEnd();
+    assert(blendEnabled && !depthWrite);
+    if (count >= 3)
+    {
+        const auto* submitted = reinterpret_cast<const triapivertex_t*>(vertices.bytes.data());
+        assert(0 == submitted[0].color[0]);
+        assert(0.5f == submitted[0].color[3]);
+    }
+    // End, including its empty/incomplete paths, must allow subsequent resets.
+    triapi_RenderMode(kRenderNormal);
+    assert(!blendEnabled && depthWrite);
+    g_TriAPIVertexBuffer = g_TriAPIIndexBuffer = nullptr;
+    gTriAPICommand.hVAO                        = 0;
+}
+
 int main()
 {
     TestColorEntries();
     TestRenderModes();
+    for (bool legacyBegin : {false, true})
+        for (int count : {0, 2, 4})
+            for (int mode : {kRenderTransAlpha, kRenderTransAdd})
+                TestParticleRenderModeReset(legacyBegin, count, mode);
     for (bool flat : {false, true})
     {
         TestPrimitive(TRI_TRIANGLES, 2, {}, flat);

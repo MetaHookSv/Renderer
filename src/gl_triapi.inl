@@ -13,6 +13,7 @@ public:
     int                                     RenderMode{};
     int                                     DrawRenderMode{};
     bool                                    SmoothShading{true};
+    bool                                    InsideBegin{};
     GLuint                                  hVAO{};
     std::shared_ptr<CSpriteModelRenderData> pSpriteRenderData;
 };
@@ -23,6 +24,13 @@ IPMBRingBuffer* g_TriAPIIndexBuffer{};
 
 void triapi_RenderMode(int mode)
 {
+    gTriAPICommand.RenderMode = mode;
+    // Sven particles reset RenderMode before glEnd. Native GL ignores blend,
+    // depth-mask and shade-model changes inside Begin/End; preserve that state
+    // until our deferred draw has been submitted as well.
+    if (gTriAPICommand.InsideBegin)
+        return;
+
     // These states persist across End. TransColor/TransTexture inherit the
     // caller's depth mask, as in the native GoldSrc/Sven TriAPI.
     switch (mode)
@@ -51,7 +59,6 @@ void triapi_RenderMode(int mode)
             gTriAPICommand.SmoothShading = true;
             break;
     }
-    gTriAPICommand.RenderMode = mode;
 }
 
 void triapi_Begin(int primitiveCode)
@@ -76,6 +83,7 @@ void triapi_Begin(int primitiveCode)
 
     gTriAPICommand.GLPrimitiveCode = tri_GL_Modes[primitiveCode];
     gTriAPICommand.DrawRenderMode  = gTriAPICommand.RenderMode;
+    gTriAPICommand.InsideBegin     = true;
 }
 
 void triapi_EndClear()
@@ -110,7 +118,8 @@ void triapi_Shutdown()
 
 void triapi_End()
 {
-    size_t n = gTriAPICommand.Vertices.size();
+    gTriAPICommand.InsideBegin = false;
+    size_t n                   = gTriAPICommand.Vertices.size();
 
     if (n == 0)
     {
@@ -606,6 +615,7 @@ void __stdcall triapi_glBegin(int GLPrimitiveCode)
 {
     gTriAPICommand.GLPrimitiveCode = GLPrimitiveCode;
     gTriAPICommand.DrawRenderMode  = gTriAPICommand.RenderMode;
+    gTriAPICommand.InsideBegin     = true;
 }
 
 void __stdcall triapi_glEnd()
@@ -623,7 +633,7 @@ void __stdcall CoreProfile_glColor4f(float r, float g, float b, float a)
 
 void __stdcall CoreProfile_glShadeModel(GLenum mode)
 {
-    if (mode == GL_FLAT || mode == GL_SMOOTH)
+    if (!gTriAPICommand.InsideBegin && (mode == GL_FLAT || mode == GL_SMOOTH))
         gTriAPICommand.SmoothShading = mode == GL_SMOOTH;
 }
 
