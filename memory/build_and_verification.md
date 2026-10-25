@@ -6,6 +6,27 @@ permalink: renderer/build-and-verification
 
 # 构建与验证
 
+## 2026-10-25：引擎粒子错误调用 TriAPI Begin，解绑粒子纹理
+
+- 触发信号：`svencoop_2026.10.25_10.45_frame7915.rdc` 的 EID 8250 出现黑色三角片；
+  它实际是 7 个独立粒子三角形（21 个连续索引），不是 quad 拆分遗漏。
+- 根因 / 约束：EID 8242 绑定粒子纹理 235，8245 又绑定 0；像素 `(1060,410)` 在 8250
+  输出黑色、alpha 约 1。Renderer 的 `R_DrawParticles` 调用了会执行 VGUI surface reset 的
+  TriAPI Begin，而原生粒子路径直接使用 `glBegin(GL_TRIANGLES)`。原生 TriAPI 自身的 reset
+  和 surface 缺图解绑语义仍需保留，不能通过撤销 PR #28 或 #29 的行为修复粒子。
+- 正确做法：粒子入口改为已有的 `triapi_glBegin(GL_TRIANGLES)`，继续共享 End 和状态保护；
+  把生产粒子函数及其常量移至 `src/gl_particles.inl`，由 `gl_rmain.cpp` 和真实 handler 测试包含。
+  搬移后的唯一行为变化是 Begin 入口，没有修改粒子运动、颜色、图元或 shader。
+- 验证：新增生产函数回归在旧调用下因 surface reset 断言失败，修改后覆盖 0/1/7 个粒子、
+  draw 时绑定、索引数量、UV 和 End 后恢复。PR #29 的两种 Begin、alpha/additive、空/不足/完整
+  图元与 End 后恢复测试继续通过；PR #28 的生产 surface 回归继续通过，并覆盖 raw 粒子绑定后
+  请求缺失 UI 纹理、随后重新绑定有效 UI 纹理。MSVC x86 Debug Renderer / Renderer_AVX2 和
+  Release Renderer 构建成功；Debug Renderer CTest 15/15、Release 三项定向 CTest 3/3 通过，
+  gamedata 校验 23 个快照，clang-format 23.1.3 检查 97 文件无差异，`git diff --check` 通过。
+- 适用范围 / 边界：修复 Renderer 自有引擎粒子路径；`gl_triapi.inl` 和 `EngineSurfaceHook.cpp`
+  没有改动。新增粒子测试用 GL/引擎 I/O stub 执行生产函数，shader 测试使用真实 GL context；
+  本次没有部署游戏或验收修复后的游戏画面。构建和测试日志在聚合树 `build/triapi-texture-*.log`。
+
 ## 2026-10-23：Sven 粒子透明状态被提前恢复（MetaHookSv #946）
 
 - 触发信号：在 `6doors.bsp` 对地板开枪，smoke puff 显示为实心方块，M16 枪口火焰带黑底。
