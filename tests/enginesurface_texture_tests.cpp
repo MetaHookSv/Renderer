@@ -176,6 +176,13 @@ int main()
         ExpectInvalid(surface, textureId);
     }
     LoadValid(surface, textureId, false);
+    // Raw particle binds must not let a missing surface ID reuse that texture.
+    constexpr int particleTextureId = 235;
+    GL_Bind(particleTextureId);
+    ExpectInvalid(surface, textureId + 1);
+    enginesurface_drawSetTexture(surface, 0, textureId);
+    assert(staticGetTextureById(textureId) == staticTextureCurrent);
+    assert(textureId == boundTexture);
     staticFreeTextureId(textureId);
     assert(nullptr == staticTextureCurrent);
     puts("enginesurface texture tests passed");

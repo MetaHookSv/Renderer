@@ -9,6 +9,8 @@
 static bool          blendEnabled{}, depthWrite = true;
 static GLenum        blendSource{}, blendDestination{};
 static int           textureResets{};
+static GLuint        boundTexture{}, submittedTexture{};
+static GLsizei       submittedIndices{};
 static void APIENTRY TestEnable(GLenum cap)
 {
     if (cap == GL_BLEND) blendEnabled = true;
@@ -23,7 +25,13 @@ static void APIENTRY TestBlendFunc(GLenum source, GLenum destination)
     blendSource      = source;
     blendDestination = destination;
 }
-static void APIENTRY TestDraw(GLenum, GLsizei, GLenum, const void*, GLint) {}
+static void APIENTRY TestDraw(GLenum mode, GLsizei count, GLenum type, const void*, GLint)
+{
+    assert(GL_TRIANGLES == mode || GL_LINES == mode);
+    assert(GL_UNSIGNED_INT == type);
+    submittedTexture = boundTexture;
+    submittedIndices = count;
+}
 #define glEnable    TestEnable
 #define glDisable   TestDisable
 #define glDepthMask TestDepthMask
@@ -37,6 +45,8 @@ mbasenode_t* R_PVSNode(mbasenode_t*, vec3_t, vec3_t);
 #undef glDepthMask
 #undef glBlendFunc
 #undef glDrawElementsBaseVertex
+
+#include "../src/gl_particles.inl"
 
 cl_enginefunc_t  gEngfuncs{};
 private_funcs_t  gPrivateFuncs{};
@@ -56,9 +66,14 @@ FBO_Container_t* GL_GetCurrentRenderingFBO() { return nullptr; }
 void             GL_BeginDebugGroup(const char*) {}
 void             GL_EndDebugGroup() {}
 void             GL_BindVAO(GLuint) {}
-void             EngineSurface_ResetCurrentTexture() { ++textureResets; }
-void             GL_DeleteVAO(GLuint) {}
-GLuint           GL_GenVAO()
+void             EngineSurface_ResetCurrentTexture()
+{
+    ++textureResets;
+    // A surface texture switch to ID 0, as in the reported particle capture.
+    boundTexture = 0;
+}
+void   GL_DeleteVAO(GLuint) {}
+GLuint GL_GenVAO()
 {
     assert(false);
     return 0;
@@ -92,6 +107,25 @@ void R_PolygonToTriangleList(const std::vector<vertex3f_t>& positions, std::vect
 {
     for (uint32_t i = 1; i + 1 < positions.size(); ++i)
         indices.insert(indices.end(), {0, i, i + 1});
+}
+
+ref_params_t r_params{};
+int          r_draw_classify = DRAW_CLASSIFY_PARTICLES;
+int*         particletexture{};
+particle_t** active_particles{};
+word**       host_basepal{};
+vec_t*       vup{};
+vec_t*       vright{};
+vec_t*       vpn{};
+vec_t*       r_origin{};
+double*      cl_time{};
+double*      cl_oldtime{};
+bool         CL_IsDevOverviewMode() { return false; }
+void         GL_Bind(int id) { boundTexture = id; }
+void         VectorScale(const vec3_t in, vec_t scale, vec3_t out)
+{
+    for (int i = 0; i < 3; ++i)
+        out[i] = in[i] * scale;
 }
 
 class CaptureBuffer : public IPMBRingBuffer
@@ -254,10 +288,87 @@ static void TestParticleRenderModeReset(bool legacyBegin, int count, int mode)
     gTriAPICommand.hVAO                        = 0;
 }
 
+static void TestEngineParticles(int count)
+{
+    CaptureBuffer vertices, indices;
+    g_TriAPIVertexBuffer = &vertices;
+    g_TriAPIIndexBuffer  = &indices;
+    gTriAPICommand.hVAO  = 1;
+
+    constexpr int particleTextureId = 235;
+    int           textureId         = particleTextureId;
+    word          palette[256 * 4]{};
+    word*         paletteData = palette;
+    particle_t    particles[7]{};
+    particle_t*   head = count ? particles : nullptr;
+    for (int i = 0; i < count; ++i)
+    {
+        particles[i].type   = pt_static;
+        particles[i].org[2] = 10;
+        particles[i].next   = i + 1 < count ? &particles[i + 1] : nullptr;
+    }
+    palette[0] = palette[1] = palette[2] = 255;
+    vec3_t up{0, 1, 0}, right{1, 0, 0}, forward{0, 0, 1}, origin{};
+    double now = 1, previous = 0.99;
+    particletexture  = &textureId;
+    active_particles = &head;
+    host_basepal     = &paletteData;
+    vup              = up;
+    vright           = right;
+    vpn              = forward;
+    r_origin         = origin;
+    cl_time          = &now;
+    cl_oldtime       = &previous;
+
+    triangleapi_t api{};
+    api.RenderMode                    = triapi_RenderMode;
+    api.Begin                         = triapi_Begin;
+    api.End                           = triapi_End;
+    api.Color4ub                      = triapi_Color4ub;
+    api.TexCoord2f                    = triapi_TexCoord2f;
+    api.Vertex3f                      = triapi_Vertex3f;
+    api.Vertex3fv                     = triapi_Vertex3fv;
+    gEngfuncs.pTriAPI                 = &api;
+    gPrivateFuncs.R_FreeDeadParticles = [](particle_t**) {
+    };
+    gPrivateFuncs.R_TracerDraw = []() {
+    };
+    gPrivateFuncs.R_BeamDrawList = []() {
+    };
+
+    const int resetsBeforeDraw = textureResets;
+    submittedTexture           = 0;
+    submittedIndices           = 0;
+    R_DrawParticles();
+    assert(resetsBeforeDraw == textureResets);
+    assert(particleTextureId == boundTexture);
+    assert(count * 3 == submittedIndices);
+    if (count)
+    {
+        assert(particleTextureId == submittedTexture);
+        const auto* submitted = reinterpret_cast<const triapivertex_t*>(vertices.bytes.data());
+        assert(0 == submitted[0].texcoord[0] && 0 == submitted[0].texcoord[1]);
+        assert(1 == submitted[1].texcoord[0] && 0 == submitted[1].texcoord[1]);
+        assert(0 == submitted[2].texcoord[0] && 1 == submitted[2].texcoord[1]);
+    }
+    assert(!gTriAPICommand.InsideBegin);
+    assert(!blendEnabled && depthWrite);
+    g_TriAPIVertexBuffer = g_TriAPIIndexBuffer = nullptr;
+    gTriAPICommand.hVAO                        = 0;
+    gEngfuncs.pTriAPI                          = nullptr;
+    particletexture                            = nullptr;
+    active_particles                           = nullptr;
+    host_basepal                               = nullptr;
+    vup = vright = vpn = r_origin = nullptr;
+    cl_time = cl_oldtime = nullptr;
+}
+
 int main()
 {
     TestColorEntries();
     TestRenderModes();
+    for (int count : {1, 7, 0})
+        TestEngineParticles(count);
     for (bool legacyBegin : {false, true})
         for (int count : {0, 2, 4})
             for (int mode : {kRenderTransAlpha, kRenderTransAdd})
