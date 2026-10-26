@@ -639,6 +639,7 @@ void       R_BuildCubemaps_f(void);
 
 void R_SaveProgramStates_f(void);
 void R_LoadProgramStates_f(void);
+void R_AutoSaveProgramStates(void);
 
 void R_Reload_f(void);
 void R_DumpTextures_f(void);

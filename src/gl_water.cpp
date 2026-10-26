@@ -130,7 +130,10 @@ static void R_ResolveWaterProgram(program_state_t state, water_program_t* progOu
 
             g_WaterProgramTable[state] = prog;
         });
-        if (prewarm) return;
+
+        if (prewarm)
+            return;
+
         GL_RequireShaderVariant(ticket);
         prog = g_WaterProgramTable.at(state);
     }
@@ -139,7 +142,9 @@ static void R_ResolveWaterProgram(program_state_t state, water_program_t* progOu
         prog = itor->second;
     }
 
-    if (prewarm) return;
+    if (prewarm)
+        return;
+
     if (prog.program)
     {
         GL_UseProgram(prog.program);
@@ -153,8 +158,20 @@ static void R_ResolveWaterProgram(program_state_t state, water_program_t* progOu
     }
 }
 
-void R_UseWaterProgram(program_state_t state, water_program_t* output) { R_ResolveWaterProgram(state, output, false); }
-void R_RequestWaterProgramState(program_state_t state) { R_ResolveWaterProgram(state, nullptr, true); }
+void R_UseWaterProgram(program_state_t state, water_program_t* output)
+{
+    R_ResolveWaterProgram(state, output, false);
+}
+
+void R_RequestWaterProgramState(program_state_t state)
+{
+    R_ResolveWaterProgram(state, nullptr, true);
+}
+
+void R_ClearWaterProgramStates(void)
+{
+    g_WaterProgramTable.clear();
+}
 
 const program_state_mapping_t s_WaterProgramStateName[] = {
     {WATER_LEGACY_ENABLED, "WATER_LEGACY_ENABLED"},

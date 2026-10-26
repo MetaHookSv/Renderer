@@ -22,7 +22,7 @@ int main()
     }
     program_state_mapping_t mapping[] = {{1, "A"}, {2, "B"}};
     auto                    read      = [](const char*) {
-        return std::string("\nA B\nA B\nUNKNOWN\nA UNKNOWN\nNONE A\nA NONE\nNONE\n") + std::string(4096, 'A') + "\nB\n";
+        return std::string("\nA B\nA B\nUNKNOWN\nA UNKNOWN\nNONE A\nA NONE\nNONE\n") + std::string(PROGRAM_STATE_CACHE_MAX_LINE, 'A') + "\nB\n";
     };
     std::vector<program_state_t> states;
     R_ReadProgramStateCache("malformed", mapping, 2, read, [&](auto state) { states.push_back(state); });

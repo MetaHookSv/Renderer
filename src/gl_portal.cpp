@@ -58,7 +58,10 @@ static void R_ResolvePortalProgram(program_state_t state, portal_program_t* prog
 
             g_PortalProgramTable[state] = prog;
         });
-        if (prewarm) return;
+
+        if (prewarm)
+            return;
+
         GL_RequireShaderVariant(ticket);
         prog = g_PortalProgramTable.at(state);
     }
@@ -67,7 +70,9 @@ static void R_ResolvePortalProgram(program_state_t state, portal_program_t* prog
         prog = itor->second;
     }
 
-    if (prewarm) return;
+    if (prewarm)
+        return;
+
     if (prog.program)
     {
         GL_UseProgram(prog.program);
@@ -86,8 +91,20 @@ static void R_ResolvePortalProgram(program_state_t state, portal_program_t* prog
     }
 }
 
-void R_UsePortalProgram(program_state_t state, portal_program_t* output) { R_ResolvePortalProgram(state, output, false); }
-void R_RequestPortalProgramState(program_state_t state) { R_ResolvePortalProgram(state, nullptr, true); }
+void R_UsePortalProgram(program_state_t state, portal_program_t* output)
+{
+    R_ResolvePortalProgram(state, output, false);
+}
+
+void R_RequestPortalProgramState(program_state_t state)
+{
+    R_ResolvePortalProgram(state, nullptr, true);
+}
+
+void R_ClearPortalProgramStates(void)
+{
+    g_PortalProgramTable.clear();
+}
 
 const program_state_mapping_t s_PortalProgramStateName[] = {
     {PORTAL_OVERLAY_TEXTURE_ENABLED, "PORTAL_OVERLAY_TEXTURE_ENABLED"},

@@ -18,8 +18,6 @@ static std::unordered_map<CStudioBoneCacheHandle, CStudioBoneCache*, CStudioBone
 
 static std::unordered_map<program_state_t, studio_program_t> g_StudioProgramTable;
 
-void R_ClearStudioProgramStates() { g_StudioProgramTable.clear(); }
-
 static CStudioBoneCache g_StudioBoneCaches[MAX_STUDIO_BONE_CACHES];
 
 static CStudioBoneCache* g_pStudioBoneFreeCaches{};
@@ -1427,7 +1425,10 @@ static void R_ResolveStudioProgram(program_state_t state, studio_program_t* prog
 
             g_StudioProgramTable[state] = prog;
         });
-        if (prewarm) return;
+
+        if (prewarm)
+            return;
+
         GL_RequireShaderVariant(ticket);
         prog = g_StudioProgramTable.at(state);
     }
@@ -1436,7 +1437,9 @@ static void R_ResolveStudioProgram(program_state_t state, studio_program_t* prog
         prog = itor->second;
     }
 
-    if (prewarm) return;
+    if (prewarm)
+        return;
+
     if (prog.program)
     {
         GL_UseProgram(prog.program);
@@ -1450,8 +1453,20 @@ static void R_ResolveStudioProgram(program_state_t state, studio_program_t* prog
     }
 }
 
-void R_UseStudioProgram(program_state_t state, studio_program_t* output) { R_ResolveStudioProgram(state, output, false); }
-void R_RequestStudioProgramState(program_state_t state) { R_ResolveStudioProgram(state, nullptr, true); }
+void R_UseStudioProgram(program_state_t state, studio_program_t* output)
+{
+    R_ResolveStudioProgram(state, output, false);
+}
+
+void R_RequestStudioProgramState(program_state_t state)
+{
+    R_ResolveStudioProgram(state, nullptr, true);
+}
+
+void R_ClearStudioProgramStates(void)
+{
+    g_StudioProgramTable.clear();
+}
 
 const program_state_mapping_t s_StudioProgramStateName[] = {
     {STUDIO_GBUFFER_ENABLED, "STUDIO_GBUFFER_ENABLED"},

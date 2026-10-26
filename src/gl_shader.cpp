@@ -4,38 +4,56 @@
 #include <string>
 #include <sstream>
 #include <regex>
-#include <ScopeExit/ScopeExit.h>
-#include <memory>
 #include <cmath>
 #include <cstdlib>
+#include <memory>
+#include <ScopeExit/ScopeExit.h>
 
-cvar_t* r_shader_parallel_compile;
-cvar_t* r_shader_parallel_threads;
-cvar_t* r_shader_parallel_max_inflight;
-cvar_t* r_shader_parallel_submit_per_frame;
-cvar_t* r_shader_parallel_poll_budget_ms;
-cvar_t* r_shader_parallel_autosave;
+cvar_t* r_shader_parallel_compile          = nullptr;
+cvar_t* r_shader_parallel_threads          = nullptr;
+cvar_t* r_shader_parallel_max_inflight     = nullptr;
+cvar_t* r_shader_parallel_submit_per_frame = nullptr;
+cvar_t* r_shader_parallel_poll_budget_ms   = nullptr;
+cvar_t* r_shader_parallel_autosave         = nullptr;
 
-static std::unique_ptr<CParallelShaderCompiler> s_ShaderCompiler;
-static void                                     GL_ConfigureShaderCompiler();
-
-void R_ClearShaderVariantTables()
+class CShaderCompileCvar
 {
-#define CLEAR_VARIANTS(name, type)                                           \
-    extern std::unordered_map<program_state_t, type> g_##name##ProgramTable; \
-    g_##name##ProgramTable.clear();
-    CLEAR_VARIANTS(WSurf, wsurf_program_t);
-    CLEAR_VARIANTS(Water, water_program_t);
-    CLEAR_VARIANTS(DLight, dlight_program_t);
-    CLEAR_VARIANTS(DFinal, dfinal_program_t);
-    extern void R_ClearStudioProgramStates();
+public:
+    cvar_t**    cvar;
+    const char* name;
+    const char* defaultValue;
+};
+
+static const CShaderCompileCvar s_ShaderCompileCvars[] = {
+    {&r_shader_parallel_compile, "r_shader_parallel_compile", "1"},
+    {&r_shader_parallel_threads, "r_shader_parallel_threads", "-1"},
+    {&r_shader_parallel_max_inflight, "r_shader_parallel_max_inflight", "16"},
+    {&r_shader_parallel_submit_per_frame, "r_shader_parallel_submit_per_frame", "8"},
+    {&r_shader_parallel_poll_budget_ms, "r_shader_parallel_poll_budget_ms", "1.0"},
+    {&r_shader_parallel_autosave, "r_shader_parallel_autosave", "1"},
+};
+
+//Polls per frame pump; bounded again by the scheduler.
+static constexpr unsigned SHADER_PUMP_POLLS_PER_FRAME = 64;
+
+//The operations must outlive the compiler that borrows them, so declare them first.
+static std::unique_ptr<IShaderGLOperations>     s_ShaderOperations;
+static std::unique_ptr<CParallelShaderCompiler> s_ShaderCompiler;
+
+static void GL_ConfigureShaderCompiler(void);
+
+void R_ClearShaderVariantTables(void)
+{
+    R_ClearWSurfProgramStates();
+    R_ClearWaterProgramStates();
+    R_ClearDLightProgramStates();
+    R_ClearDFinalProgramStates();
     R_ClearStudioProgramStates();
-    CLEAR_VARIANTS(Sprite, sprite_program_t);
-    CLEAR_VARIANTS(TriAPI, triapi_program_t);
-    CLEAR_VARIANTS(Portal, portal_program_t);
-    CLEAR_VARIANTS(DrawTexturedRect, drawtexturedrect_program_t);
-    CLEAR_VARIANTS(DrawFilledRect, drawfilledrect_program_t);
-#undef CLEAR_VARIANTS
+    R_ClearSpriteProgramStates();
+    R_ClearTriAPIProgramStates();
+    R_ClearPortalProgramStates();
+    R_ClearDrawTexturedRectProgramStates();
+    R_ClearDrawFilledRectProgramStates();
 }
 
 class CCompileShaderContext
@@ -50,20 +68,32 @@ std::vector<GLuint> g_ShaderTable;
 static HGLRC        s_SynchronousShaderContext;
 static DWORD        s_SynchronousShaderThread;
 
+static void R_ReportShaderCompileError(const std::string& error)
+{
+    gEngfuncs.Con_Printf("Shader prewarm failed: %s\n", error.c_str());
+}
+
 void GL_InitShaders(void)
 {
-    // Startup/core-context initialization and the engine GL_Init hook can run in
-    // either order. Keep programs when both enter with the same live context.
-    if (s_ShaderCompiler && s_ShaderCompiler->HasCurrentContext()) return;
-    // Recreate operations after GLEW initialization for each context generation.
-    if (s_ShaderCompiler) s_ShaderCompiler->Reset(false);
-    // A public synchronous compile may precede Renderer initialization.
-    if (s_SynchronousShaderContext != wglGetCurrentContext()) g_ShaderTable.clear();
-    auto operations        = GL_MakeShaderOperations();
-    operations.reportError = [](const std::string& error) {
-        gEngfuncs.Con_Printf("Shader prewarm failed: %s\n", error.c_str());
-    };
-    s_ShaderCompiler = std::make_unique<CParallelShaderCompiler>(std::move(operations));
+    //Startup/core-context initialization and the engine GL_Init hook can run in
+    //either order. Keep programs when both enter with the same live context.
+    if (s_ShaderCompiler && s_ShaderCompiler->HasCurrentContext())
+        return;
+
+    //Recreate operations after GLEW initialization for each context generation.
+    if (s_ShaderCompiler)
+    {
+        s_ShaderCompiler->Reset(false);
+        s_ShaderCompiler.reset();
+    }
+
+    //A public synchronous compile may precede Renderer initialization.
+    if (s_SynchronousShaderContext != wglGetCurrentContext())
+        g_ShaderTable.clear();
+
+    s_ShaderOperations = std::make_unique<CShaderGLOperations>(R_ReportShaderCompileError);
+    s_ShaderCompiler   = std::make_unique<CParallelShaderCompiler>(*s_ShaderOperations);
+
     GL_ConfigureShaderCompiler();
     s_ShaderCompiler->Initialize(GL_DetectShaderCompileCapabilities());
     R_ClearShaderVariantTables();
@@ -71,19 +101,26 @@ void GL_InitShaders(void)
 
 void GL_FreeShaders(void)
 {
-    const bool current = s_ShaderCompiler && s_ShaderCompiler->HasCurrentContext();
-    if (s_ShaderCompiler) s_ShaderCompiler->Reset(current);
+    if (s_ShaderCompiler)
+        s_ShaderCompiler->Reset(s_ShaderCompiler->HasCurrentContext());
+
     R_ClearShaderVariantTables();
+
+    const bool synchronousContextCurrent = s_SynchronousShaderContext == wglGetCurrentContext() && s_SynchronousShaderThread == GetCurrentThreadId();
+
     for (size_t i = 0; i < g_ShaderTable.size(); ++i)
     {
         auto prog = g_ShaderTable[i];
-        if (s_SynchronousShaderContext == wglGetCurrentContext() && s_SynchronousShaderThread == GetCurrentThreadId()) glDeleteProgram(prog);
+
+        if (synchronousContextCurrent)
+            glDeleteProgram(prog);
     }
 
     g_ShaderTable.clear();
     s_SynchronousShaderContext = nullptr;
     s_SynchronousShaderThread  = 0;
     s_ShaderCompiler.reset();
+    s_ShaderOperations.reset();
 }
 
 static void R_DumpShaderSource(const char* code, const char* filename)
@@ -125,14 +162,19 @@ GLuint R_CompileShader(const CCompileShaderArgs* args, const CCompileShaderConte
     int    shader_object_used = 0;
     GLuint program            = 0;
     bool   published          = false;
+
     SCOPE_EXIT
     {
         for (int i = 0; i < shader_object_used; ++i)
         {
-            if (program) glDetachShader(program, shader_objects[i]);
+            if (program)
+                glDetachShader(program, shader_objects[i]);
+
             glDeleteShader(shader_objects[i]);
         }
-        if (program && !published) glDeleteProgram(program);
+
+        if (program && !published)
+            glDeleteProgram(program);
     };
 
 #define APPEND_SHADER_STAGE(stage, GLStage)                                                                                   \
@@ -150,11 +192,13 @@ GLuint R_CompileShader(const CCompileShaderArgs* args, const CCompileShaderConte
 #undef APPEND_SHADER_STAGE
 
     program = glCreateProgram();
+
     if (!program)
     {
         Sys_Error("Cannot create shader program");
         return 0;
     }
+
     for (int i = 0; i < shader_object_used; ++i)
         glAttachShader(program, shader_objects[i]);
     glLinkProgram(program);
@@ -172,7 +216,9 @@ GLuint R_CompileShader(const CCompileShaderArgs* args, const CCompileShaderConte
         return 0;
     }
 
-    if (s_SynchronousShaderContext != wglGetCurrentContext()) g_ShaderTable.clear();
+    if (s_SynchronousShaderContext != wglGetCurrentContext())
+        g_ShaderTable.clear();
+
     s_SynchronousShaderContext = wglGetCurrentContext();
     s_SynchronousShaderThread  = GetCurrentThreadId();
     g_ShaderTable.emplace_back(program);
@@ -275,7 +321,6 @@ void R_CompileShaderAppendDefine(std::string& str, const std::string& def)
 
 static bool R_PrepareShaderSources(const CCompileShaderArgs* args, CCompileShaderContext& context)
 {
-
 #define LOAD_SHADER_STAGE(stage, macro)                                                        \
     if (args->stage##file)                                                                     \
     {                                                                                          \
@@ -310,7 +355,10 @@ static bool R_PrepareShaderSources(const CCompileShaderArgs* args, CCompileShade
 GLuint GL_CompileShaderFileEx(const CCompileShaderArgs* args)
 {
     CCompileShaderContext context;
-    if (!R_PrepareShaderSources(args, context)) return 0;
+
+    if (!R_PrepareShaderSources(args, context))
+        return 0;
+
     return R_CompileShader(args, &context);
 }
 
@@ -341,103 +389,212 @@ void GL_UseProgram(GLuint program)
 #endif
 }
 
-static unsigned R_ShaderLimit(cvar_t* cvar, unsigned fallback, unsigned maximum)
+static const CShaderCompileCvar& R_FindShaderCompileCvar(cvar_t** cvar)
 {
-    if (!cvar || !std::isfinite(cvar->value)) return fallback;
-    return static_cast<unsigned>(std::clamp(cvar->value, 1.0f, static_cast<float>(maximum)));
+    for (const auto& entry : s_ShaderCompileCvars)
+    {
+        if (entry.cvar == cvar)
+            return entry;
+    }
+
+    Sys_Error("R_FindShaderCompileCvar: unknown shader compile cvar");
+    return s_ShaderCompileCvars[0];
 }
 
-static double R_ShaderStartupValue(cvar_t* cvar, const char* name, double fallback)
+//Returns the value of an explicit "+name value" command-line control, or nullptr.
+static const char* R_GetShaderCompileCvarParm(const CShaderCompileCvar& entry)
 {
-    if (cvar) return cvar->value;
-    const auto  option = std::string("+") + name;
+    const auto  option = std::string("+") + entry.name;
     const char* value  = nullptr;
-    if (!gEngfuncs.CheckParm(option.c_str(), &value) || !value) return fallback;
-    char*        end    = nullptr;
-    const double parsed = std::strtod(value, &end);
-    return end == value ? fallback : parsed;
+
+    if (!gEngfuncs.CheckParm(option.c_str(), &value))
+        return nullptr;
+
+    return value;
 }
 
-static void GL_ConfigureShaderCompiler()
+/*
+    Startup programs can be requested before the cvars are registered and before the engine
+    executes +commands, so fall back to the command line and then to the registered default.
+*/
+static double R_GetShaderCompileCvarValue(cvar_t** cvar)
 {
-    if (!s_ShaderCompiler) return;
-    ShaderCompileConfig config;
-    config.enabled     = R_ShaderStartupValue(r_shader_parallel_compile, "r_shader_parallel_compile", 1) != 0;
-    config.threads     = R_ShaderStartupValue(r_shader_parallel_threads, "r_shader_parallel_threads", -1);
-    config.maxInflight = R_ShaderLimit(r_shader_parallel_max_inflight, 16, 256);
+    if (*cvar)
+        return (*cvar)->value;
+
+    const auto& entry = R_FindShaderCompileCvar(cvar);
+    const char* value = R_GetShaderCompileCvarParm(entry);
+
+    if (value)
+    {
+        char*        end    = nullptr;
+        const double parsed = std::strtod(value, &end);
+
+        if (end != value)
+            return parsed;
+    }
+
+    return std::atof(entry.defaultValue);
+}
+
+static unsigned R_GetShaderCompileCvarLimit(cvar_t** cvar, unsigned maximum)
+{
+    double value = R_GetShaderCompileCvarValue(cvar);
+
+    if (!std::isfinite(value))
+        value = std::atof(R_FindShaderCompileCvar(cvar).defaultValue);
+
+    return static_cast<unsigned>(std::clamp(value, 1.0, static_cast<double>(maximum)));
+}
+
+void R_InitShaderCompileCvars(void)
+{
+    for (const auto& entry : s_ShaderCompileCvars)
+    {
+        *entry.cvar = gEngfuncs.pfnRegisterVariable(entry.name, entry.defaultValue, FCVAR_CLIENTDLL | FCVAR_ARCHIVE);
+
+        //These startup programs precede the engine's normal execution of +commands.
+        //Honor explicit command-line controls now so forced Sync also covers HUD init.
+        const char* value = R_GetShaderCompileCvarParm(entry);
+
+        if (value)
+            gEngfuncs.Cvar_Set(entry.name, value);
+    }
+
+    gEngfuncs.pfnAddCommand("shader_compile_stats", R_ShaderCompileStats_f);
+}
+
+void R_FreeShaderCompileCvars(void)
+{
+    for (const auto& entry : s_ShaderCompileCvars)
+    {
+        *entry.cvar = nullptr;
+    }
+}
+
+static void GL_ConfigureShaderCompiler(void)
+{
+    if (!s_ShaderCompiler)
+        return;
+
+    CShaderCompileConfig config;
+    config.enabled     = R_GetShaderCompileCvarValue(&r_shader_parallel_compile) != 0;
+    config.threads     = R_GetShaderCompileCvarValue(&r_shader_parallel_threads);
+    config.maxInflight = R_GetShaderCompileCvarLimit(&r_shader_parallel_max_inflight, SHADER_MAX_INFLIGHT_LIMIT);
     s_ShaderCompiler->Configure(config);
 }
 
-ShaderProgramTicket GL_RequestShaderVariant(const CCompileShaderArgs* args, const char* category, program_state_t state, bool prewarm, CParallelShaderCompiler::Finalizer finalize)
+CShaderProgramTicket GL_RequestShaderVariant(const CCompileShaderArgs* args, const char* category, program_state_t state, bool prewarm, CParallelShaderCompiler::Finalizer finalize)
 {
     if (!s_ShaderCompiler || !s_ShaderCompiler->HasCurrentContext())
     {
         Sys_Error("Shader request without the initialized renderer GL context");
         return {};
     }
+
     GL_ConfigureShaderCompiler();
+
     CCompileShaderContext context;
-    if (!R_PrepareShaderSources(args, context)) return {};
-    ShaderProgramSource source;
+
+    if (!R_PrepareShaderSources(args, context))
+        return {};
+
+    CShaderProgramSource source;
     source.category = category;
     source.state    = state;
-#define COPY_STAGE(stage, index, glType)                                                                                                    \
-    if (args->stage##file)                                                                                                                  \
-    {                                                                                                                                       \
-        source.stages[index] = {glType, args->stage##file, std::move(context.stage##code), args->stage##define ? args->stage##define : ""}; \
-        R_DumpShaderSource(source.stages[index].source.c_str(), args->stage##file);                                                         \
+
+#define COPY_SHADER_STAGE(stage, index, GLStage)                                                                                             \
+    if (args->stage##file)                                                                                                                   \
+    {                                                                                                                                        \
+        source.stages[index] = {GLStage, args->stage##file, std::move(context.stage##code), args->stage##define ? args->stage##define : ""}; \
+        R_DumpShaderSource(source.stages[index].source.c_str(), args->stage##file);                                                          \
     }
-    COPY_STAGE(vs, 0, GL_VERTEX_SHADER);
-    COPY_STAGE(gs, 1, GL_GEOMETRY_SHADER);
-    COPY_STAGE(fs, 2, GL_FRAGMENT_SHADER);
-#undef COPY_STAGE
-    return s_ShaderCompiler->Request(std::move(source), prewarm ? ShaderPriority::Prewarm : ShaderPriority::Critical, std::move(finalize));
+
+    COPY_SHADER_STAGE(vs, 0, GL_VERTEX_SHADER);
+    COPY_SHADER_STAGE(gs, 1, GL_GEOMETRY_SHADER);
+    COPY_SHADER_STAGE(fs, 2, GL_FRAGMENT_SHADER);
+
+#undef COPY_SHADER_STAGE
+
+    const auto priority = prewarm ? ShaderPriority::Prewarm : ShaderPriority::Critical;
+
+    return s_ShaderCompiler->Request(std::move(source), priority, std::move(finalize));
 }
 
-void GL_RequireShaderVariant(ShaderProgramTicket ticket)
+void GL_RequireShaderVariant(CShaderProgramTicket ticket)
 {
-    if (!s_ShaderCompiler || !s_ShaderCompiler->Require(ticket))
-        Sys_Error("Shader demand failed: %s", s_ShaderCompiler ? s_ShaderCompiler->Error(ticket).c_str() : "No renderer GL context");
+    if (!s_ShaderCompiler)
+    {
+        Sys_Error("Shader demand failed: No renderer GL context");
+        return;
+    }
+
+    if (!s_ShaderCompiler->Require(ticket))
+        Sys_Error("Shader demand failed: %s", s_ShaderCompiler->Error(ticket).c_str());
 }
 
-void GL_PumpShaderCompiler()
+void GL_PumpShaderCompiler(void)
 {
-    if (!s_ShaderCompiler || !s_ShaderCompiler->HasCurrentContext()) return;
+    if (!s_ShaderCompiler || !s_ShaderCompiler->HasCurrentContext())
+        return;
+
     GL_ConfigureShaderCompiler();
-    const double budget = r_shader_parallel_poll_budget_ms ? r_shader_parallel_poll_budget_ms->value : 1.0;
-    s_ShaderCompiler->Pump(budget, 64, R_ShaderLimit(r_shader_parallel_submit_per_frame, 8, 256));
+
+    const double   budget      = R_GetShaderCompileCvarValue(&r_shader_parallel_poll_budget_ms);
+    const unsigned submissions = R_GetShaderCompileCvarLimit(&r_shader_parallel_submit_per_frame, SHADER_PUMP_MAX_SUBMISSIONS);
+
+    s_ShaderCompiler->Pump(budget, SHADER_PUMP_POLLS_PER_FRAME, submissions);
 }
 
-void GL_RequireShaderBatch(const std::vector<ShaderProgramTicket>& tickets)
+void GL_RequireShaderBatch(const std::vector<CShaderProgramTicket>& tickets)
 {
     if (!s_ShaderCompiler)
     {
         Sys_Error("No renderer GL context for startup shader batch");
         return;
     }
+
     for (auto ticket : tickets)
     {
-        // Controlled startup barrier: fill available slots before resolving one.
-        s_ShaderCompiler->Pump(10, 0, 256);
+        //Controlled startup barrier: fill available slots before resolving one.
+        s_ShaderCompiler->Pump(SHADER_PUMP_MAX_BUDGET_MS, 0, SHADER_PUMP_MAX_SUBMISSIONS);
+
         if (!s_ShaderCompiler->Require(ticket, true))
             Sys_Error("Startup shader failed: %s", s_ShaderCompiler->Error(ticket).c_str());
     }
 }
 
-void GL_ResetShaderVariants()
+void GL_ResetShaderVariants(void)
 {
-    if (s_ShaderCompiler) s_ShaderCompiler->Reset(s_ShaderCompiler->HasCurrentContext());
+    if (s_ShaderCompiler)
+        s_ShaderCompiler->Reset(s_ShaderCompiler->HasCurrentContext());
+
     R_ClearShaderVariantTables();
 }
 
-void R_ShaderCompileStats_f()
+static const char* R_GetShaderCompileBackendName(ShaderCompileBackend backend)
 {
-    if (!s_ShaderCompiler || !s_ShaderCompiler->HasCurrentContext()) return;
+    switch (backend)
+    {
+        case ShaderCompileBackend::ARB:
+            return "ARB";
+        case ShaderCompileBackend::KHR:
+            return "KHR";
+        default:
+            return "Sync";
+    }
+}
+
+void R_ShaderCompileStats_f(void)
+{
+    if (!s_ShaderCompiler || !s_ShaderCompiler->HasCurrentContext())
+        return;
+
     GL_ConfigureShaderCompiler();
-    auto        s       = s_ShaderCompiler->Statistics();
-    const char* backend = s.backend == ShaderCompileBackend::ARB ? "ARB" : s.backend == ShaderCompileBackend::KHR ? "KHR" :
-                                                                                                                    "Sync";
-    gEngfuncs.Con_Printf("Shader compiler: %s, vendor=%s renderer=%s GL=%s GLEW=%s\n", backend, glGetString(GL_VENDOR), glGetString(GL_RENDERER), glGetString(GL_VERSION), glewGetString(GLEW_VERSION));
+
+    auto s = s_ShaderCompiler->Statistics();
+
+    gEngfuncs.Con_Printf("Shader compiler: %s, vendor=%s renderer=%s GL=%s GLEW=%s\n", R_GetShaderCompileBackendName(s.backend), glGetString(GL_VENDOR), glGetString(GL_RENDERER), glGetString(GL_VERSION), glewGetString(GLEW_VERSION));
     gEngfuncs.Con_Printf("hint requested=%u reported=%u (not actual worker count), requests=%llu hits=%llu submitted=%llu queued=%u inflight=%u ready=%llu failed=%llu cancelled=%llu sync=%llu peak=%llu polls=%llu\n",
                          s.requestedHint, s.reportedHint, s.requests, s.cacheHits, s.submitted, unsigned(s.queued), unsigned(s.inflight), s.ready, s.failed, s.cancelled, s.syncFallbacks, s.peakInflight, s.polls);
     gEngfuncs.Con_Printf("CPU ms: submit total=%.3f peak=%.3f poll total=%.3f pump peak=%.3f demand stalls=%llu total=%.3f startup barriers=%llu total=%.3f prewarm wall=%.3f\n", s.submitMs, s.peakSubmitMs, s.pollMs, s.peakPumpMs, s.demandStalls, s.demandMs, s.startupBarriers, s.startupMs, s.prewarmMs);
@@ -447,20 +604,31 @@ void R_ShaderCompileStats_f()
 static std::string R_ReadShaderCacheFile(const char* filename)
 {
     std::string content;
-    auto        file = FILESYSTEM_ANY_OPEN(filename, "rt");
-    if (!file) return content;
-    SCOPE_EXIT { FILESYSTEM_ANY_CLOSE(file); };
-    char line[4096];
-    while (FILESYSTEM_ANY_READLINE(line, sizeof(line), file)) content += line;
+    auto        FileHandle = FILESYSTEM_ANY_OPEN(filename, "rt");
+
+    if (!FileHandle)
+        return content;
+
+    SCOPE_EXIT { FILESYSTEM_ANY_CLOSE(FileHandle); };
+
+    char szReadLine[PROGRAM_STATE_CACHE_MAX_LINE];
+
+    while (FILESYSTEM_ANY_READLINE(szReadLine, sizeof(szReadLine), FileHandle))
+        content += szReadLine;
+
     return content;
 }
 
 void R_SaveProgramStatesCaches(const char* filename, const std::vector<program_state_t>& ProgramStates, const program_state_mapping_t* mapping, size_t mapping_size)
 {
     std::stringstream ss;
-    // Keep valid historical prewarm states that have not finished this session.
+
+    //Keep valid historical prewarm states that have not finished this session.
     std::set<program_state_t> states(ProgramStates.begin(), ProgramStates.end());
-    R_ReadProgramStateCache(filename, mapping, mapping_size, R_ReadShaderCacheFile, [&](auto state) { states.insert(state); });
+    R_ReadProgramStateCache(filename, mapping, mapping_size, R_ReadShaderCacheFile, [&](program_state_t state) {
+        states.insert(state);
+    });
+
     for (auto p : states)
     {
         if (p == 0)

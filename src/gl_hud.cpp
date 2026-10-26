@@ -107,12 +107,17 @@ static void R_ResolveDrawTexturedRectProgram(program_state_t state, drawtextured
         args.fsfile   = "renderer\\shader\\drawtexturedrect_shader.frag.glsl";
         args.vsdefine = def.c_str();
         args.fsdefine = def.c_str();
-        auto ticket   = GL_RequestShaderVariant(&args, "DrawTexturedRect", state, prewarm, [state](GLuint program) {
-            drawtexturedrect_program_t ready      = {};
-            ready.program                         = program;
-            g_DrawTexturedRectProgramTable[state] = ready;
+
+        auto ticket = GL_RequestShaderVariant(&args, "DrawTexturedRect", state, prewarm, [state](GLuint program) {
+            drawtexturedrect_program_t prog = {};
+            prog.program                    = program;
+
+            g_DrawTexturedRectProgramTable[state] = prog;
         });
-        if (prewarm) return;
+
+        if (prewarm)
+            return;
+
         GL_RequireShaderVariant(ticket);
         prog = g_DrawTexturedRectProgramTable.at(state);
     }
@@ -121,7 +126,9 @@ static void R_ResolveDrawTexturedRectProgram(program_state_t state, drawtextured
         prog = itor->second;
     }
 
-    if (prewarm) return;
+    if (prewarm)
+        return;
+
     if (prog.program)
     {
         GL_UseProgram(prog.program);
@@ -135,8 +142,20 @@ static void R_ResolveDrawTexturedRectProgram(program_state_t state, drawtextured
     }
 }
 
-void R_UseDrawTexturedRectProgram(program_state_t state, drawtexturedrect_program_t* output) { R_ResolveDrawTexturedRectProgram(state, output, false); }
-void R_RequestDrawTexturedRectProgramState(program_state_t state) { R_ResolveDrawTexturedRectProgram(state, nullptr, true); }
+void R_UseDrawTexturedRectProgram(program_state_t state, drawtexturedrect_program_t* output)
+{
+    R_ResolveDrawTexturedRectProgram(state, output, false);
+}
+
+void R_RequestDrawTexturedRectProgramState(program_state_t state)
+{
+    R_ResolveDrawTexturedRectProgram(state, nullptr, true);
+}
+
+void R_ClearDrawTexturedRectProgramStates(void)
+{
+    g_DrawTexturedRectProgramTable.clear();
+}
 
 const program_state_mapping_t s_DrawTexturedRectProgramStateName[] = {
     {DRAW_TEXTURED_RECT_ALPHA_BLEND_ENABLED, "DRAW_TEXTURED_RECT_ALPHA_BLEND_ENABLED"},
@@ -182,12 +201,17 @@ static void R_ResolveDrawFilledRectProgram(program_state_t state, drawfilledrect
         args.fsfile   = "renderer\\shader\\drawfilledrect_shader.frag.glsl";
         args.vsdefine = def.c_str();
         args.fsdefine = def.c_str();
-        auto ticket   = GL_RequestShaderVariant(&args, "DrawFilledRect", state, prewarm, [state](GLuint program) {
-            drawfilledrect_program_t ready      = {};
-            ready.program                       = program;
-            g_DrawFilledRectProgramTable[state] = ready;
+
+        auto ticket = GL_RequestShaderVariant(&args, "DrawFilledRect", state, prewarm, [state](GLuint program) {
+            drawfilledrect_program_t prog = {};
+            prog.program                  = program;
+
+            g_DrawFilledRectProgramTable[state] = prog;
         });
-        if (prewarm) return;
+
+        if (prewarm)
+            return;
+
         GL_RequireShaderVariant(ticket);
         prog = g_DrawFilledRectProgramTable.at(state);
     }
@@ -196,7 +220,9 @@ static void R_ResolveDrawFilledRectProgram(program_state_t state, drawfilledrect
         prog = itor->second;
     }
 
-    if (prewarm) return;
+    if (prewarm)
+        return;
+
     if (prog.program)
     {
         GL_UseProgram(prog.program);
@@ -210,8 +236,20 @@ static void R_ResolveDrawFilledRectProgram(program_state_t state, drawfilledrect
     }
 }
 
-void R_UseDrawFilledRectProgram(program_state_t state, drawfilledrect_program_t* output) { R_ResolveDrawFilledRectProgram(state, output, false); }
-void R_RequestDrawFilledRectProgramState(program_state_t state) { R_ResolveDrawFilledRectProgram(state, nullptr, true); }
+void R_UseDrawFilledRectProgram(program_state_t state, drawfilledrect_program_t* output)
+{
+    R_ResolveDrawFilledRectProgram(state, output, false);
+}
+
+void R_RequestDrawFilledRectProgramState(program_state_t state)
+{
+    R_ResolveDrawFilledRectProgram(state, nullptr, true);
+}
+
+void R_ClearDrawFilledRectProgramStates(void)
+{
+    g_DrawFilledRectProgramTable.clear();
+}
 
 const program_state_mapping_t s_DrawFilledRectProgramStateName[] = {
     {DRAW_FILLED_RECT_ALPHA_BLEND_ENABLED, "DRAW_FILLED_RECT_ALPHA_BLEND_ENABLED"},
@@ -239,6 +277,55 @@ void R_LoadDrawFilledRectProgramStates(void)
     R_LoadProgramStateCaches("renderer/shader/drawfilledrect_cache.txt", s_DrawFilledRectProgramStateName, _ARRAYSIZE(s_DrawFilledRectProgramStateName), [](program_state_t state) {
         R_RequestDrawFilledRectProgramState(state);
     });
+}
+
+template <class T>
+static void R_QueryHBAOUniforms(T& prog)
+{
+    SHADER_UNIFORM(prog, texLinearDepth, "texLinearDepth");
+    SHADER_UNIFORM(prog, texRandom, "texRandom");
+    SHADER_UNIFORM(prog, control_RadiusToScreen, "control_RadiusToScreen");
+    SHADER_UNIFORM(prog, control_projOrtho, "control_projOrtho");
+    SHADER_UNIFORM(prog, control_projInfo, "control_projInfo");
+    SHADER_UNIFORM(prog, control_PowExponent, "control_PowExponent");
+    SHADER_UNIFORM(prog, control_InvQuarterResolution, "control_InvQuarterResolution");
+    SHADER_UNIFORM(prog, control_AOMultiplier, "control_AOMultiplier");
+    SHADER_UNIFORM(prog, control_InvFullResolution, "control_InvFullResolution");
+    SHADER_UNIFORM(prog, control_NDotVBias, "control_NDotVBias");
+    SHADER_UNIFORM(prog, control_NegInvR2, "control_NegInvR2");
+}
+
+static void R_FinalizeHBAOCalcBlurProgram(void)
+{
+    R_QueryHBAOUniforms(hbao_calc_blur);
+}
+
+static void R_FinalizeHBAOCalcBlurFogProgram(void)
+{
+    R_QueryHBAOUniforms(hbao_calc_blur_fog);
+    SHADER_UNIFORM(hbao_calc_blur_fog, control_Fog, "control_Fog");
+}
+
+/*
+    Queues a fixed program for the startup barrier. Targets are static HUD program fields,
+    never local program temporaries, so the finalizer can publish into them after linking.
+*/
+static void R_RequestFixedProgram(std::vector<CShaderProgramTicket>& tickets, const char* name, int& target, const char* vsfile, const char* fsfile, const char* vsdefine = nullptr, const char* fsdefine = nullptr, void (*finalize)(void) = nullptr)
+{
+    target = 0;
+
+    CCompileShaderArgs args;
+    args.vsfile   = vsfile;
+    args.fsfile   = fsfile;
+    args.vsdefine = vsdefine;
+    args.fsdefine = fsdefine;
+
+    tickets.push_back(GL_RequestShaderVariant(&args, name, 0, true, [output = &target, finalize](GLuint program) {
+        *output = program;
+
+        if (finalize)
+            finalize();
+    }));
 }
 
 void R_InitHUD(void)
@@ -284,101 +371,70 @@ void R_InitHUD(void)
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 
-    std::vector<ShaderProgramTicket> fixedShaders;
-    auto                             queryHbao = [](auto& prog) {
-        SHADER_UNIFORM(prog, texLinearDepth, "texLinearDepth");
-        SHADER_UNIFORM(prog, texRandom, "texRandom");
-        SHADER_UNIFORM(prog, control_RadiusToScreen, "control_RadiusToScreen");
-        SHADER_UNIFORM(prog, control_projOrtho, "control_projOrtho");
-        SHADER_UNIFORM(prog, control_projInfo, "control_projInfo");
-        SHADER_UNIFORM(prog, control_PowExponent, "control_PowExponent");
-        SHADER_UNIFORM(prog, control_InvQuarterResolution, "control_InvQuarterResolution");
-        SHADER_UNIFORM(prog, control_AOMultiplier, "control_AOMultiplier");
-        SHADER_UNIFORM(prog, control_InvFullResolution, "control_InvFullResolution");
-        SHADER_UNIFORM(prog, control_NDotVBias, "control_NDotVBias");
-        SHADER_UNIFORM(prog, control_NegInvR2, "control_NegInvR2");
-    };
-    auto requestFixed = [&](const char* name, int& target, const char* vsfile, const char* fsfile, const char* vsdefine = nullptr, const char* fsdefine = nullptr) {
-        target = 0;
-        CCompileShaderArgs args;
-        args.vsfile   = vsfile;
-        args.fsfile   = fsfile;
-        args.vsdefine = vsdefine;
-        args.fsdefine = fsdefine;
-        // Targets are static HUD program fields, never local program temporaries.
-        fixedShaders.push_back(GL_RequestShaderVariant(&args, name, 0, true, [output = &target, queryHbao](GLuint ready) {
-            *output = ready;
-            if (output == &hbao_calc_blur.program) queryHbao(hbao_calc_blur);
-            if (output == &hbao_calc_blur_fog.program)
-            {
-                queryHbao(hbao_calc_blur_fog);
-                SHADER_UNIFORM(hbao_calc_blur_fog, control_Fog, "control_Fog");
-            }
-        }));
-    };
+    std::vector<CShaderProgramTicket> fixedShaders;
 
     //FXAA Pass
-    requestFixed("pp_fxaa", pp_fxaa.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\pp_fxaa.frag.glsl");
+    R_RequestFixedProgram(fixedShaders, "pp_fxaa", pp_fxaa.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\pp_fxaa.frag.glsl");
 
     //DownSample Pass
-    requestFixed("pp_downsample", pp_downsample.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\down_sample.frag.glsl");
+    R_RequestFixedProgram(fixedShaders, "pp_downsample", pp_downsample.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\down_sample.frag.glsl");
 
     //2x2 Downsample Pass
-    requestFixed("pp_downsample2x2", pp_downsample2x2.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\down_sample.frag.glsl", "", "#define DOWNSAMPLE_2X2\n");
+    R_RequestFixedProgram(fixedShaders, "pp_downsample2x2", pp_downsample2x2.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\down_sample.frag.glsl", "", "#define DOWNSAMPLE_2X2\n");
 
     //Luminance Downsample Pass
-    requestFixed("pp_lumindown", pp_lumindown.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\hdr_lumpass.frag.glsl", "", "");
+    R_RequestFixedProgram(fixedShaders, "pp_lumindown", pp_lumindown.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\hdr_lumpass.frag.glsl", "", "");
 
     //Log Luminance Downsample Pass
-    requestFixed("pp_luminlog", pp_luminlog.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\hdr_lumpass.frag.glsl", "", "#define LUMPASS_LOG\n");
+    R_RequestFixedProgram(fixedShaders, "pp_luminlog", pp_luminlog.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\hdr_lumpass.frag.glsl", "", "#define LUMPASS_LOG\n");
 
     //Exp Luminance Downsample Pass
-    requestFixed("pp_luminexp", pp_luminexp.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\hdr_lumpass.frag.glsl", "", "#define LUMPASS_EXP\n");
+    R_RequestFixedProgram(fixedShaders, "pp_luminexp", pp_luminexp.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\hdr_lumpass.frag.glsl", "", "#define LUMPASS_EXP\n");
 
     //Luminance Adaptation Downsample Pass
-    requestFixed("pp_luminadapt", pp_luminadapt.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\hdr_adaption.frag.glsl", "", "");
+    R_RequestFixedProgram(fixedShaders, "pp_luminadapt", pp_luminadapt.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\hdr_adaption.frag.glsl", "", "");
 
     //Bright Pass
-    requestFixed("pp_brightpass", pp_brightpass.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\hdr_brightpass.frag.glsl", "", "");
+    R_RequestFixedProgram(fixedShaders, "pp_brightpass", pp_brightpass.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\hdr_brightpass.frag.glsl", "", "");
 
     //Tone mapping
-    requestFixed("pp_tonemap", pp_tonemap.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\hdr_tonemap.frag.glsl", "", "");
+    R_RequestFixedProgram(fixedShaders, "pp_tonemap", pp_tonemap.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\hdr_tonemap.frag.glsl", "", "");
 
     //SSAO
-    requestFixed("depth_linearize", depth_linearize.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\depthlinearize.frag.glsl");
+    R_RequestFixedProgram(fixedShaders, "depth_linearize", depth_linearize.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\depthlinearize.frag.glsl");
 
-    requestFixed("hbao_calc_blur", hbao_calc_blur.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\hbao.frag.glsl");
+    R_RequestFixedProgram(fixedShaders, "hbao_calc_blur", hbao_calc_blur.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\hbao.frag.glsl", nullptr, nullptr, R_FinalizeHBAOCalcBlurProgram);
 
     //OIT Blend
     if (g_bUseOITBlend)
     {
-        requestFixed("oitbuffer_clear", oitbuffer_clear.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\oitbuffer_clear.frag.glsl");
+        R_RequestFixedProgram(fixedShaders, "oitbuffer_clear", oitbuffer_clear.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\oitbuffer_clear.frag.glsl");
 
-        requestFixed("blit_oitblend", blit_oitblend.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\blit_oitblend.frag.glsl");
+        R_RequestFixedProgram(fixedShaders, "blit_oitblend", blit_oitblend.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\blit_oitblend.frag.glsl");
     }
 
-    requestFixed("gamma_correction", gamma_correction.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\gamma_correction.frag.glsl");
+    R_RequestFixedProgram(fixedShaders, "gamma_correction", gamma_correction.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\gamma_correction.frag.glsl");
 
-    requestFixed("gamma_uncorrection", gamma_uncorrection.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\gamma_uncorrection.frag.glsl");
+    R_RequestFixedProgram(fixedShaders, "gamma_uncorrection", gamma_uncorrection.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\gamma_uncorrection.frag.glsl");
 
-    requestFixed("copy_color", copy_color.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\copy_color.frag.glsl");
+    R_RequestFixedProgram(fixedShaders, "copy_color", copy_color.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\copy_color.frag.glsl");
 
-    requestFixed("copy_color_halo_add", copy_color_halo_add.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\copy_color.frag.glsl", "#define HALO_ADD_ENABLED\n", "#define HALO_ADD_ENABLED\n");
+    R_RequestFixedProgram(fixedShaders, "copy_color_halo_add", copy_color_halo_add.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\copy_color.frag.glsl", "#define HALO_ADD_ENABLED\n", "#define HALO_ADD_ENABLED\n");
 
-    requestFixed("under_water_effect", under_water_effect.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\under_water_effect.frag.glsl");
+    R_RequestFixedProgram(fixedShaders, "under_water_effect", under_water_effect.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\under_water_effect.frag.glsl");
 
-    requestFixed("hbao_calc_blur_fog", hbao_calc_blur_fog.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\hbao.frag.glsl", "#define LINEAR_FOG_ENABLED\n", "#define LINEAR_FOG_ENABLED\n");
+    R_RequestFixedProgram(fixedShaders, "hbao_calc_blur_fog", hbao_calc_blur_fog.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\hbao.frag.glsl", "#define LINEAR_FOG_ENABLED\n", "#define LINEAR_FOG_ENABLED\n", R_FinalizeHBAOCalcBlurFogProgram);
 
-    requestFixed("hbao_blur", hbao_blur.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\hbao_blur.frag.glsl");
+    R_RequestFixedProgram(fixedShaders, "hbao_blur", hbao_blur.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\hbao_blur.frag.glsl");
 
-    requestFixed("hbao_blur2", hbao_blur2.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\hbao_blur.frag.glsl", "#define AO_BLUR_PRESENT\n", "#define AO_BLUR_PRESENT\n");
+    R_RequestFixedProgram(fixedShaders, "hbao_blur2", hbao_blur2.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\hbao_blur.frag.glsl", "#define AO_BLUR_PRESENT\n", "#define AO_BLUR_PRESENT\n");
 
-    requestFixed("pp_gaussianblurh", pp_gaussianblurh.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\gaussian_blur_16x.frag.glsl", "", "#define BLUR_HORIZONAL\n");
+    R_RequestFixedProgram(fixedShaders, "pp_gaussianblurh", pp_gaussianblurh.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\gaussian_blur_16x.frag.glsl", "", "#define BLUR_HORIZONAL\n");
 
-    requestFixed("pp_gaussianblurv", pp_gaussianblurv.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\gaussian_blur_16x.frag.glsl", "", "#define BLUR_VERTICAL\n");
+    R_RequestFixedProgram(fixedShaders, "pp_gaussianblurv", pp_gaussianblurv.program, "renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\gaussian_blur_16x.frag.glsl", "", "#define BLUR_VERTICAL\n");
 
-    // All fixed programs must be linked before any location query or publication
-    // to rendering. The barrier submits a bounded batch before resolving it.
+    //All fixed programs must be linked before any location query or publication
+    //to rendering. The barrier submits a bounded batch before resolving it.
     GL_RequireShaderBatch(fixedShaders);
 
     r_hdr = gEngfuncs.pfnRegisterVariable("r_hdr", "1", FCVAR_ARCHIVE | FCVAR_CLIENTDLL);

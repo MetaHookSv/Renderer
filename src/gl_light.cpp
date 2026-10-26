@@ -109,7 +109,8 @@ static void R_ResolveDFinalProgram(program_state_t state, dfinal_program_t* prog
         args.fsfile   = "renderer\\shader\\dfinal_shader.frag.glsl";
         args.vsdefine = def.c_str();
         args.fsdefine = def.c_str();
-        auto ticket   = GL_RequestShaderVariant(&args, "DFinal", state, prewarm, [state](GLuint program) {
+
+        auto ticket = GL_RequestShaderVariant(&args, "DFinal", state, prewarm, [state](GLuint program) {
             dfinal_program_t prog = {};
             prog.program          = program;
             if (prog.program)
@@ -122,7 +123,10 @@ static void R_ResolveDFinalProgram(program_state_t state, dfinal_program_t* prog
 
             g_DFinalProgramTable[state] = prog;
         });
-        if (prewarm) return;
+
+        if (prewarm)
+            return;
+
         GL_RequireShaderVariant(ticket);
         prog = g_DFinalProgramTable.at(state);
     }
@@ -131,7 +135,9 @@ static void R_ResolveDFinalProgram(program_state_t state, dfinal_program_t* prog
         prog = itor->second;
     }
 
-    if (prewarm) return;
+    if (prewarm)
+        return;
+
     if (prog.program)
     {
         GL_UseProgram(prog.program);
@@ -165,8 +171,20 @@ static void R_ResolveDFinalProgram(program_state_t state, dfinal_program_t* prog
     }
 }
 
-void R_UseDFinalProgram(program_state_t state, dfinal_program_t* output) { R_ResolveDFinalProgram(state, output, false); }
-void R_RequestDFinalProgramState(program_state_t state) { R_ResolveDFinalProgram(state, nullptr, true); }
+void R_UseDFinalProgram(program_state_t state, dfinal_program_t* output)
+{
+    R_ResolveDFinalProgram(state, output, false);
+}
+
+void R_RequestDFinalProgramState(program_state_t state)
+{
+    R_ResolveDFinalProgram(state, nullptr, true);
+}
+
+void R_ClearDFinalProgramStates(void)
+{
+    g_DFinalProgramTable.clear();
+}
 
 const program_state_mapping_t s_DFinalProgramStateName[] = {
     {DFINAL_LINEAR_FOG_ENABLED, "DFINAL_LINEAR_FOG_ENABLED"},
@@ -258,7 +276,8 @@ static void R_ResolveDLightProgram(program_state_t state, dlight_program_t* prog
         args.fsfile   = "renderer\\shader\\dlight_shader.frag.glsl";
         args.vsdefine = def.c_str();
         args.fsdefine = def.c_str();
-        auto ticket   = GL_RequestShaderVariant(&args, "DLight", state, prewarm, [state](GLuint program) {
+
+        auto ticket = GL_RequestShaderVariant(&args, "DLight", state, prewarm, [state](GLuint program) {
             dlight_program_t prog = {};
             prog.program          = program;
             if (prog.program)
@@ -313,7 +332,10 @@ static void R_ResolveDLightProgram(program_state_t state, dlight_program_t* prog
 
             g_DLightProgramTable[state] = prog;
         });
-        if (prewarm) return;
+
+        if (prewarm)
+            return;
+
         GL_RequireShaderVariant(ticket);
         prog = g_DLightProgramTable.at(state);
     }
@@ -322,7 +344,9 @@ static void R_ResolveDLightProgram(program_state_t state, dlight_program_t* prog
         prog = itor->second;
     }
 
-    if (prewarm) return;
+    if (prewarm)
+        return;
+
     if (prog.program)
     {
         GL_UseProgram(prog.program);
@@ -336,8 +360,20 @@ static void R_ResolveDLightProgram(program_state_t state, dlight_program_t* prog
     }
 }
 
-void R_UseDLightProgram(program_state_t state, dlight_program_t* output) { R_ResolveDLightProgram(state, output, false); }
-void R_RequestDLightProgramState(program_state_t state) { R_ResolveDLightProgram(state, nullptr, true); }
+void R_UseDLightProgram(program_state_t state, dlight_program_t* output)
+{
+    R_ResolveDLightProgram(state, output, false);
+}
+
+void R_RequestDLightProgramState(program_state_t state)
+{
+    R_ResolveDLightProgram(state, nullptr, true);
+}
+
+void R_ClearDLightProgramStates(void)
+{
+    g_DLightProgramTable.clear();
+}
 
 // #define DLIGHT_SPOT_ENABLED								0x1ull
 // #define DLIGHT_POINT_ENABLED								0x2ull

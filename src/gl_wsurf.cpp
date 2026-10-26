@@ -364,7 +364,10 @@ static void R_ResolveWSurfProgram(program_state_t state, wsurf_program_t* progOu
 
             g_WSurfProgramTable[state] = prog;
         });
-        if (prewarm) return;
+
+        if (prewarm)
+            return;
+
         GL_RequireShaderVariant(ticket);
         prog = g_WSurfProgramTable.at(state);
     }
@@ -373,7 +376,9 @@ static void R_ResolveWSurfProgram(program_state_t state, wsurf_program_t* progOu
         prog = itor->second;
     }
 
-    if (prewarm) return;
+    if (prewarm)
+        return;
+
     if (prog.program)
     {
         GL_UseProgram(prog.program);
@@ -390,8 +395,20 @@ static void R_ResolveWSurfProgram(program_state_t state, wsurf_program_t* progOu
     }
 }
 
-void R_UseWSurfProgram(program_state_t state, wsurf_program_t* output) { R_ResolveWSurfProgram(state, output, false); }
-void R_RequestWSurfProgramState(program_state_t state) { R_ResolveWSurfProgram(state, nullptr, true); }
+void R_UseWSurfProgram(program_state_t state, wsurf_program_t* output)
+{
+    R_ResolveWSurfProgram(state, output, false);
+}
+
+void R_RequestWSurfProgramState(program_state_t state)
+{
+    R_ResolveWSurfProgram(state, nullptr, true);
+}
+
+void R_ClearWSurfProgramStates(void)
+{
+    g_WSurfProgramTable.clear();
+}
 
 void R_FreeSceneUBO(void)
 {

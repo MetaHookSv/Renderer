@@ -1,6 +1,5 @@
 # Explicit compile list from MetaHookSv Renderer.vcxproj at 11a8527.
 set(RENDERER_SOURCES
-    "${PROJECT_SOURCE_DIR}/src/gl_shader_parallel.cpp"
     "${METAHOOK_SOURCE_PATH}/include/HLSDK/common/interface.cpp"
     "${METAHOOK_SOURCE_PATH}/include/SourceSDK/filesystem.cpp"
     "${METAHOOK_SOURCE_PATH}/include/SourceSDK/filesystem_helpers.cpp"
@@ -125,6 +124,7 @@ set(RENDERER_SOURCES
     "${PROJECT_SOURCE_DIR}/src/gl_rmisc.cpp"
     "${PROJECT_SOURCE_DIR}/src/gl_rsurf.cpp"
     "${PROJECT_SOURCE_DIR}/src/gl_shader.cpp"
+    "${PROJECT_SOURCE_DIR}/src/gl_shader_parallel.cpp"
     "${PROJECT_SOURCE_DIR}/src/gl_shadow.cpp"
     "${PROJECT_SOURCE_DIR}/src/gl_sprite.cpp"
     "${PROJECT_SOURCE_DIR}/src/gl_studio.cpp"

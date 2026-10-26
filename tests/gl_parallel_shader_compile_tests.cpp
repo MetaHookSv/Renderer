@@ -29,6 +29,20 @@ bool HasUsableEntryPoint(void* proc)
     return proc != nullptr;
 }
 
+// The hint value that requests an implementation-specific maximum of compiler threads.
+constexpr GLuint kThreadHintMaximum = 0xFFFFFFFFu;
+
+const char* DescribeThreadHint(GLuint hint)
+{
+    if (hint == 0)
+        return " (no parallel compilation requested)";
+
+    if (hint == kThreadHintMaximum)
+        return " (implementation-specific maximum)";
+
+    return "";
+}
+
 } // namespace
 
 int main()
@@ -94,9 +108,7 @@ int main()
         glGetIntegerv(GL_MAX_SHADER_COMPILER_THREADS_ARB, &threadCount);
         GLenum queryError = glGetError();
         if (queryError == GL_NO_ERROR)
-            std::printf("GL_MAX_SHADER_COMPILER_THREADS_ARB hint : %u%s (not actual worker count)\n", static_cast<GLuint>(threadCount),
-                        threadCount == 0 ? " (no parallel compilation requested)" : static_cast<GLuint>(threadCount) == ~0u ? " (implementation-specific maximum)" :
-                                                                                                                              "");
+            std::printf("GL_MAX_SHADER_COMPILER_THREADS_ARB hint : %u%s (not actual worker count)\n", static_cast<GLuint>(threadCount), DescribeThreadHint(static_cast<GLuint>(threadCount)));
         else
             std::printf("GL_MAX_SHADER_COMPILER_THREADS_ARB : query failed (GL error 0x%04X)\n", queryError);
     }

@@ -21,7 +21,7 @@ Renderer #32 将内部 shader 变体改为 GL 渲染线程上的有界编译/链
 
 ## Involved Files & Symbols
 
-- `src/gl_shader_parallel.{h,cpp}`：CParallelShaderCompiler、ShaderGLOperations、GL_ShaderCompilerThreadHint。
+- `src/gl_shader_parallel.{h,cpp}`：CParallelShaderCompiler、IShaderGLOperations/CShaderGLOperations、GL_ShaderCompilerThreadHint。
 - `src/gl_shader_cache.h`：R_ReadProgramStateCache，独立文本解析器。
 - `src/gl_shader.{h,cpp}`：源预处理、GL_RequestShaderVariant、GL_RequireShaderVariant、GL_RequireShaderBatch、GL_InitShaders、GL_FreeShaders、统计。
 - `src/gl_{wsurf,water,light,studio,sprite,portal,hud}.cpp`：十类状态工厂、request-only loader、Ready 回调；HUD 固定 23 个（无 OIT 为 21 个）启动批次。

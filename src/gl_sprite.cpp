@@ -112,7 +112,10 @@ static void R_ResolveSpriteProgram(program_state_t state, sprite_program_t* prog
 
             g_SpriteProgramTable[state] = prog;
         });
-        if (prewarm) return;
+
+        if (prewarm)
+            return;
+
         GL_RequireShaderVariant(ticket);
         prog = g_SpriteProgramTable.at(state);
     }
@@ -121,7 +124,9 @@ static void R_ResolveSpriteProgram(program_state_t state, sprite_program_t* prog
         prog = itor->second;
     }
 
-    if (prewarm) return;
+    if (prewarm)
+        return;
+
     if (prog.program)
     {
         GL_UseProgram(prog.program);
@@ -135,8 +140,20 @@ static void R_ResolveSpriteProgram(program_state_t state, sprite_program_t* prog
     }
 }
 
-void R_UseSpriteProgram(program_state_t state, sprite_program_t* output) { R_ResolveSpriteProgram(state, output, false); }
-void R_RequestSpriteProgramState(program_state_t state) { R_ResolveSpriteProgram(state, nullptr, true); }
+void R_UseSpriteProgram(program_state_t state, sprite_program_t* output)
+{
+    R_ResolveSpriteProgram(state, output, false);
+}
+
+void R_RequestSpriteProgramState(program_state_t state)
+{
+    R_ResolveSpriteProgram(state, nullptr, true);
+}
+
+void R_ClearSpriteProgramStates(void)
+{
+    g_SpriteProgramTable.clear();
+}
 
 const program_state_mapping_t s_SpriteProgramStateName[] = {
     {SPRITE_GBUFFER_ENABLED, "SPRITE_GBUFFER_ENABLED"},
@@ -255,7 +272,10 @@ static void R_ResolveTriAPIProgram(program_state_t state, triapi_program_t* prog
 
             g_TriAPIProgramTable[state] = prog;
         });
-        if (prewarm) return;
+
+        if (prewarm)
+            return;
+
         GL_RequireShaderVariant(ticket);
         prog = g_TriAPIProgramTable.at(state);
     }
@@ -264,7 +284,9 @@ static void R_ResolveTriAPIProgram(program_state_t state, triapi_program_t* prog
         prog = itor->second;
     }
 
-    if (prewarm) return;
+    if (prewarm)
+        return;
+
     if (prog.program)
     {
         GL_UseProgram(prog.program);
@@ -300,8 +322,20 @@ void R_SaveTriAPIProgramStates(void)
     R_SaveProgramStatesCaches("renderer/shader/triapi_cache.txt", states, s_TriAPIProgramStateName, _ARRAYSIZE(s_TriAPIProgramStateName));
 }
 
-void R_UseTriAPIProgram(program_state_t state, triapi_program_t* output) { R_ResolveTriAPIProgram(state, output, false); }
-void R_RequestTriAPIProgramState(program_state_t state) { R_ResolveTriAPIProgram(state, nullptr, true); }
+void R_UseTriAPIProgram(program_state_t state, triapi_program_t* output)
+{
+    R_ResolveTriAPIProgram(state, output, false);
+}
+
+void R_RequestTriAPIProgramState(program_state_t state)
+{
+    R_ResolveTriAPIProgram(state, nullptr, true);
+}
+
+void R_ClearTriAPIProgramStates(void)
+{
+    g_TriAPIProgramTable.clear();
+}
 
 void R_LoadTriAPIProgramStates(void)
 {
