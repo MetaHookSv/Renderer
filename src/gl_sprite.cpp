@@ -26,7 +26,7 @@ std::shared_ptr<CSpriteModelRenderMaterial> R_SpriteGetMaterial(CSpriteModelRend
     return pRenderData->vSpriteMaterials[frameIndex];
 }
 
-void R_UseSpriteProgram(program_state_t state, sprite_program_t* progOutput)
+static void R_ResolveSpriteProgram(program_state_t state, sprite_program_t* progOutput, bool prewarm)
 {
     sprite_program_t prog = {0};
 
@@ -96,25 +96,32 @@ void R_UseSpriteProgram(program_state_t state, sprite_program_t* progOutput)
         args.vsdefine = def.c_str();
         args.fsdefine = def.c_str();
 
-        prog.program = GL_CompileShaderFileEx(&args);
+        auto ticket = GL_RequestShaderVariant(&args, "Sprite", state, prewarm, [state](GLuint program) {
+            sprite_program_t prog = {};
+            prog.program          = program;
 
-        if (prog.program)
-        {
-            SHADER_UNIFORM(prog, in_up_down_left_right, "in_up_down_left_right");
-            SHADER_UNIFORM(prog, in_color, "in_color");
-            SHADER_UNIFORM(prog, in_origin, "in_origin");
-            SHADER_UNIFORM(prog, in_angles, "in_angles");
-            SHADER_UNIFORM(prog, in_scale, "in_scale");
-            SHADER_UNIFORM(prog, in_lerp, "in_lerp");
-        }
+            if (prog.program)
+            {
+                SHADER_UNIFORM(prog, in_up_down_left_right, "in_up_down_left_right");
+                SHADER_UNIFORM(prog, in_color, "in_color");
+                SHADER_UNIFORM(prog, in_origin, "in_origin");
+                SHADER_UNIFORM(prog, in_angles, "in_angles");
+                SHADER_UNIFORM(prog, in_scale, "in_scale");
+                SHADER_UNIFORM(prog, in_lerp, "in_lerp");
+            }
 
-        g_SpriteProgramTable[state] = prog;
+            g_SpriteProgramTable[state] = prog;
+        });
+        if (prewarm) return;
+        GL_RequireShaderVariant(ticket);
+        prog = g_SpriteProgramTable.at(state);
     }
     else
     {
         prog = itor->second;
     }
 
+    if (prewarm) return;
     if (prog.program)
     {
         GL_UseProgram(prog.program);
@@ -127,6 +134,9 @@ void R_UseSpriteProgram(program_state_t state, sprite_program_t* progOutput)
         Sys_Error("R_UseSpriteProgram: Failed to load program!");
     }
 }
+
+void R_UseSpriteProgram(program_state_t state, sprite_program_t* output) { R_ResolveSpriteProgram(state, output, false); }
+void R_RequestSpriteProgramState(program_state_t state) { R_ResolveSpriteProgram(state, nullptr, true); }
 
 const program_state_mapping_t s_SpriteProgramStateName[] = {
     {SPRITE_GBUFFER_ENABLED, "SPRITE_GBUFFER_ENABLED"},
@@ -177,11 +187,11 @@ void R_SaveSpriteProgramStates(void)
 void R_LoadSpriteProgramStates(void)
 {
     R_LoadProgramStateCaches("renderer/shader/sprite_cache.txt", s_SpriteProgramStateName, _ARRAYSIZE(s_SpriteProgramStateName), [](program_state_t state) {
-        R_UseSpriteProgram(state, NULL);
+        R_RequestSpriteProgramState(state);
     });
 }
 
-void R_UseTriAPIProgram(program_state_t state, triapi_program_t* progOutput)
+static void R_ResolveTriAPIProgram(program_state_t state, triapi_program_t* progOutput, bool prewarm)
 {
     triapi_program_t prog = {0};
 
@@ -234,20 +244,27 @@ void R_UseTriAPIProgram(program_state_t state, triapi_program_t* progOutput)
         args.vsdefine = def.c_str();
         args.fsdefine = def.c_str();
 
-        prog.program = GL_CompileShaderFileEx(&args);
+        auto ticket = GL_RequestShaderVariant(&args, "TriAPI", state, prewarm, [state](GLuint program) {
+            triapi_program_t prog = {};
+            prog.program          = program;
 
-        if (prog.program)
-        {
-            SHADER_UNIFORM(prog, u_hudMatrix, "u_hudMatrix");
-        }
+            if (prog.program)
+            {
+                SHADER_UNIFORM(prog, u_hudMatrix, "u_hudMatrix");
+            }
 
-        g_TriAPIProgramTable[state] = prog;
+            g_TriAPIProgramTable[state] = prog;
+        });
+        if (prewarm) return;
+        GL_RequireShaderVariant(ticket);
+        prog = g_TriAPIProgramTable.at(state);
     }
     else
     {
         prog = itor->second;
     }
 
+    if (prewarm) return;
     if (prog.program)
     {
         GL_UseProgram(prog.program);
@@ -283,10 +300,13 @@ void R_SaveTriAPIProgramStates(void)
     R_SaveProgramStatesCaches("renderer/shader/triapi_cache.txt", states, s_TriAPIProgramStateName, _ARRAYSIZE(s_TriAPIProgramStateName));
 }
 
+void R_UseTriAPIProgram(program_state_t state, triapi_program_t* output) { R_ResolveTriAPIProgram(state, output, false); }
+void R_RequestTriAPIProgramState(program_state_t state) { R_ResolveTriAPIProgram(state, nullptr, true); }
+
 void R_LoadTriAPIProgramStates(void)
 {
     R_LoadProgramStateCaches("renderer/shader/triapi_cache.txt", s_TriAPIProgramStateName, _ARRAYSIZE(s_TriAPIProgramStateName), [](program_state_t state) {
-        R_UseTriAPIProgram(state, NULL);
+        R_RequestTriAPIProgramState(state);
     });
 }
 

@@ -83,9 +83,8 @@ int main()
     std::printf("GL_ARB_parallel_shader_compile : %s\n", arbSupported ? "supported" : "not supported");
     std::printf("GL_KHR_parallel_shader_compile : %s\n", khrSupported ? "supported" : "not supported");
 
-    // Both extensions expose the same query. A count of 0 is the specification's
-    // "implementation default"; a failed query leaves the seeded value untouched,
-    // so report the GL error instead of printing a bogus worker count.
+    // This query returns the hint, not a measured worker count. Zero requests no
+    // parallel compilation; 0xFFFFFFFF requests an implementation-specific maximum.
     if (arbSupported || khrSupported)
     {
         while (glGetError() != GL_NO_ERROR)
@@ -95,8 +94,9 @@ int main()
         glGetIntegerv(GL_MAX_SHADER_COMPILER_THREADS_ARB, &threadCount);
         GLenum queryError = glGetError();
         if (queryError == GL_NO_ERROR)
-            std::printf("GL_MAX_SHADER_COMPILER_THREADS_ARB : %d%s\n", threadCount,
-                        threadCount == 0 ? " (driver decides)" : "");
+            std::printf("GL_MAX_SHADER_COMPILER_THREADS_ARB hint : %u%s (not actual worker count)\n", static_cast<GLuint>(threadCount),
+                        threadCount == 0 ? " (no parallel compilation requested)" : static_cast<GLuint>(threadCount) == ~0u ? " (implementation-specific maximum)" :
+                                                                                                                              "");
         else
             std::printf("GL_MAX_SHADER_COMPILER_THREADS_ARB : query failed (GL error 0x%04X)\n", queryError);
     }

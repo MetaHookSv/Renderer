@@ -34,6 +34,7 @@ MetaHook's `metahook/configs/plugins.lst`. Don't forget to launch game from Meta
 - [Build instruction](docs/en/build-instruction.md)
 - [Installation](docs/en/installation.md)
 - [Features](docs/en/features.md)
+- [Parallel shader compilation](docs/en/parallel-shader-compile.md) — driver ARB/KHR prewarming with synchronous fallback; acceleration depends on the driver and workload.
 - [F5 debugging (optional)](docs/en/debugging.md)
 
 ## License

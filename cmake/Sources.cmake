@@ -1,5 +1,6 @@
 # Explicit compile list from MetaHookSv Renderer.vcxproj at 11a8527.
 set(RENDERER_SOURCES
+    "${PROJECT_SOURCE_DIR}/src/gl_shader_parallel.cpp"
     "${METAHOOK_SOURCE_PATH}/include/HLSDK/common/interface.cpp"
     "${METAHOOK_SOURCE_PATH}/include/SourceSDK/filesystem.cpp"
     "${METAHOOK_SOURCE_PATH}/include/SourceSDK/filesystem_helpers.cpp"

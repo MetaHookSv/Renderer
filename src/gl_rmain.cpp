@@ -19,7 +19,8 @@
 #include "UtilThreadTask.h"
 #include "LambdaThreadedTask.h"
 
-private_funcs_t gPrivateFuncs = {0};
+private_funcs_t gPrivateFuncs   = {0};
+static bool     s_ShaderPumpDue = true;
 
 refdef_t           r_refdef          = {0};
 ref_params_t       r_params          = {0};
@@ -2038,6 +2039,8 @@ bool SCR_IsLoadingVisible()
 
 void R_GameFrameStart()
 {
+    // HUD_Frame marks a game tick; GL_BeginRendering performs the GL work.
+    s_ShaderPumpDue = true;
     g_bHasLowerBody = false;
 
     R_EntityComponents_StartFrame();
@@ -2191,6 +2194,12 @@ void GL_BeginRendering(int* x, int* y, int* width, int* height)
     }
 
     gPrivateFuncs.GL_BeginRendering(x, y, width, height);
+
+    if (s_ShaderPumpDue)
+    {
+        GL_PumpShaderCompiler();
+        s_ShaderPumpDue = false;
+    }
 
     if ((*width) != glwidth || (*height) != glheight)
     {
@@ -2693,6 +2702,22 @@ void DLL_SetModKey(void* pinfo, char* pkey, char* pvalue)
 
 void R_InitCvars(void)
 {
+    r_shader_parallel_compile          = gEngfuncs.pfnRegisterVariable("r_shader_parallel_compile", "1", FCVAR_CLIENTDLL | FCVAR_ARCHIVE);
+    r_shader_parallel_threads          = gEngfuncs.pfnRegisterVariable("r_shader_parallel_threads", "-1", FCVAR_CLIENTDLL | FCVAR_ARCHIVE);
+    r_shader_parallel_max_inflight     = gEngfuncs.pfnRegisterVariable("r_shader_parallel_max_inflight", "16", FCVAR_CLIENTDLL | FCVAR_ARCHIVE);
+    r_shader_parallel_submit_per_frame = gEngfuncs.pfnRegisterVariable("r_shader_parallel_submit_per_frame", "8", FCVAR_CLIENTDLL | FCVAR_ARCHIVE);
+    r_shader_parallel_poll_budget_ms   = gEngfuncs.pfnRegisterVariable("r_shader_parallel_poll_budget_ms", "1.0", FCVAR_CLIENTDLL | FCVAR_ARCHIVE);
+    r_shader_parallel_autosave         = gEngfuncs.pfnRegisterVariable("r_shader_parallel_autosave", "1", FCVAR_CLIENTDLL | FCVAR_ARCHIVE);
+    // These startup programs precede the engine's normal execution of +commands.
+    // Honor explicit command-line controls now so forced Sync also covers HUD init.
+    for (const char* name : {"r_shader_parallel_compile", "r_shader_parallel_threads", "r_shader_parallel_max_inflight", "r_shader_parallel_submit_per_frame", "r_shader_parallel_poll_budget_ms", "r_shader_parallel_autosave"})
+    {
+        const auto  option = std::string("+") + name;
+        const char* value  = nullptr;
+        if (gEngfuncs.CheckParm(option.c_str(), &value) && value)
+            gEngfuncs.Cvar_Set(name, value);
+    }
+    gEngfuncs.pfnAddCommand("shader_compile_stats", R_ShaderCompileStats_f);
     r_norefresh     = gEngfuncs.pfnGetCvarPointer("r_norefresh");
     r_drawentities  = gEngfuncs.pfnGetCvarPointer("r_drawentities");
     r_drawviewmodel = gEngfuncs.pfnGetCvarPointer("r_drawviewmodel");
@@ -2890,9 +2915,14 @@ void R_InitCvars(void)
 
 void R_Init(void)
 {
+    s_ShaderPumpDue = true;
     Mod_Init();
 
     R_InitCvars();
+
+    // R_Init already requires the current renderer context for resource uploads.
+    // Some engine startup paths reach HUD_Init before our GL_Init hook.
+    GL_InitShaders();
 
     R_InitWater();
     R_InitStudio();
@@ -2909,6 +2939,9 @@ void R_Init(void)
 
 void R_Shutdown(void)
 {
+    if (r_shader_parallel_autosave && r_shader_parallel_autosave->value != 0)
+        R_SaveProgramStates_f();
+    GL_ResetShaderVariants();
     g_RenderCallbacks.clear();
 
     R_ShutdownWater();
@@ -2923,6 +2956,12 @@ void R_Shutdown(void)
     triapi_Shutdown();
 
     R_FreeMapCvars();
+    r_shader_parallel_compile          = nullptr;
+    r_shader_parallel_threads          = nullptr;
+    r_shader_parallel_max_inflight     = nullptr;
+    r_shader_parallel_submit_per_frame = nullptr;
+    r_shader_parallel_poll_budget_ms   = nullptr;
+    r_shader_parallel_autosave         = nullptr;
 }
 
 void R_ForceCVars(qboolean mp)
@@ -4228,8 +4267,6 @@ void R_LoadProgramStates_f(void)
     R_LoadPortalProgramStates();
     R_LoadDrawTexturedRectProgramStates();
     R_LoadDrawFilledRectProgramStates();
-    GL_UseProgram(0);
-
     gEngfuncs.Con_Printf("R_LoadProgramStates_f: Program state caches loaded.\n");
 }
 
@@ -5058,6 +5095,8 @@ static bool GL_InitializeGraphicEngine(void* window, CGraphicEngineInitAttempt& 
         return false;
     }
 
+    GL_InitShaders();
+
     if (gEngfuncs.CheckParm("-gl_debugoutput", NULL))
     {
         glDebugMessageCallback(GL_DebugOutputCallback, 0);
@@ -5224,6 +5263,7 @@ void GL_Init(void)
 
     GL_GenerateFrameBuffers();
     GL_InitShaders();
+    s_ShaderPumpDue = true;
 }
 
 void GL_Shutdown(void* window, HDC pmaindc, HGLRC pbaseRC)
@@ -5231,6 +5271,8 @@ void GL_Shutdown(void* window, HDC pmaindc, HGLRC pbaseRC)
     //A recreated context (even with a reused handle) must be initialized again.
     s_GraphicEngineInitialization.Reset();
 
+    if (r_shader_parallel_autosave && r_shader_parallel_autosave->value != 0)
+        R_SaveProgramStates_f();
     GL_FreeShaders();
     GL_FreeFrameBuffers();
 
