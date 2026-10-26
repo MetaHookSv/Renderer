@@ -124,6 +124,7 @@ set(RENDERER_SOURCES
     "${PROJECT_SOURCE_DIR}/src/gl_rmisc.cpp"
     "${PROJECT_SOURCE_DIR}/src/gl_rsurf.cpp"
     "${PROJECT_SOURCE_DIR}/src/gl_shader.cpp"
+    "${PROJECT_SOURCE_DIR}/src/gl_shader_parallel.cpp"
     "${PROJECT_SOURCE_DIR}/src/gl_shadow.cpp"
     "${PROJECT_SOURCE_DIR}/src/gl_sprite.cpp"
     "${PROJECT_SOURCE_DIR}/src/gl_studio.cpp"

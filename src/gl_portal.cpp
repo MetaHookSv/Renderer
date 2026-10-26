@@ -18,7 +18,7 @@ CWorldPortalModel::~CWorldPortalModel()
     }
 }
 
-void R_UsePortalProgram(program_state_t state, portal_program_t* progOutput)
+static void R_ResolvePortalProgram(program_state_t state, portal_program_t* progOutput, bool prewarm)
 {
     portal_program_t prog = {0};
 
@@ -47,19 +47,31 @@ void R_UsePortalProgram(program_state_t state, portal_program_t* progOutput)
         args.vsdefine = def.c_str();
         args.fsdefine = def.c_str();
 
-        prog.program = GL_CompileShaderFileEx(&args);
+        auto ticket = GL_RequestShaderVariant(&args, "Portal", state, prewarm, [state](GLuint program) {
+            portal_program_t prog = {};
+            prog.program          = program;
 
-        if (prog.program)
-        {
-            SHADER_UNIFORM(prog, u_entityMatrix, "u_entityMatrix");
-        }
+            if (prog.program)
+            {
+                SHADER_UNIFORM(prog, u_entityMatrix, "u_entityMatrix");
+            }
 
-        g_PortalProgramTable[state] = prog;
+            g_PortalProgramTable[state] = prog;
+        });
+
+        if (prewarm)
+            return;
+
+        GL_RequireShaderVariant(ticket);
+        prog = g_PortalProgramTable.at(state);
     }
     else
     {
         prog = itor->second;
     }
+
+    if (prewarm)
+        return;
 
     if (prog.program)
     {
@@ -79,10 +91,26 @@ void R_UsePortalProgram(program_state_t state, portal_program_t* progOutput)
     }
 }
 
+void R_UsePortalProgram(program_state_t state, portal_program_t* output)
+{
+    R_ResolvePortalProgram(state, output, false);
+}
+
+void R_RequestPortalProgramState(program_state_t state)
+{
+    R_ResolvePortalProgram(state, nullptr, true);
+}
+
+void R_ClearPortalProgramStates(void)
+{
+    g_PortalProgramTable.clear();
+}
+
 const program_state_mapping_t s_PortalProgramStateName[] = {
     {PORTAL_OVERLAY_TEXTURE_ENABLED, "PORTAL_OVERLAY_TEXTURE_ENABLED"},
     {PORTAL_TEXCOORD_ENABLED, "PORTAL_TEXCOORD_ENABLED"},
     {PORTAL_REVERSE_TEXCOORD_ENABLED, "PORTAL_REVERSE_TEXCOORD_ENABLED"},
+    {PORTAL_GAMMA_BLEND_ENABLED, "PORTAL_GAMMA_BLEND_ENABLED"},
 };
 
 void R_SavePortalProgramStates(void)
@@ -98,7 +126,7 @@ void R_SavePortalProgramStates(void)
 void R_LoadPortalProgramStates(void)
 {
     R_LoadProgramStateCaches("renderer/shader/portal_cache.txt", s_PortalProgramStateName, _ARRAYSIZE(s_PortalProgramStateName), [](program_state_t state) {
-        R_UsePortalProgram(state, NULL);
+        R_RequestPortalProgramState(state);
     });
 }
 

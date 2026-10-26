@@ -56,7 +56,7 @@ CWaterSurfaceModel::~CWaterSurfaceModel()
     }
 }
 
-void R_UseWaterProgram(program_state_t state, water_program_t* progOutput)
+static void R_ResolveWaterProgram(program_state_t state, water_program_t* progOutput, bool prewarm)
 {
     water_program_t prog = {0};
 
@@ -115,23 +115,35 @@ void R_UseWaterProgram(program_state_t state, water_program_t* progOutput)
         args.vsdefine = def.c_str();
         args.fsdefine = def.c_str();
 
-        prog.program = GL_CompileShaderFileEx(&args);
-        if (prog.program)
-        {
-            SHADER_UNIFORM(prog, u_watercolor, "u_watercolor");
-            SHADER_UNIFORM(prog, u_depthfactor, "u_depthfactor");
-            SHADER_UNIFORM(prog, u_fresnelfactor, "u_fresnelfactor");
-            SHADER_UNIFORM(prog, u_normfactor, "u_normfactor");
-            SHADER_UNIFORM(prog, u_scale, "u_scale");
-            SHADER_UNIFORM(prog, u_speed, "u_speed");
-        }
+        auto ticket = GL_RequestShaderVariant(&args, "Water", state, prewarm, [state](GLuint program) {
+            water_program_t prog = {};
+            prog.program         = program;
+            if (prog.program)
+            {
+                SHADER_UNIFORM(prog, u_watercolor, "u_watercolor");
+                SHADER_UNIFORM(prog, u_depthfactor, "u_depthfactor");
+                SHADER_UNIFORM(prog, u_fresnelfactor, "u_fresnelfactor");
+                SHADER_UNIFORM(prog, u_normfactor, "u_normfactor");
+                SHADER_UNIFORM(prog, u_scale, "u_scale");
+                SHADER_UNIFORM(prog, u_speed, "u_speed");
+            }
 
-        g_WaterProgramTable[state] = prog;
+            g_WaterProgramTable[state] = prog;
+        });
+
+        if (prewarm)
+            return;
+
+        GL_RequireShaderVariant(ticket);
+        prog = g_WaterProgramTable.at(state);
     }
     else
     {
         prog = itor->second;
     }
+
+    if (prewarm)
+        return;
 
     if (prog.program)
     {
@@ -144,6 +156,21 @@ void R_UseWaterProgram(program_state_t state, water_program_t* progOutput)
     {
         Sys_Error("R_UseWaterProgram: Failed to load program!");
     }
+}
+
+void R_UseWaterProgram(program_state_t state, water_program_t* output)
+{
+    R_ResolveWaterProgram(state, output, false);
+}
+
+void R_RequestWaterProgramState(program_state_t state)
+{
+    R_ResolveWaterProgram(state, nullptr, true);
+}
+
+void R_ClearWaterProgramStates(void)
+{
+    g_WaterProgramTable.clear();
 }
 
 const program_state_mapping_t s_WaterProgramStateName[] = {
@@ -175,7 +202,7 @@ void R_SaveWaterProgramStates(void)
 void R_LoadWaterProgramStates(void)
 {
     R_LoadProgramStateCaches("renderer/shader/water_cache.txt", s_WaterProgramStateName, _ARRAYSIZE(s_WaterProgramStateName), [](program_state_t state) {
-        R_UseWaterProgram(state, NULL);
+        R_RequestWaterProgramState(state);
     });
 }
 

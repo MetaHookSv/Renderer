@@ -27,6 +27,12 @@
 
 # Features
 
+## Parallel shader compilation
+
+Saved shader variants are prewarmed with driver ARB/KHR support and synchronous fallback.
+Fixed HUD shaders use a startup batch barrier. Thread settings are hints, not promised worker
+counts or speedups. See [controls, algorithm and verification](parallel-shader-compile.md).
+
 ## HDR
 
 HDR (High Dynamic Range) rendering simulates brightness above that which a computer monitor is actually capable of displaying. This mainly involves "blooming" colours above 100% brightness into neighbouring areas, and adjusting a virtual camera aperture to compensate for any over-exposure that results.

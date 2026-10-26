@@ -224,11 +224,11 @@ void R_SaveWSurfProgramStates(void)
 void R_LoadWSurfProgramStates(void)
 {
     R_LoadProgramStateCaches("renderer/shader/wsurf_cache.txt", s_WSurfProgramStateName, _ARRAYSIZE(s_WSurfProgramStateName), [](program_state_t state) {
-        R_UseWSurfProgram(state, NULL);
+        R_RequestWSurfProgramState(state);
     });
 }
 
-void R_UseWSurfProgram(program_state_t state, wsurf_program_t* progOutput)
+static void R_ResolveWSurfProgram(program_state_t state, wsurf_program_t* progOutput, bool prewarm)
 {
     wsurf_program_t prog = {0};
 
@@ -353,19 +353,31 @@ void R_UseWSurfProgram(program_state_t state, wsurf_program_t* progOutput)
         args.gsdefine = def.c_str();
         args.fsdefine = def.c_str();
 
-        prog.program = GL_CompileShaderFileEx(&args);
+        auto ticket = GL_RequestShaderVariant(&args, "WSurf", state, prewarm, [state](GLuint program) {
+            wsurf_program_t prog = {};
+            prog.program         = program;
 
-        if (prog.program)
-        {
-            SHADER_UNIFORM(prog, u_parallaxScale, "u_parallaxScale");
-        }
+            if (prog.program)
+            {
+                SHADER_UNIFORM(prog, u_parallaxScale, "u_parallaxScale");
+            }
 
-        g_WSurfProgramTable[state] = prog;
+            g_WSurfProgramTable[state] = prog;
+        });
+
+        if (prewarm)
+            return;
+
+        GL_RequireShaderVariant(ticket);
+        prog = g_WSurfProgramTable.at(state);
     }
     else
     {
         prog = itor->second;
     }
+
+    if (prewarm)
+        return;
 
     if (prog.program)
     {
@@ -381,6 +393,21 @@ void R_UseWSurfProgram(program_state_t state, wsurf_program_t* progOutput)
     {
         Sys_Error("R_UseWSurfProgram: Failed to load program!");
     }
+}
+
+void R_UseWSurfProgram(program_state_t state, wsurf_program_t* output)
+{
+    R_ResolveWSurfProgram(state, output, false);
+}
+
+void R_RequestWSurfProgramState(program_state_t state)
+{
+    R_ResolveWSurfProgram(state, nullptr, true);
+}
+
+void R_ClearWSurfProgramStates(void)
+{
+    g_WSurfProgramTable.clear();
 }
 
 void R_FreeSceneUBO(void)

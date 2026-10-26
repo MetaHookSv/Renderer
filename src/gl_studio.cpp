@@ -1210,7 +1210,7 @@ void R_FreeAllStudioRenderData(void)
     }
 }
 
-void R_UseStudioProgram(program_state_t state, studio_program_t* progOutput)
+static void R_ResolveStudioProgram(program_state_t state, studio_program_t* progOutput, bool prewarm)
 {
     //Fix bogus state
     if ((state & STUDIO_NF_CELSHADE_EXTENSIONBITS) && !(state & STUDIO_NF_CELSHADE))
@@ -1386,47 +1386,59 @@ void R_UseStudioProgram(program_state_t state, studio_program_t* progOutput)
         args.gsdefine = def.c_str();
         args.fsdefine = def.c_str();
 
-        prog.program = GL_CompileShaderFileEx(&args);
+        auto ticket = GL_RequestShaderVariant(&args, "Studio", state, prewarm, [state](GLuint program) {
+            studio_program_t prog = {};
+            prog.program          = program;
 
-        if (prog.program)
-        {
-            SHADER_UNIFORM(prog, r_base_specular, "r_base_specular");
-            SHADER_UNIFORM(prog, r_celshade_midpoint, "r_celshade_midpoint");
-            SHADER_UNIFORM(prog, r_celshade_specular, "r_celshade_specular");
-            SHADER_UNIFORM(prog, r_celshade_softness, "r_celshade_softness");
-            SHADER_UNIFORM(prog, r_celshade_shadow_color, "r_celshade_shadow_color");
-            SHADER_UNIFORM(prog, r_celshade_head_offset, "r_celshade_head_offset");
-            SHADER_UNIFORM(prog, r_celshade_lightdir_adjust, "r_celshade_lightdir_adjust");
-            SHADER_UNIFORM(prog, r_rimlight_power, "r_rimlight_power");
-            SHADER_UNIFORM(prog, r_rimlight_smooth, "r_rimlight_smooth");
-            SHADER_UNIFORM(prog, r_rimlight_smooth2, "r_rimlight_smooth2");
-            SHADER_UNIFORM(prog, r_rimlight_color, "r_rimlight_color");
-            SHADER_UNIFORM(prog, r_rimdark_power, "r_rimdark_power");
-            SHADER_UNIFORM(prog, r_rimdark_smooth, "r_rimdark_smooth");
-            SHADER_UNIFORM(prog, r_rimdark_smooth2, "r_rimdark_smooth2");
-            SHADER_UNIFORM(prog, r_rimdark_color, "r_rimdark_color");
-            SHADER_UNIFORM(prog, r_hair_specular_exp, "r_hair_specular_exp");
-            SHADER_UNIFORM(prog, r_hair_specular_noise, "r_hair_specular_noise");
-            SHADER_UNIFORM(prog, r_hair_specular_intensity, "r_hair_specular_intensity");
-            SHADER_UNIFORM(prog, r_hair_specular_exp2, "r_hair_specular_exp2");
-            SHADER_UNIFORM(prog, r_hair_specular_noise2, "r_hair_specular_noise2");
-            SHADER_UNIFORM(prog, r_hair_specular_intensity2, "r_hair_specular_intensity2");
-            SHADER_UNIFORM(prog, r_hair_specular_smooth, "r_hair_specular_smooth");
-            SHADER_UNIFORM(prog, r_hair_shadow_offset, "r_hair_shadow_offset");
-            SHADER_UNIFORM(prog, r_outline_dark, "r_outline_dark");
-            SHADER_UNIFORM(prog, r_uvscale, "r_uvscale");
-            SHADER_UNIFORM(prog, r_packed_stride, "r_packed_stride");
-            SHADER_UNIFORM(prog, r_packed_index, "r_packed_index");
-            SHADER_UNIFORM(prog, r_framerate_numframes, "r_framerate_numframes");
-            SHADER_UNIFORM(prog, r_nearplaneclip, "r_nearplaneclip");
-        }
+            if (prog.program)
+            {
+                SHADER_UNIFORM(prog, r_base_specular, "r_base_specular");
+                SHADER_UNIFORM(prog, r_celshade_midpoint, "r_celshade_midpoint");
+                SHADER_UNIFORM(prog, r_celshade_specular, "r_celshade_specular");
+                SHADER_UNIFORM(prog, r_celshade_softness, "r_celshade_softness");
+                SHADER_UNIFORM(prog, r_celshade_shadow_color, "r_celshade_shadow_color");
+                SHADER_UNIFORM(prog, r_celshade_head_offset, "r_celshade_head_offset");
+                SHADER_UNIFORM(prog, r_celshade_lightdir_adjust, "r_celshade_lightdir_adjust");
+                SHADER_UNIFORM(prog, r_rimlight_power, "r_rimlight_power");
+                SHADER_UNIFORM(prog, r_rimlight_smooth, "r_rimlight_smooth");
+                SHADER_UNIFORM(prog, r_rimlight_smooth2, "r_rimlight_smooth2");
+                SHADER_UNIFORM(prog, r_rimlight_color, "r_rimlight_color");
+                SHADER_UNIFORM(prog, r_rimdark_power, "r_rimdark_power");
+                SHADER_UNIFORM(prog, r_rimdark_smooth, "r_rimdark_smooth");
+                SHADER_UNIFORM(prog, r_rimdark_smooth2, "r_rimdark_smooth2");
+                SHADER_UNIFORM(prog, r_rimdark_color, "r_rimdark_color");
+                SHADER_UNIFORM(prog, r_hair_specular_exp, "r_hair_specular_exp");
+                SHADER_UNIFORM(prog, r_hair_specular_noise, "r_hair_specular_noise");
+                SHADER_UNIFORM(prog, r_hair_specular_intensity, "r_hair_specular_intensity");
+                SHADER_UNIFORM(prog, r_hair_specular_exp2, "r_hair_specular_exp2");
+                SHADER_UNIFORM(prog, r_hair_specular_noise2, "r_hair_specular_noise2");
+                SHADER_UNIFORM(prog, r_hair_specular_intensity2, "r_hair_specular_intensity2");
+                SHADER_UNIFORM(prog, r_hair_specular_smooth, "r_hair_specular_smooth");
+                SHADER_UNIFORM(prog, r_hair_shadow_offset, "r_hair_shadow_offset");
+                SHADER_UNIFORM(prog, r_outline_dark, "r_outline_dark");
+                SHADER_UNIFORM(prog, r_uvscale, "r_uvscale");
+                SHADER_UNIFORM(prog, r_packed_stride, "r_packed_stride");
+                SHADER_UNIFORM(prog, r_packed_index, "r_packed_index");
+                SHADER_UNIFORM(prog, r_framerate_numframes, "r_framerate_numframes");
+                SHADER_UNIFORM(prog, r_nearplaneclip, "r_nearplaneclip");
+            }
 
-        g_StudioProgramTable[state] = prog;
+            g_StudioProgramTable[state] = prog;
+        });
+
+        if (prewarm)
+            return;
+
+        GL_RequireShaderVariant(ticket);
+        prog = g_StudioProgramTable.at(state);
     }
     else
     {
         prog = itor->second;
     }
+
+    if (prewarm)
+        return;
 
     if (prog.program)
     {
@@ -1439,6 +1451,21 @@ void R_UseStudioProgram(program_state_t state, studio_program_t* progOutput)
     {
         Sys_Error("R_UseStudioProgram: Failed to load program!");
     }
+}
+
+void R_UseStudioProgram(program_state_t state, studio_program_t* output)
+{
+    R_ResolveStudioProgram(state, output, false);
+}
+
+void R_RequestStudioProgramState(program_state_t state)
+{
+    R_ResolveStudioProgram(state, nullptr, true);
+}
+
+void R_ClearStudioProgramStates(void)
+{
+    g_StudioProgramTable.clear();
 }
 
 const program_state_mapping_t s_StudioProgramStateName[] = {
@@ -1509,7 +1536,7 @@ void R_SaveStudioProgramStates(void)
 void R_LoadStudioProgramStates(void)
 {
     R_LoadProgramStateCaches("renderer/shader/studio_cache.txt", s_StudioProgramStateName, _ARRAYSIZE(s_StudioProgramStateName), [](program_state_t state) {
-        R_UseStudioProgram(state, NULL);
+        R_RequestStudioProgramState(state);
     });
 }
 

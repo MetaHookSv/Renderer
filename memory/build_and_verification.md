@@ -321,3 +321,15 @@ permalink: renderer/build-and-verification
 - 做法：`src/gl_water.cpp` 的 `R_RenderWaterPass` 在 `R_IsRenderingWaterView` 判断之后对 `(*r_refdef.onlyClientDraws)` 直接返回。client-only 视图本来就不绘制世界，也就不需要水面反射。
 - 验证：聚合树 Debug Renderer / Renderer_AVX2 构建通过，`RENDERER_BUILD_TESTS=ON` 时 CTest 14/14 通过。Sven Co-op 10257 实机（StandaloneView + 临时消费者插件）：主菜单空世界 pass 正常合成、可回读；`stadium4` 中独立视图与主视图正常，载入、断开、重进均未崩溃。
 - 适用范围与状态：分支 `fix/onlyclientdraws-water-pass`，经 PR 合入。HL25、inset 视图及其他 `onlyClientDraws` 消费者未做实机验证。
+
+## 2026-10-26：Renderer #32 并行 Shader 调度（验收未完成）
+
+- 根因：旧 hint helper 后立即查询 compile status，缓存 loader 复用绘制路径且 reader 硬编码 Studio 文件，无法有界批量异步预热。
+- 改动：生产 CParallelShaderCompiler 拥有源码/ticket/context generation，ARB→KHR→Sync；completion 后初始化 Uniform，需求点可等待；十类状态 request-only；固定 HUD 23/21 个批量启动屏障；CVar/统计/生命周期/缓存合并。公开 ABI、GLSL、thirdparty、gamedata 未变。
+- 构建：Win32/x86 VS2022 MSVC14.44 SDK26100；Debug/Release Renderer、Renderer_AVX2及全部18测试目标 exit0。Debug/Release CTest各18/18，0 failed/skip，分别65.67s/27.63s；Release真实GL集成单独1/1、3.03s。format-check 103files/0 differences，git diff --check exit0。
+- GPU：NVIDIA RTX5060，621.01，GLEW2.2；测试GL3.3 core，游戏GL4.4。真实GL覆盖Sync/ARB/KHR/无扩展回退、VS/GS/FS错误隔离、Uniform/FBO像素/context重建/资源计数。完整游戏视觉不能由此推断。
+- 性能：32简易程序、两种history、两种模式、各5轮，20行CSV，驱动缓存未清。已知状态ARB消除32次需求等待，但中位总wall2.3538ms高于Sync1.6444ms；不宣称吞吐加速。CPU样本百分位不是游戏帧百分位。
+- 实机：Sven5.26/SvEngine10257，stadium4/osprey切图10次program稳定97；新版及原部署版各5次_restart均有进程内存增长，尚未解释。新版Shader创建/删除194/194；不据此宣称进程/VRAM无泄漏。
+- 未解决：严格A/B准备中一次启动0xC0000374（execing config.cfg附近），无转储，尚未定根因；随后8轮x86 CDB强制Sync启动/退出未复现。完整Water/Portal/OIT/multiview视觉、VRAM、真实游戏首帧/加载帧百分位、其他GPU/宿主均未验证。当前不能宣布任务完成或关闭issue。
+- 恢复：测试替换的4个Renderer DLL/PDB、11个state cache和config.cfg共16文件已还原并逐项SHA256核对。根目录测试steam_appid.txt清除；源码未提交。
+- 详细架构、命令、指标与下一步见[[ParallelShaderCompile]]；本次原始证据在聚合树忽略目录build/renderer32-*，不可用旧验证记录代替本次证据。

@@ -66,7 +66,7 @@ std::unordered_map<program_state_t, dfinal_program_t> g_DFinalProgramTable;
 
 std::unordered_map<program_state_t, dlight_program_t> g_DLightProgramTable;
 
-void R_UseDFinalProgram(program_state_t state, dfinal_program_t* progOutput)
+static void R_ResolveDFinalProgram(program_state_t state, dfinal_program_t* progOutput, bool prewarm)
 {
     dfinal_program_t prog = {0};
 
@@ -104,21 +104,39 @@ void R_UseDFinalProgram(program_state_t state, dfinal_program_t* progOutput)
 
         auto def = defs.str();
 
-        prog.program = GL_CompileShaderFile("renderer\\shader\\fullscreentriangle.vert.glsl", "renderer\\shader\\dfinal_shader.frag.glsl", def.c_str(), def.c_str());
-        if (prog.program)
-        {
-            SHADER_UNIFORM(prog, u_ssrRayStep, "u_ssrRayStep");
-            SHADER_UNIFORM(prog, u_ssrIterCount, "u_ssrIterCount");
-            SHADER_UNIFORM(prog, u_ssrDistanceBias, "u_ssrDistanceBias");
-            SHADER_UNIFORM(prog, u_ssrFade, "u_ssrFade");
-        }
+        CCompileShaderArgs args;
+        args.vsfile   = "renderer\\shader\\fullscreentriangle.vert.glsl";
+        args.fsfile   = "renderer\\shader\\dfinal_shader.frag.glsl";
+        args.vsdefine = def.c_str();
+        args.fsdefine = def.c_str();
 
-        g_DFinalProgramTable[state] = prog;
+        auto ticket = GL_RequestShaderVariant(&args, "DFinal", state, prewarm, [state](GLuint program) {
+            dfinal_program_t prog = {};
+            prog.program          = program;
+            if (prog.program)
+            {
+                SHADER_UNIFORM(prog, u_ssrRayStep, "u_ssrRayStep");
+                SHADER_UNIFORM(prog, u_ssrIterCount, "u_ssrIterCount");
+                SHADER_UNIFORM(prog, u_ssrDistanceBias, "u_ssrDistanceBias");
+                SHADER_UNIFORM(prog, u_ssrFade, "u_ssrFade");
+            }
+
+            g_DFinalProgramTable[state] = prog;
+        });
+
+        if (prewarm)
+            return;
+
+        GL_RequireShaderVariant(ticket);
+        prog = g_DFinalProgramTable.at(state);
     }
     else
     {
         prog = itor->second;
     }
+
+    if (prewarm)
+        return;
 
     if (prog.program)
     {
@@ -153,6 +171,21 @@ void R_UseDFinalProgram(program_state_t state, dfinal_program_t* progOutput)
     }
 }
 
+void R_UseDFinalProgram(program_state_t state, dfinal_program_t* output)
+{
+    R_ResolveDFinalProgram(state, output, false);
+}
+
+void R_RequestDFinalProgramState(program_state_t state)
+{
+    R_ResolveDFinalProgram(state, nullptr, true);
+}
+
+void R_ClearDFinalProgramStates(void)
+{
+    g_DFinalProgramTable.clear();
+}
+
 const program_state_mapping_t s_DFinalProgramStateName[] = {
     {DFINAL_LINEAR_FOG_ENABLED, "DFINAL_LINEAR_FOG_ENABLED"},
     {DFINAL_EXP_FOG_ENABLED, "DFINAL_EXP_FOG_ENABLED"},
@@ -178,11 +211,11 @@ void R_SaveDFinalProgramStates(void)
 void R_LoadDFinalProgramStates(void)
 {
     R_LoadProgramStateCaches("renderer/shader/dfinal_cache.txt", s_DFinalProgramStateName, _ARRAYSIZE(s_DFinalProgramStateName), [](program_state_t state) {
-        R_UseDFinalProgram(state, NULL);
+        R_RequestDFinalProgramState(state);
     });
 }
 
-void R_UseDLightProgram(program_state_t state, dlight_program_t* progOutput)
+static void R_ResolveDLightProgram(program_state_t state, dlight_program_t* progOutput, bool prewarm)
 {
     dlight_program_t prog = {0};
 
@@ -238,63 +271,81 @@ void R_UseDLightProgram(program_state_t state, dlight_program_t* progOutput)
 
         auto def = defs.str();
 
-        prog.program = GL_CompileShaderFile("renderer\\shader\\dlight_shader.vert.glsl", "renderer\\shader\\dlight_shader.frag.glsl", def.c_str(), def.c_str());
-        if (prog.program)
-        {
-            // int program;
-            // int u_lightdir;
-            // int u_lightright;
-            // int u_lightup;
-            // int u_lightpos;
-            // int u_lightcolor;
-            // int u_lightcone;
-            // int u_lightradius;
-            // int u_lightambient;
-            // int u_lightdiffuse;
-            // int u_lightspecular;
-            // int u_lightspecularpow;
-            // int u_lightSize;
-            // int u_modelmatrix;
-            // int u_staticShadowTexel;
-            // int u_staticShadowMatrix;
-            // int u_dynamicShadowTexel;
-            // int u_dynamicShadowMatrix;
-            // int u_staticCubemapShadowTexel;
-            // int u_dynamicCubemapShadowTexel;
-            // int u_csmMatrices;
-            // int u_csmDistances;
-            // int u_csmTexel;
+        CCompileShaderArgs args;
+        args.vsfile   = "renderer\\shader\\dlight_shader.vert.glsl";
+        args.fsfile   = "renderer\\shader\\dlight_shader.frag.glsl";
+        args.vsdefine = def.c_str();
+        args.fsdefine = def.c_str();
 
-            SHADER_UNIFORM(prog, u_lightdir, "u_lightdir");
-            SHADER_UNIFORM(prog, u_lightright, "u_lightright");
-            SHADER_UNIFORM(prog, u_lightup, "u_lightup");
-            SHADER_UNIFORM(prog, u_lightpos, "u_lightpos");
-            SHADER_UNIFORM(prog, u_lightcolor, "u_lightcolor");
-            SHADER_UNIFORM(prog, u_lightcone, "u_lightcone");
-            SHADER_UNIFORM(prog, u_lightradius, "u_lightradius");
-            SHADER_UNIFORM(prog, u_lightambient, "u_lightambient");
-            SHADER_UNIFORM(prog, u_lightdiffuse, "u_lightdiffuse");
-            SHADER_UNIFORM(prog, u_lightspecular, "u_lightspecular");
-            SHADER_UNIFORM(prog, u_lightspecularpow, "u_lightspecularpow");
-            SHADER_UNIFORM(prog, u_lightSize, "u_lightSize");
-            SHADER_UNIFORM(prog, u_modelmatrix, "u_modelmatrix");
-            SHADER_UNIFORM(prog, u_staticShadowTexel, "u_staticShadowTexel");
-            SHADER_UNIFORM(prog, u_staticShadowMatrix, "u_staticShadowMatrix");
-            SHADER_UNIFORM(prog, u_dynamicShadowTexel, "u_dynamicShadowTexel");
-            SHADER_UNIFORM(prog, u_dynamicShadowMatrix, "u_dynamicShadowMatrix");
-            SHADER_UNIFORM(prog, u_staticCubemapShadowTexel, "u_staticCubemapShadowTexel");
-            SHADER_UNIFORM(prog, u_dynamicCubemapShadowTexel, "u_dynamicCubemapShadowTexel");
-            SHADER_UNIFORM(prog, u_csmMatrices, "u_csmMatrices");
-            SHADER_UNIFORM(prog, u_csmDistances, "u_csmDistances");
-            SHADER_UNIFORM(prog, u_csmTexel, "u_csmTexel");
-        }
+        auto ticket = GL_RequestShaderVariant(&args, "DLight", state, prewarm, [state](GLuint program) {
+            dlight_program_t prog = {};
+            prog.program          = program;
+            if (prog.program)
+            {
+                // int program;
+                // int u_lightdir;
+                // int u_lightright;
+                // int u_lightup;
+                // int u_lightpos;
+                // int u_lightcolor;
+                // int u_lightcone;
+                // int u_lightradius;
+                // int u_lightambient;
+                // int u_lightdiffuse;
+                // int u_lightspecular;
+                // int u_lightspecularpow;
+                // int u_lightSize;
+                // int u_modelmatrix;
+                // int u_staticShadowTexel;
+                // int u_staticShadowMatrix;
+                // int u_dynamicShadowTexel;
+                // int u_dynamicShadowMatrix;
+                // int u_staticCubemapShadowTexel;
+                // int u_dynamicCubemapShadowTexel;
+                // int u_csmMatrices;
+                // int u_csmDistances;
+                // int u_csmTexel;
 
-        g_DLightProgramTable[state] = prog;
+                SHADER_UNIFORM(prog, u_lightdir, "u_lightdir");
+                SHADER_UNIFORM(prog, u_lightright, "u_lightright");
+                SHADER_UNIFORM(prog, u_lightup, "u_lightup");
+                SHADER_UNIFORM(prog, u_lightpos, "u_lightpos");
+                SHADER_UNIFORM(prog, u_lightcolor, "u_lightcolor");
+                SHADER_UNIFORM(prog, u_lightcone, "u_lightcone");
+                SHADER_UNIFORM(prog, u_lightradius, "u_lightradius");
+                SHADER_UNIFORM(prog, u_lightambient, "u_lightambient");
+                SHADER_UNIFORM(prog, u_lightdiffuse, "u_lightdiffuse");
+                SHADER_UNIFORM(prog, u_lightspecular, "u_lightspecular");
+                SHADER_UNIFORM(prog, u_lightspecularpow, "u_lightspecularpow");
+                SHADER_UNIFORM(prog, u_lightSize, "u_lightSize");
+                SHADER_UNIFORM(prog, u_modelmatrix, "u_modelmatrix");
+                SHADER_UNIFORM(prog, u_staticShadowTexel, "u_staticShadowTexel");
+                SHADER_UNIFORM(prog, u_staticShadowMatrix, "u_staticShadowMatrix");
+                SHADER_UNIFORM(prog, u_dynamicShadowTexel, "u_dynamicShadowTexel");
+                SHADER_UNIFORM(prog, u_dynamicShadowMatrix, "u_dynamicShadowMatrix");
+                SHADER_UNIFORM(prog, u_staticCubemapShadowTexel, "u_staticCubemapShadowTexel");
+                SHADER_UNIFORM(prog, u_dynamicCubemapShadowTexel, "u_dynamicCubemapShadowTexel");
+                SHADER_UNIFORM(prog, u_csmMatrices, "u_csmMatrices");
+                SHADER_UNIFORM(prog, u_csmDistances, "u_csmDistances");
+                SHADER_UNIFORM(prog, u_csmTexel, "u_csmTexel");
+            }
+
+            g_DLightProgramTable[state] = prog;
+        });
+
+        if (prewarm)
+            return;
+
+        GL_RequireShaderVariant(ticket);
+        prog = g_DLightProgramTable.at(state);
     }
     else
     {
         prog = itor->second;
     }
+
+    if (prewarm)
+        return;
 
     if (prog.program)
     {
@@ -307,6 +358,21 @@ void R_UseDLightProgram(program_state_t state, dlight_program_t* progOutput)
     {
         Sys_Error("R_UseDLightProgram: Failed to load program!");
     }
+}
+
+void R_UseDLightProgram(program_state_t state, dlight_program_t* output)
+{
+    R_ResolveDLightProgram(state, output, false);
+}
+
+void R_RequestDLightProgramState(program_state_t state)
+{
+    R_ResolveDLightProgram(state, nullptr, true);
+}
+
+void R_ClearDLightProgramStates(void)
+{
+    g_DLightProgramTable.clear();
 }
 
 // #define DLIGHT_SPOT_ENABLED								0x1ull
@@ -349,7 +415,7 @@ void R_SaveDLightProgramStates(void)
 void R_LoadDLightProgramStates(void)
 {
     R_LoadProgramStateCaches("renderer/shader/dlight_cache.txt", s_DLightProgramStateName, _ARRAYSIZE(s_DLightProgramStateName), [](program_state_t state) {
-        R_UseDLightProgram(state, NULL);
+        R_RequestDLightProgramState(state);
     });
 }
 

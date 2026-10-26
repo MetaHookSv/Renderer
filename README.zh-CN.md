@@ -32,6 +32,7 @@ MetaRenderer 是 MetaHookSv 的图形渲染插件，用现代 OpenGL 渲染管�
 - [构建说明](docs/zh-CN/build-instruction.md)
 - [安装说明](docs/zh-CN/installation.md)
 - [功能说明](docs/zh-CN/features.md)
+- [Shader 并行编译](docs/zh-CN/parallel-shader-compile.md)：ARB/KHR 驱动预热与同步回退，实际收益取决于驱动和负载。
 - [F5 调试（可选）](docs/zh-CN/debugging.md)
 
 ## 许可证
