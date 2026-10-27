@@ -39,7 +39,7 @@ MetaHook 默认自动下载最新 `main`，VGUI2Extension、UtilThreadTask、Fre
 | `METAHOOK_SOURCE_PATH` | MetaHook 仓库根目录，包含 `include/metahook.h` 及 HLSDK、SourceSDK、VGUI 源码 |
 | `VGUI2EXTENSION_SOURCE_PATH` | VGUI2Extension 仓库根目录，包含 `include/Interface/IVGUI2Extension.h`、`IDpiManager.h` 及 `include/Interface/VGUI` 下的 Input、Scheme、Surface 扩展接口 |
 | `UTILTHREADTASK_SOURCE_PATH` | UtilThreadTask 仓库根目录，包含 `include/Interface/IUtilThreadTask.h` |
-| `FREEIMAGE_SOURCE_PATH` | FreeImage_clone 根目录，包含 `CMakeLists.txt` 和 `Source/FreeImage.h` |
+| `FREEIMAGE_SOURCE_PATH` | FreeImage 根目录，包含 `CMakeLists.txt` 和 `Source/FreeImage.h` |
 | `GLEW_SOURCE_PATH` | glew-cmake 根目录，包含 `CMakeLists.txt` 和 `include/GL/glew.h`，提供 `libglew_static` |
 
 Renderer 编译时需要 VGUI2Extension 的公共头文件，其接口目录优先于 MetaHook 的同名目录。
@@ -56,7 +56,7 @@ scripts\build-Renderer-x86-Release.bat ^
   "-DMETAHOOK_SOURCE_PATH=D:/MetaHook" ^
   "-DVGUI2EXTENSION_SOURCE_PATH=D:/VGUI2Extension" ^
   "-DUTILTHREADTASK_SOURCE_PATH=D:/UtilThreadTask" ^
-  "-DFREEIMAGE_SOURCE_PATH=D:/FreeImage_clone" ^
+  "-DFREEIMAGE_SOURCE_PATH=D:/FreeImage" ^
   "-DGLEW_SOURCE_PATH=D:/glew-cmake" ^
   "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/x86/Release/include"
 ```

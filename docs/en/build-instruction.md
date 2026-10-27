@@ -43,7 +43,7 @@ local sources, pass any of these optional parameters:
 | `METAHOOK_SOURCE_PATH` | MetaHook repository root with `include/metahook.h` and the HLSDK, SourceSDK and VGUI sources |
 | `VGUI2EXTENSION_SOURCE_PATH` | VGUI2Extension repository root with `include/Interface/IVGUI2Extension.h`, `IDpiManager.h` and the Input, Scheme and Surface extension interfaces under `include/Interface/VGUI` |
 | `UTILTHREADTASK_SOURCE_PATH` | UtilThreadTask repository root with `include/Interface/IUtilThreadTask.h` |
-| `FREEIMAGE_SOURCE_PATH` | FreeImage_clone root with `CMakeLists.txt` and `Source/FreeImage.h` |
+| `FREEIMAGE_SOURCE_PATH` | FreeImage root with `CMakeLists.txt` and `Source/FreeImage.h` |
 | `GLEW_SOURCE_PATH` | glew-cmake root with `CMakeLists.txt` and `include/GL/glew.h`, providing `libglew_static` |
 
 Renderer needs VGUI2Extension's public headers at build time. Its interface directories
@@ -63,7 +63,7 @@ scripts\build-Renderer-x86-Release.bat ^
   "-DMETAHOOK_SOURCE_PATH=D:/MetaHook" ^
   "-DVGUI2EXTENSION_SOURCE_PATH=D:/VGUI2Extension" ^
   "-DUTILTHREADTASK_SOURCE_PATH=D:/UtilThreadTask" ^
-  "-DFREEIMAGE_SOURCE_PATH=D:/FreeImage_clone" ^
+  "-DFREEIMAGE_SOURCE_PATH=D:/FreeImage" ^
   "-DGLEW_SOURCE_PATH=D:/glew-cmake" ^
   "-DSDL2_INCLUDE_DIRS=D:/MetaHook/install/x86/Release/include"
 ```

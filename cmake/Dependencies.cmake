@@ -158,7 +158,7 @@ function(renderer_prepare_dependencies)
         get_filename_component(source "${FREEIMAGE_SOURCE_PATH}" ABSOLUTE BASE_DIR "${PROJECT_SOURCE_DIR}")
     else()
         renderer_fetch_source(renderer_freeimage
-            "https://github.com/hzqst/FreeImage_clone"
+            "https://github.com/hzqst/FreeImage"
             "007c9e4c5d4198a1646b6c5274fd855be9cca7ef" source)
     endif()
     if(NOT EXISTS "${source}/CMakeLists.txt" OR NOT EXISTS "${source}/Source/FreeImage.h")
