@@ -43,10 +43,6 @@ if(SDL3_INCLUDE_DIRS)
     renderer_require_headers(SDL3 SDL3/SDL.h)
 endif()
 
-include("${VC_LTL_Root}/VC-LTL helper for cmake.cmake")
-
-# Inherit the parent's VC-LTL settings rather than invoking vendor helpers twice.
-set(USE_VCLTL OFF CACHE BOOL "Separate vendor VC-LTL integration" FORCE)
 set(glew-cmake_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(glew-cmake_BUILD_STATIC ON CACHE BOOL "" FORCE)
 set(ONLY_LIBS ON CACHE BOOL "" FORCE)

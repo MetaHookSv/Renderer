@@ -26,7 +26,7 @@ This file provides guidance and important rules working with code in this reposi
 
 #### When notes are insufficient: source entry points (query and read on demand)
 
-- Build: `CMakeLists.txt`, `cmake/Sources.cmake` (explicit compile list), `cmake/Dependencies.cmake` (source-path resolution and FetchContent fallback), `cmake/VCLTL.cmake`, `scripts/build-Renderer-x86-{Debug,Release}.bat`
+- Build: `CMakeLists.txt`, `cmake/Sources.cmake` (explicit compile list), `cmake/Dependencies.cmake` (source-path resolution and FetchContent fallback), `scripts/build-Renderer-x86-{Debug,Release}.bat`
 - Plugin sources: `src/`; lifecycle entry `src/plugins.cpp`, hooks `src/exportfuncs.cpp` and `src/gl_hooks.cpp`, internal state `src/gl_local.h`, main render loop `src/gl_rmain.cpp`
 - Public API / interface: `include/Interface/IMetaRenderer.h`, provided and installed by this repository and taking precedence over MetaHook's historical copy
 - Runtime assets: `assets/svencoop/renderer/` (shaders, textures, configuration, localization), installed alongside the DLL

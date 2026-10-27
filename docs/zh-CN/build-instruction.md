@@ -13,7 +13,7 @@ Renderer 自身的公共接口位于 `include/Interface/IMetaRenderer.h`
 - Windows、Visual Studio 2022 的 C++ 桌面开发工具和 Windows SDK
 - CMake 3.21+
 - Git
-- 首次配置需要网络：CMake 通过 FetchContent 获取 MetaHook、VGUI2Extension、UtilThreadTask、FreeImage 和 GLEW（宿主未自带 Capstone 时也包括 Capstone），初始化其他所需 submodule，并下载、校验和解压 VC-LTL 5.3.1
+- 首次配置需要网络：CMake 通过 FetchContent 获取 MetaHook、VGUI2Extension、UtilThreadTask、FreeImage 和 GLEW（宿主未自带 Capstone 时也包括 Capstone），并初始化其他所需 submodule
 - 与目标配置对应的 MetaHook 构建，用于提供 `SDL2_INCLUDE_DIRS` 目录（见下文）
 
 ## 构建

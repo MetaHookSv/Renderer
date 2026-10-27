@@ -15,7 +15,7 @@ Renderer's own public interface lives in `include/Interface/IMetaRenderer.h`.
 - Windows with Visual Studio 2022 C++ desktop workload and the Windows SDK
 - CMake 3.21+
 - Git
-- Network access on first configure: CMake fetches MetaHook, VGUI2Extension, UtilThreadTask, FreeImage and GLEW via FetchContent (Capstone too when the host does not provide it), initializes the other required submodules, and downloads, verifies and extracts VC-LTL 5.3.1
+- Network access on first configure: CMake fetches MetaHook, VGUI2Extension, UtilThreadTask, FreeImage and GLEW via FetchContent (Capstone too when the host does not provide it), and initializes the other required submodules
 - A MetaHook build for the target configuration, providing the `SDL2_INCLUDE_DIRS` directory (see below)
 
 ## Build
