@@ -29,9 +29,7 @@ Both entry points use `Visual Studio 17 2022 -A Win32` and perform configure, bu
 install. They can be invoked from outside the project; when `SolutionDir` is unset the
 project is located from the script path. Initialization, download, configure, compile or
 install failure returns a non-zero exit code. Build directories are `build/x86/Debug`
-and `build/x86/Release`. The entry points configure plain Debug and Release; the optional
-`RENDERER_BUILD_AVX2` switch adds an extra Release target built with `/arch:AVX2` and
-installed as `Renderer_AVX2.dll` (the launcher probes that name before `Renderer.dll`).
+and `build/x86/Release`. The entry points configure plain Debug and Release.
 
 ## Specifying source paths manually
 

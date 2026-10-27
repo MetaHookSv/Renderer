@@ -169,9 +169,9 @@ Shader files are located in `assets/svencoop/renderer/shader/`:
 ### Configuration Types
 - **Debug** - Debug build with complete debugging information
 - **Release** - Optimized build with standard optimizations
-- **AVX2 variant** - optional extra target enabled by `RENDERER_BUILD_AVX2`: Release
-  compiled with `/arch:AVX2`, Debug with the baseline `/arch:SSE2`, installed as
-  `Renderer_AVX2.dll` (launcher probes that name before `Renderer.dll`).
+- No instruction-set variant: the former `RENDERER_BUILD_AVX2` / `Renderer_AVX2.dll`
+  target was removed (Renderer is GPU-bound, the gain was unmeasured, and the launcher's
+  old variant-first probe let stale copies shadow new baselines).
 
 ### Key Compilation Settings
 - **C++ Standard**: C++20
