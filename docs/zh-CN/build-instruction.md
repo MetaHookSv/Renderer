@@ -74,6 +74,10 @@ scripts\build-Renderer-x86-Release.bat ^
 
 Renderer 通过 `scripts/manifests/renderer.json`（与 MetaHook 同一 schema）声明它解析的引擎/客户端私有符号（含按 gameVersion 生效的条件组与 module 归属）。
 
+`zp-10210` 客户端快照包含七个必需的 `GameStudioRenderer` 虚函数：`StudioDrawModel`、
+`StudioDrawPlayer`、`StudioMergeBones`、`StudioRenderFinal`、`StudioRenderModel`、
+`StudioSaveBones` 和 `StudioSetupBones`。引擎符号由对应引擎版本的 catalog 提供。
+
 构建时 `RENDERER_SYNC_GAMEDATA`（默认 `ON`）调用 `scripts/sync-gamedata.py`，把上游 catalog 裁剪为仅含这些符号并发布到 `metahook/gamedata/renderer/`，随后 `scripts/validate-gamedata.py` 按 manifest 校验
 
 原始快照持久缓存在 `build/x86/<config>/gamedata-sync/` 并支持离线构建。

@@ -25,7 +25,8 @@
     "hl-6153",
     "hl-8684",
     "svencoop-10257",
-    "svencoop-8948"
+    "svencoop-8948",
+    "zp-10210"
   ],
   "symbols": {},
   "optionalSymbols": {
@@ -465,7 +466,8 @@
         "czero-8684",
         "czero-10210",
         "czeror-8684",
-        "czeror-10210"
+        "czeror-10210",
+        "zp-10210"
       ],
       "symbols": {
         "client": {

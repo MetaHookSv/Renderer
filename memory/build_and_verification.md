@@ -331,3 +331,11 @@ permalink: renderer/build-and-verification
 - 未解决：严格A/B准备中一次启动0xC0000374（execing config.cfg附近），无转储，尚未定根因；随后8轮x86 CDB强制Sync启动/退出未复现。完整Water/Portal/OIT/multiview视觉、VRAM、真实游戏首帧/加载帧百分位、其他GPU/宿主均未验证。当前不能宣布任务完成或关闭issue。
 - 恢复：测试替换的4个Renderer DLL/PDB、11个state cache和config.cfg共16文件已还原并逐项SHA256核对。根目录测试steam_appid.txt清除；源码未提交。
 - 详细架构、命令、指标与下一步见[[ParallelShaderCompile]]；本次原始证据在聚合树忽略目录build/renderer32-*，不可用旧验证记录代替本次证据。
+
+## 2026-11-07：zp-10210 客户端 Studio gamedata
+
+- 触发信号：GoldSrc_VibeSignatures [v20261107b](https://github.com/HLND2T/GoldSrc_VibeSignatures/releases/tag/v20261107b) 已发布 `zp-10210` 的七个 GameStudioRenderer 虚函数，Renderer 尚未选择该客户端快照。
+- 根因与处理：在 `scripts/manifests/renderer.json` 的 `gameVersions` 和现有客户端 Studio 必需条件组中加入 `zp-10210`，复用七项 `virtualFunction` 声明及 `src/studio_interface.inl` 的解析路径；不新增 C++ 分支或扫描回退。
+- 验证：聚合树 Release 的 `RendererGameDataValidate` 目标成功，同步裁剪 24 个快照；manifest 校验和独立 `sync-gamedata.py --validate-only` 均通过。最终 `zp-10210.json` 包含 DrawModel、DrawPlayer、MergeBones、RenderFinal、RenderModel、SaveBones、SetupBones 七项，Windows 虚函数索引依次为 3、4、12、23、21、11、9。
+- 同步来源：上游 `zp-10210` 原始快照 SHA-256 为 `7121ea9a3b71e7211c63da382414a8b469c38c55fe20c4a3e48f7516e2b435b4`；裁剪产物保留 client CRC64 `49f07086f0defc0d` 和三个 DLL alias。
+- 适用范围与边界：仅更新 gamedata 清单和文档，未重编译 DLL；按用户要求未启动 `zp-10210`，不据此宣称游戏内渲染或物理效果已验证。

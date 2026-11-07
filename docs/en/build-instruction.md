@@ -84,6 +84,11 @@ Renderer declares the engine/client private symbols it resolves (including
 per-gameVersion conditional groups and module ownership) through
 `scripts/manifests/renderer.json`, using the same schema as MetaHook.
 
+The `zp-10210` client snapshot includes the seven required `GameStudioRenderer`
+virtuals: `StudioDrawModel`, `StudioDrawPlayer`, `StudioMergeBones`,
+`StudioRenderFinal`, `StudioRenderModel`, `StudioSaveBones` and `StudioSetupBones`.
+Its engine symbols come from the matching engine catalog.
+
 At build time `RENDERER_SYNC_GAMEDATA` (default `ON`) invokes `scripts/sync-gamedata.py`
 to trim the upstream catalog to just those symbols and publish it to
 `metahook/gamedata/renderer/`, then `scripts/validate-gamedata.py` validates it against
