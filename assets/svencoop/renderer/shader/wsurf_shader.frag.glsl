@@ -174,12 +174,14 @@ vec2 ParallaxMapping(vec3 T, vec3 B, vec3 N, vec3 viewDirWorld, vec2 baseTexcoor
 
     vec2 deltaTexCoords = p / numLayers;
 
-	vec2 mainTexCoods = baseTexcoord;
+	// Start at the top of the height field, with mid-gray on the surface plane.
+	const float referenceHeight = 0.5;
+	vec2 mainTexCoods = baseTexcoord + p * (1.0 - referenceHeight);
 
     vec2 currentTexCoords = mainTexCoods;
 
-	vec2 ddx = dFdx(mainTexCoods);
-	vec2 ddy = dFdy(mainTexCoods);
+	vec2 ddx = dFdx(baseTexcoord);
+	vec2 ddy = dFdy(baseTexcoord);
 
     float currentDepthMapValue = 1.0 - textureGrad(parallaxTex, vec2(currentTexCoords.x * v_parallaxtexcoord.x, currentTexCoords.y * v_parallaxtexcoord.y), ddx, ddy ).r;
 
@@ -207,18 +209,7 @@ vec2 ParallaxMapping(vec3 T, vec3 B, vec3 N, vec3 viewDirWorld, vec2 baseTexcoor
 
 vec4 SampleDiffuseTexture(vec2 baseTexcoord)
 {
-
-#if defined(PARALLAXTEXTURE_ENABLED)
-
-		vec3 viewDir = normalize(v_worldpos.xyz - GetCameraViewPos(GetCameraViewIndex()));
-
-		vec4 diffuseColor = texture(diffuseTex, ParallaxMapping(v_tangent, v_bitangent, v_normal, viewDir, baseTexcoord));
-
-	#else
-
-		vec4 diffuseColor = texture(diffuseTex, baseTexcoord);
-
-	#endif
+	vec4 diffuseColor = texture(diffuseTex, baseTexcoord);
 	
 	#if defined(DECAL_ENABLED)
 		
@@ -241,6 +232,13 @@ void main()
 	ClipPlaneTest(v_worldpos.xyz, v_normal.xyz);
 	
 	vec2 baseTexcoord = v_diffusetexcoord.xy;
+
+	#if defined(PARALLAXTEXTURE_ENABLED)
+
+		vec3 viewDir = normalize(v_worldpos.xyz - GetCameraViewPos(GetCameraViewIndex()));
+		baseTexcoord = ParallaxMapping(v_tangent, v_bitangent, v_normal, viewDir, baseTexcoord);
+
+	#endif
 
 #if defined(DIFFUSE_ENABLED)
 
@@ -356,9 +354,9 @@ void main()
 #elif defined(GLOW_COLOR_ENABLED)
 
 	#if defined(ALPHA_SOLID_ENABLED)
-		vec4 diffuseColor = SampleDiffuseTexture(v_texcoord);
+		vec4 glowDiffuseColor = SampleDiffuseTexture(baseTexcoord);
 
-		if(diffuseColor.a < 0.5)
+		if(glowDiffuseColor.a < 0.5)
 			discard;
 	#endif
 

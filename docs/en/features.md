@@ -212,6 +212,9 @@ For decals: texture list is parsed from `{GameDirectory}/renderer/decal_textures
 The rules of texture searching follow the same way as "BSP detail textures"
 
 * `r_wsurf_parallax_scale` controls the intensity (and direction if negative value is given) of parallax textures.
+* The red channel stores height, with `0.5` (mid-gray) as the zero-offset reference plane. With the default scale of `-0.02`, darker values appear recessed and brighter values appear raised. Changing the sign reverses this direction; a scale of `0` disables the offset.
+* Diffuse, detail, normal and specular textures share the parallax-adjusted coordinates, with each texture's own UV scale applied afterward. Lightmap coordinates remain unchanged.
+* Earlier versions used white (`1.0`) as the zero-offset reference. Custom height maps authored for that convention may need adjustment. The bundled `shot_parallax.dds` already uses a mid-gray background and a dark center.
 
 ### BSP specular textures
 
