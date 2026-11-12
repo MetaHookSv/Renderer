@@ -1,5 +1,7 @@
 // Exercise the production world-surface fragment shader on a real GL context.
+#include "gl_local.h"
 #include "gl_shader_compile.h"
+#include "gl_wsurf_tbn.inl"
 #include <GLFW/glfw3.h>
 #include <array>
 #include <cassert>
@@ -87,6 +89,9 @@ GLuint Program(const std::filesystem::path& directory, const std::string& define
 {
     const std::string vertexText = R"(#version 430
 uniform vec3 u_testView;
+uniform vec3 u_testNormal = vec3(0, 0, 1);
+uniform vec3 u_testTangent = vec3(1, 0, 0);
+uniform vec3 u_testBitangent = vec3(0, 1, 0);
 out vec3 v_worldpos, v_normal, v_tangent, v_bitangent;
 out vec2 v_diffusetexcoord, v_detailtexcoord, v_normaltexcoord;
 out vec2 v_parallaxtexcoord, v_speculartexcoord;
@@ -98,9 +103,9 @@ void main()
     vec2 corners[3] = vec2[3](vec2(-1, -1), vec2(3, -1), vec2(-1, 3));
     gl_Position = vec4(corners[gl_VertexID], 0, 1);
     v_worldpos = u_testView;
-    v_normal = vec3(0, 0, 1);
-    v_tangent = vec3(1, 0, 0);
-    v_bitangent = vec3(0, 1, 0);
+    v_normal = u_testNormal;
+    v_tangent = u_testTangent;
+    v_bitangent = u_testBitangent;
     v_diffusetexcoord = vec2(0.4, 0.45);
     v_detailtexcoord = vec2(0.75, 1.25);
     v_normaltexcoord = v_detailtexcoord;
@@ -251,6 +256,108 @@ void Test(const std::filesystem::path& directory, bool parallax, bool decal, boo
     glDeleteBuffers(blocks.size(), blocks.data());
     glDeleteProgram(program);
 }
+
+void TestSurfaceOrientations(const std::filesystem::path& directory, bool decal)
+{
+    struct Face
+    {
+        const char* name;
+        vec3_t      normal;
+        vec3_t      u;
+        vec3_t      v;
+        int         flags;
+    };
+    // Actual texinfo axes and face sides from issue #972's maptest2.bsp cube.
+    // Opposite faces share UV axes, including both UV handedness conventions.
+    const Face faces[] = {
+        {"+Y", {0, 1, 0}, {1, 0, 0}, {0, 0, -1}, 0},
+        {"-Y", {0, -1, 0}, {1, 0, 0}, {0, 0, -1}, SURF_PLANEBACK},
+        {"+Z", {0, 0, 1}, {1, 0, 0}, {0, -1, 0}, 0},
+        {"-Z", {0, 0, -1}, {1, 0, 0}, {0, -1, 0}, SURF_PLANEBACK},
+        {"+X", {1, 0, 0}, {0, 1, 0}, {0, 0, -1}, 0},
+        {"-X", {-1, 0, 0}, {0, 1, 0}, {0, 0, -1}, SURF_PLANEBACK}};
+
+    std::string defines = "#define DIFFUSE_ENABLED\n#define GBUFFER_ENABLED\n#define FULLBRIGHT_ENABLED\n#define PARALLAXTEXTURE_ENABLED\n";
+    if (decal) defines += "#define DECAL_ENABLED\n";
+    GLuint program = Program(directory, defines);
+    glUseProgram(program);
+    std::array<GLuint, 3> blocks = {BindBlock(program, "SceneBlock", 0), BindBlock(program, "CameraBlock", 1), BindBlock(program, "EntityBlock", 3)};
+    std::vector<float>    ramp(TextureSize * TextureSize * 4), heights(ramp.size());
+    for (int y = 0; y < TextureSize; ++y)
+        for (int x = 0; x < TextureSize; ++x)
+        {
+            size_t i    = (y * TextureSize + x) * 4;
+            ramp[i]     = (x + 0.5f) / TextureSize;
+            ramp[i + 1] = (y + 0.5f) / TextureSize;
+            ramp[i + 3] = 1;
+        }
+    const std::array<GLuint, 2> textures = {Texture(0, GL_TEXTURE_2D, ramp), Texture(3, GL_TEXTURE_2D, heights)};
+    int                         cases    = 0;
+    for (const auto& face : faces)
+    {
+        mplane_t   plane{};
+        mtexinfo_t texinfo{};
+        msurface_t surface{};
+        for (int k = 0; k < 3; ++k)
+        {
+            plane.normal[k] = std::abs(face.normal[k]);
+            // Non-unit texinfo lengths must not change the tangent direction.
+            texinfo.vecs[0][k] = face.u[k] * 2;
+            texinfo.vecs[1][k] = face.v[k] * 0.5f;
+        }
+        surface.plane   = &plane;
+        surface.texinfo = &texinfo;
+        surface.flags   = face.flags;
+        CWorldSurfaceBrushFace brushFace;
+        R_BuildBrushFaceTangentBasis(&surface, brushFace);
+        for (int flags : {0, FDECAL_HFLIP, FDECAL_VFLIP, FDECAL_HFLIP | FDECAL_VFLIP})
+        {
+            if (!decal && flags) continue;
+            const auto basis = R_BuildDecalTangentBasis(brushFace, flags);
+            for (int k = 0; k < 3; ++k)
+                Expect(face.normal[k], basis.normal[k], "outward face normal");
+            glUniform3fv(glGetUniformLocation(program, "u_testNormal"), 1, basis.normal);
+            glUniform3fv(glGetUniformLocation(program, "u_testTangent"), 1, basis.s_tangent);
+            glUniform3fv(glGetUniformLocation(program, "u_testBitangent"), 1, basis.t_tangent);
+            for (float height : {0.0f, 0.25f, 0.5f, 0.75f, 1.0f})
+            {
+                for (size_t i = 0; i < heights.size(); i += 4) heights[i] = height;
+                glActiveTexture(GL_TEXTURE3);
+                glBindTexture(GL_TEXTURE_2D, textures[1]);
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, TextureSize, TextureSize, GL_RGBA, GL_FLOAT, heights.data());
+                for (float scale : {-0.02f, 0.0f, 0.02f})
+                    for (const auto& ray : {std::array<float, 2>{0, 0}, std::array<float, 2>{0.6f, -0.4f}, std::array<float, 2>{-0.5f, 0.3f}})
+                    {
+                        vec3_t direction{};
+                        for (int k = 0; k < 3; ++k)
+                            direction[k] = ray[0] * face.u[k] + ray[1] * face.v[k] - face.normal[k];
+                        glUniform3fv(glGetUniformLocation(program, "u_testView"), 1, direction);
+                        glUniform1f(glGetUniformLocation(program, "u_parallaxScale"), scale);
+                        glDrawArrays(GL_TRIANGLES, 0, 3);
+                        std::array<float, 4> pixel{};
+                        glReadBuffer(GL_COLOR_ATTACHMENT0);
+                        glReadPixels(TargetSize / 2, TargetSize / 2, 1, 1, GL_RGBA, GL_FLOAT, pixel.data());
+                        // Intersect the world ray with a constant-height plane, then
+                        // project that displacement onto the actual (possibly flipped) UV axes.
+                        // This oracle does not use the production TBN to predict its own output.
+                        const float distance = scale * (height - 0.5f) / DotProduct(direction, face.normal);
+                        const float u        = BaseUV[0] + DotProduct(direction, face.u) * distance * ((flags & FDECAL_HFLIP) ? -1 : 1);
+                        const float v        = BaseUV[1] + DotProduct(direction, face.v) * distance * ((flags & FDECAL_VFLIP) ? -1 : 1);
+                        if (std::abs(u - pixel[0]) > Tolerance || std::abs(v - pixel[1]) > Tolerance)
+                            std::fprintf(stderr, "face=%s decal=%d flags=%x height=%f scale=%f ray=(%f,%f)\n", face.name, decal, flags, height, scale, ray[0], ray[1]);
+                        Expect(u, pixel[0], "oriented parallax U");
+                        Expect(v, pixel[1], "oriented parallax V");
+                        assert(GL_NO_ERROR == glGetError());
+                        ++cases;
+                    }
+            }
+        }
+    }
+    std::printf("%d six-face %s parallax cases passed\n", cases, decal ? "decal/UV-flip" : "world");
+    glDeleteTextures(textures.size(), textures.data());
+    glDeleteBuffers(blocks.size(), blocks.data());
+    glDeleteProgram(program);
+}
 } // namespace
 
 int main(int argc, char** argv)
@@ -299,6 +406,8 @@ int main(int argc, char** argv)
         for (bool decal : {false, true})
             for (bool detail : {false, true})
                 Test(argv[1], parallax, decal, detail);
+    TestSurfaceOrientations(argv[1], false);
+    TestSurfaceOrientations(argv[1], true);
     glDeleteTextures(targets.size(), targets.data());
     glDeleteFramebuffers(1, &framebuffer);
     glDeleteVertexArrays(1, &vao);

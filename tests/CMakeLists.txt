@@ -83,9 +83,10 @@ add_test(NAME triapi_shader_tests COMMAND triapi_shader_tests
     "${PROJECT_SOURCE_DIR}/assets/svencoop/renderer/shader")
 set_tests_properties(triapi_shader_tests PROPERTIES SKIP_RETURN_CODE 2)
 
-add_executable(wsurf_parallax_shader_tests wsurf_parallax_shader_tests.cpp)
+add_executable(wsurf_parallax_shader_tests wsurf_parallax_shader_tests.cpp ../src/mathlib2.cpp)
 target_compile_definitions(wsurf_parallax_shader_tests PRIVATE GLEW_STATIC GLFW_INCLUDE_NONE)
-target_compile_options(wsurf_parallax_shader_tests PRIVATE /UNDEBUG)
+target_compile_options(wsurf_parallax_shader_tests PRIVATE /UNDEBUG /Gy)
+target_link_options(wsurf_parallax_shader_tests PRIVATE /OPT:REF /INCREMENTAL:NO)
 target_link_libraries(wsurf_parallax_shader_tests PRIVATE renderer_settings libglew_static glfw)
 add_test(NAME wsurf_parallax_shader_tests COMMAND wsurf_parallax_shader_tests
     "${PROJECT_SOURCE_DIR}/assets/svencoop/renderer/shader")
