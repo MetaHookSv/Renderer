@@ -6,6 +6,29 @@ permalink: renderer/build-and-verification
 
 # 构建与验证
 
+## 2026-11-13：BSP 反面与弹孔 UV 翻转的视差方向（MetaHookSv #972）
+
+- 触发信号：作者附件 `maptest2.bsp` 的浮空立方体六面中，三面的弹孔 parallax 方向反转。
+- 根因 / 约束：`SURF_PLANEBACK` 同时反转 N/T/B，但表面及弹孔 UV 仍按原始 `texinfo`
+  方向增长；该标记只要求校正面法线。另有独立遗漏：弹孔 H/V flip 改变 UV，却未同步 T/B。
+  附件 RMF/BSP 交叉核对六面均为正缩放、零旋转；恰好 -X/-Y/-Z 三面为 PLANEBACK，
+  不能归因于作者在编辑器中翻转纹理，也不能强行统一左右手 UV 基底。
+- 正确做法：`src/gl_wsurf_tbn.inl` 集中生产 basis 构建，面切线保持 texinfo 方向，
+  仅校正 N；`R_UploadDecalVertexBuffer` 在 clip/no-clip 汇合后按当前 decal flags
+  翻转相应切线，再为该弹孔所有顶点上传同一 basis。不改 shader、UV 顺序或资源格式。
+- 红灯证据：保持旧符号逻辑时，-Y 世界面 U 预期 0.394000、实际 0.406006；仅修正
+  PLANEBACK 后，+Y/HFLIP 弹孔 U 预期 0.406000、实际 0.393982，分别检出两类错误。
+- 验证：MSVC x86 Debug/Release Renderer 与全部 18 个测试目标构建退出码 0；两种配置
+  CTest 各 19/19、无失败或跳过（Debug 188.19s，Release 50.46s）。真实 GL 回归新增
+  270 个六面世界表面、1080 个六面/四种弹孔翻转
+  用例，覆盖五种高度、正负/零 scale、法向/斜向视线，与独立世界光线/高度平面交点对照；
+  原有 24 个生产 shader 变体、432 个中点/材质对齐/lightmap 用例保留并通过。
+  GPU 为 Intel UHD Graphics 770 / OpenGL 4.4；clang-format 23.1.3 检查 105 个文件
+  无差异，`git diff --check` 退出码 0，独立只读 review 未发现阻断项。
+- 适用范围 / 边界：世界 BSP 和弹孔的生产 TBN；GPU 回归使用生产 basis 和 fragment shader、
+  测试 vertex shader，不能等同完整游戏调用链或实机视觉验收。本次未部署游戏。
+  聚合树忽略目录 `build/issue972-*.log` 保存构建、红灯及完整回归日志。
+
 ## 2026-10-25：引擎粒子错误调用 TriAPI Begin，解绑粒子纹理
 
 - 触发信号：`svencoop_2026.10.25_10.45_frame7915.rdc` 的 EID 8250 出现黑色三角片；

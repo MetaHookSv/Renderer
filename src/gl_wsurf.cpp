@@ -1,4 +1,5 @@
 #include "gl_local.h"
+#include "gl_wsurf_tbn.inl"
 
 #include <sstream>
 #include <algorithm>
@@ -2071,20 +2072,9 @@ std::shared_ptr<CWorldSurfaceWorldModel> R_GenerateWorldSurfaceWorldModel(model_
         auto poly       = surf->polys;
         auto pBrushFace = &pWorldModel->m_vFaceBuffer[i];
 
-        VectorCopy(surf->texinfo->vecs[0], pBrushFace->s_tangent);
-        VectorCopy(surf->texinfo->vecs[1], pBrushFace->t_tangent);
-        VectorNormalize(pBrushFace->s_tangent);
-        VectorNormalize(pBrushFace->t_tangent);
-        VectorCopy(surf->plane->normal, pBrushFace->normal);
+        R_BuildBrushFaceTangentBasis(surf, *pBrushFace);
         pBrushFace->index = i;
         pBrushFace->flags = surf->flags;
-
-        if (surf->flags & SURF_PLANEBACK)
-        {
-            VectorInverse(pBrushFace->normal);
-            VectorInverse(pBrushFace->s_tangent);
-            VectorInverse(pBrushFace->t_tangent);
-        }
 
         if (surf->lightmaptexturenum + 1 > g_WorldSurfaceRenderer.iNumLightmapTextures)
             g_WorldSurfaceRenderer.iNumLightmapTextures = surf->lightmaptexturenum + 1;

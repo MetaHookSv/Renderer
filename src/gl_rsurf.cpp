@@ -1,4 +1,5 @@
 #include "gl_local.h"
+#include "gl_wsurf_tbn.inl"
 #include <algorithm>
 
 
@@ -959,7 +960,7 @@ void R_UploadDecalTextures(int decalIndex, texture_t* ptexture, const std::share
     g_WorldSurfaceRenderer.vCachedDecals[decalIndex].matId = matId;
 }
 
-void R_UploadDecalVertexBuffer(int decalIndex, int vertCount, float* v, msurface_t* surf, CWorldSurfaceRenderMaterial* pRenderMaterial)
+void R_UploadDecalVertexBuffer(int decalIndex, int vertCount, float* v, msurface_t* surf, int decalFlags, CWorldSurfaceRenderMaterial* pRenderMaterial)
 {
     auto worldmodel = R_FindWorldModelBySurface(surf);
 
@@ -985,7 +986,8 @@ void R_UploadDecalVertexBuffer(int decalIndex, int vertCount, float* v, msurface
         return;
     }
 
-    const auto brushface = &pWorldModel->m_vFaceBuffer[surfIndex];
+    const auto brushface    = &pWorldModel->m_vFaceBuffer[surfIndex];
+    const auto tangentBasis = R_BuildDecalTangentBasis(*brushface, decalFlags);
 
     std::vector<vertex3f_t>       vPolyVertices;
     std::vector<decalvertex_t>    vVertexDataBuffer;
@@ -1012,15 +1014,9 @@ void R_UploadDecalVertexBuffer(int decalIndex, int vertCount, float* v, msurface
         tempVertexData.lightmaptexcoord[0] = v[5];
         tempVertexData.lightmaptexcoord[1] = v[6];
 
-        decalvertextbn_t tempVertexTBNData;
-
-        VectorCopy(brushface->normal, tempVertexTBNData.normal);
-        VectorCopy(brushface->s_tangent, tempVertexTBNData.s_tangent);
-        VectorCopy(brushface->t_tangent, tempVertexTBNData.t_tangent);
-
         vPolyVertices.emplace_back(tempVertex);
         vVertexDataBuffer.emplace_back(tempVertexData);
-        vVertexTBNDataBuffer.emplace_back(tempVertexTBNData);
+        vVertexTBNDataBuffer.emplace_back(tangentBasis);
 
         v += VERTEXSIZE;
     }
@@ -1138,7 +1134,7 @@ void R_DrawDecals(cl_entity_t* ent)
                 {
                     R_BuildCachedDecalBounds(v, vertCount, cachedDecal);
                     R_UploadDecalTextures(decalIndex, ptexture, pRenderMaterial);
-                    R_UploadDecalVertexBuffer(decalIndex, vertCount, v, psurf, pRenderMaterial.get());
+                    R_UploadDecalVertexBuffer(decalIndex, vertCount, v, psurf, plist->flags, pRenderMaterial.get());
                     plist->flags |= FDECAL_VBO;
                 }
                 else
